@@ -1,12 +1,16 @@
 NAME= webserv
 SRCS= main.cpp Server.cpp
-OBJS= $(addprefix srcs/, $(SRCS:.cpp=.o))
+SRC_DIR = srcs/
+HEADER_DIR = includes/
+HEADER_FILES = Server.hpp
+HEADERS = $(addprefix $(HEADER_DIR), $(HEADER_FILES))
+OBJS= $(addprefix $(SRC_DIR), $(SRCS:.cpp=.o))
 CC= clang++
 CFLAGS= -Wall -Wextra -Werror -std=c++98
-HEADER= -I includes
+INCLUDE= -I $(HEADER_DIR)
 
-.cpp.o:
-	$(CC) $(CFLAGS) $(HEADER) -c $< -o $(<:.cpp=.o)
+./$(SRC_DIR)%.o: ./$(SRC_DIR)%.cpp $(HEADERS)
+	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 $(NAME): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
 all: $(NAME)
@@ -14,5 +18,5 @@ clean:
 	rm -f $(OBJS)
 fclean: clean
 	rm -f $(NAME)
-re: fclean all	
+re: fclean all
 .PHONY: all clean fclean re
