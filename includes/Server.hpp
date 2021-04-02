@@ -40,7 +40,6 @@ class Server {
 		void build_select_list();
 		void handle_data(int listnum);
 		int sock_gets(int socket_fd, char *str, size_t count);
-		int sock_write(int socket_fd, char *str, size_t count);
 		void read_socks();
 		void connect(void);
 

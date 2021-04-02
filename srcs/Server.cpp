@@ -34,8 +34,13 @@ void Server::setup_server_socket() {
 		std::cout << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR,
-		&_reuse_addr, sizeof(_reuse_addr));
+	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR,
+		&_reuse_addr, sizeof(_reuse_addr)) < 0) {
+		std::cout << "Failed to change socket options : ";
+		std::cout << std::strerror(errno) << std::endl;
+		close(_server_fd);
+		exit(EXIT_FAILURE);
+	}
 	set_non_blocking(_server_fd);
 	_high_sock = _server_fd;
 	this->bind_socket(DEFAULT_PORT);
