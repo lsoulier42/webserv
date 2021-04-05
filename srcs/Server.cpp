@@ -6,11 +6,12 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/02 15:32:15 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/02 15:32:18 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/06 20:05:33 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include "Request.hpp"
 
 int Server::server_id = 0;
 
@@ -193,6 +194,7 @@ void Server::_bind_socket() {
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
+	*/
 }
 
 void Server::_set_listen_mode() {
