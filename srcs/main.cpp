@@ -10,14 +10,17 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Server.hpp"
+#include "WebServer.hpp"
 
 int main(int argc, char **argv) {
-	Server webserv;
+	Server server1_test("0.0.0.0", 8080);
+	std::vector<Server> vector1;
+	vector1.push_back(server1_test);
+	WebServer webserv(vector1);
 
 	(void)argc;
 	(void)argv;
-
-	webserv.connect();
+	webserv.setup_servers();
+	webserv.routine();
 	return (0);
 }
