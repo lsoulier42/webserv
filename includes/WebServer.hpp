@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:39:02 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/06 01:39:03 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/06 22:26:38 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@
 # include <sstream>
 
 # include "Server.hpp"
+# include "Client.hpp"
 
 # define DEFAULT_MAX_CONNECTION 5
 # define DEFAULT_BUFFER_SIZE 1025
@@ -54,7 +55,7 @@ class WebServer {
 
 		std::vector<Server> _servers;
 		int _max_connection;
-		std::vector<int> _client_sd;
+		std::vector<Client> _clients;
 		std::map<int, int> _config_assoc;
 		fd_set _sockets_list;
 		int _highest_socket;

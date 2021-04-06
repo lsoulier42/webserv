@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/06 01:38:17 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/06 22:40:11 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@ WebServer::WebServer(const std::vector<Server>& servers) :
 	_servers(servers),
 	_max_connection(DEFAULT_MAX_CONNECTION),
 	_highest_socket(0), _exit(0) {
-	_client_sd.assign(_max_connection, 0);
+//	_client_sd.assign(_max_connection, 0);
 }
 
 WebServer::~WebServer() {}
@@ -43,6 +43,18 @@ void WebServer::accept_connection(const Server& server) {
 	set_non_blocking(connection);
 	if (connection == -1)
 		return ;
+	if (_clients.size() == (size_t)_max_connection) {
+		std::string full_response = "Sorry, this server is too busy.\n Try again later! \r\n";
+		std::cout << "No room left for new client." << std::endl;
+		send(connection, full_response.c_str(), full_response.size(), 0);
+			close(connection);
+	} else {
+		std::cout << "Connection accepted: FD=" << connection << std::endl;
+//		std::cout << " - Slot=" << i << std::endl;
+		_clients.push_back(Client(connection));
+		_config_assoc.insert(std::make_pair(connection, server.getId()));
+	}
+	/*
 	for (int i = 0; i < _max_connection; i++) {
 		if (_client_sd[i] == 0) {
 			std::cout << "Connection accepted: FD=" << connection;
@@ -58,6 +70,7 @@ void WebServer::accept_connection(const Server& server) {
 			close(connection);
 		}
 	}
+	*/
 }
 
 void WebServer::close_sockets() {
@@ -65,8 +78,8 @@ void WebServer::close_sockets() {
 		if (it->isDefault())
 			close(it->getServerSd());
 	}
-	for(std::vector<int>::iterator it = _client_sd.begin(); it != _client_sd.end(); it++)
-		close(*it);
+	for(std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); it++)
+		close(it->get_sd());
 }
 
 void WebServer::routine(void) {
@@ -122,10 +135,10 @@ void WebServer::build_select_list() {
 		if (it->isDefault())
 			FD_SET(it->getServerSd(), &_sockets_list);
 	}
-	for(std::vector<int>::iterator it = _client_sd.begin(); it != _client_sd.end(); it++) {
-		FD_SET(*it, &_sockets_list);
-		if (*it > _highest_socket)
-			_highest_socket = *it;
+	for(std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+		FD_SET(it->get_sd(), &_sockets_list);
+		if (it->get_sd() > _highest_socket)
+			_highest_socket = it->get_sd();
 	}
 }
 
@@ -152,6 +165,7 @@ int WebServer::sock_gets(int socket_fd, char *str, size_t count) {
 	return total_count;
 }
 
+/*
 void WebServer::handle_data(int socket_id) {
 	char buffer[DEFAULT_BUFFER_SIZE];
 
@@ -170,6 +184,7 @@ void WebServer::handle_data(int socket_id) {
 		std::cout << "Response: " << ss.str() << std::endl;
 	}
 }
+*/
 
 void WebServer::read_socks() {
 	for(size_t i = 0; i < _servers.size(); i++) {
@@ -177,8 +192,9 @@ void WebServer::read_socks() {
 			&& FD_ISSET(_servers[i].getServerSd(), &_sockets_list))
 			this->accept_connection(_servers[i]);
 	}
-	for (int i = 0; i < _max_connection; i++) {
-		if (FD_ISSET(_client_sd[i], &_sockets_list))
-			this->handle_data(i);
+	for (std::vector<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; it++) {
+		if (FD_ISSET(it->get_sd(), &_sockets_list))
+			it->process();
+//			this->handle_data(i);
 	}
 }

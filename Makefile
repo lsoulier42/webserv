@@ -1,8 +1,8 @@
 NAME= webserv
-SRCS= main.cpp Server.cpp WebServer.cpp
+SRCS= main.cpp Server.cpp WebServer.cpp Client.cpp Request.cpp
 SRC_DIR = srcs/
 HEADER_DIR = includes/
-HEADER_FILES = Server.hpp Request.hpp
+HEADER_FILES = Server.hpp WebServer.hpp Client.hpp Request.hpp
 HEADERS = $(addprefix $(HEADER_DIR), $(HEADER_FILES))
 OBJS= $(addprefix $(SRC_DIR), $(SRCS:.cpp=.o))
 CC= clang++
