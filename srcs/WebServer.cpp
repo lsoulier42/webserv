@@ -12,18 +12,23 @@
 
 #include "WebServer.hpp"
 
-WebServer::WebServer(const std::vector<Server>& servers) :
-	_servers(servers),
-	_max_connection(DEFAULT_MAX_CONNECTION),
-	_highest_socket(0), _exit(0) {
+bool WebServer::verbose = false;
+
+WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
+	_highest_socket(0), _exit(false) {
 	_client_sd.assign(_max_connection, 0);
+	_servers.assign(1, Server());
 }
 
 WebServer::~WebServer() {}
 
 void WebServer::setup_servers() {
+	Config test;
+
+	test.setIpAddr("0.0.0.0");
+	test.setPort(80);
 	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		it->setup_default_server();
+		it->setup_default_server(test);
 		set_non_blocking(it->getServerSd());
 		_highest_socket = it->getServerSd();
 	}
@@ -48,7 +53,7 @@ void WebServer::accept_connection(const Server& server) {
 			std::cout << "Connection accepted: FD=" << connection;
 			std::cout << " - Slot=" << i << std::endl;
 			_client_sd[i] = connection;
-			_config_assoc.insert(std::make_pair(connection, server.getId()));
+			_config_assoc.insert(std::make_pair(connection, server.getConfig()));
 			break ;
 		}
 		if (i == _max_connection - 1) {
@@ -62,8 +67,7 @@ void WebServer::accept_connection(const Server& server) {
 
 void WebServer::close_sockets() {
 	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		if (it->isDefault())
-			close(it->getServerSd());
+		close(it->getServerSd());
 	}
 	for(std::vector<int>::iterator it = _client_sd.begin(); it != _client_sd.end(); it++)
 		close(*it);
@@ -119,8 +123,7 @@ void WebServer::set_non_blocking(int socket_fd) {
 void WebServer::build_select_list() {
 	FD_ZERO(&_sockets_list);
 	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		if (it->isDefault())
-			FD_SET(it->getServerSd(), &_sockets_list);
+		FD_SET(it->getServerSd(), &_sockets_list);
 	}
 	for(std::vector<int>::iterator it = _client_sd.begin(); it != _client_sd.end(); it++) {
 		FD_SET(*it, &_sockets_list);
@@ -163,9 +166,11 @@ void WebServer::handle_data(int socket_id) {
 		std::cout << "Received: " << buffer << std::endl;
 		std::string received = std::string(buffer);
 		if (received == "exit")
-			_exit = 1;
+			_exit = true;
 		std::stringstream ss;
-		ss << "I received this from server_id: "<< _config_assoc[_client_sd[socket_id]] << std::endl;
+		const Config& configRef = _config_assoc.find(_client_sd[socket_id])->second;
+		ss << "I received this from server with port: ";
+		ss << configRef.getPort() << std::endl;
 		send(_client_sd[socket_id], ss.str().c_str(), ss.str().size(), 0);
 		std::cout << "Response: " << ss.str() << std::endl;
 	}
@@ -173,8 +178,7 @@ void WebServer::handle_data(int socket_id) {
 
 void WebServer::read_socks() {
 	for(size_t i = 0; i < _servers.size(); i++) {
-		if (_servers[i].isDefault()
-			&& FD_ISSET(_servers[i].getServerSd(), &_sockets_list))
+		if (FD_ISSET(_servers[i].getServerSd(), &_sockets_list))
 			this->accept_connection(_servers[i]);
 	}
 	for (int i = 0; i < _max_connection; i++) {

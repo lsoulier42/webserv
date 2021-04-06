@@ -27,20 +27,24 @@
 # include <sstream>
 
 # include "Server.hpp"
+# include "Config.hpp"
 
 # define DEFAULT_MAX_CONNECTION 5
 # define DEFAULT_BUFFER_SIZE 1025
 
+class Server;
+
 class WebServer {
 	public:
-		WebServer(const std::vector<Server>& servers);
+		WebServer();
 		~WebServer();
 
 		void routine();
 		void setup_servers();
 
+		static bool verbose;
+
 	private:
-		WebServer();
 		WebServer(const WebServer& src);
 		WebServer& operator=(const WebServer& rhs);
 
@@ -55,9 +59,9 @@ class WebServer {
 		std::vector<Server> _servers;
 		int _max_connection;
 		std::vector<int> _client_sd;
-		std::map<int, int> _config_assoc;
+		std::map<int, const Config&> _config_assoc;
 		fd_set _sockets_list;
 		int _highest_socket;
-		int _exit;
+		bool _exit;
 };
 #endif

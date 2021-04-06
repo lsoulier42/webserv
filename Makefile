@@ -1,5 +1,5 @@
 NAME= webserv
-SRCS= main.cpp Server.cpp WebServer.cpp
+SRCS= main.cpp Server.cpp WebServer.cpp Config.cpp
 SRC_DIR = srcs/
 HEADER_DIR = includes/
 HEADER_FILES = Server.hpp
