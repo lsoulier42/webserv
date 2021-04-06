@@ -12,51 +12,81 @@
 
 #ifndef SERVER_HPP
 # define SERVER_HPP
+# include <string>
+# include <iostream>
+# include <list>
 # include <sys/socket.h>
 # include <netinet/in.h>
-# include <ctime>
-# include <fcntl.h>
-# include <cstdlib>
-# include <iostream>
-# include <unistd.h>
+# include <arpa/inet.h>
 # include <cstring>
 # include <cerrno>
-# include <string>
-# define DEFAULT_PORT 80
-# define DEFAULT_MAX_CONNECTION 5
-# define DEFAULT_BUFFER_SIZE 1025
-# define DEFAULT_BACKLOG 5
+# include <cstdlib>
+# include <unistd.h>
+
+# define DEFAULT_BACKLOG 5 //TODO: figure out what backlog means
 
 class Server {
 	public:
 		Server();
+		Server(const std::string& ipAddr, int port);
+		Server(const Server& src);
+		Server& operator=(const Server& rhs);
 		~Server();
 
-		void setup_server_socket();
-		void bind_socket(int port);
-		void listen_mode();
-		void accept_connection();
-		void set_non_blocking(int socket_fd);
-		void build_select_list();
-		void handle_data(int listnum);
-		int sock_gets(int socket_fd, char *str, size_t count);
-		void read_socks();
-		void connect(void);
+		std::string getServerName() const;
+		void setServerName(const std::string &serverName);
+		int getId() const;
+		void setId(int id);
+		bool isDefault() const;
+		void setDefault(bool isDefault);
+		std::string getIpAddr() const;
+		void setIpAddr(const std::string& ipAddr);
+		int getPort() const;
+		void setPort(int port);
+		std::string getRoot() const;
+		void setRoot(const std::string &root);
+		bool isAutoindex() const;
+		void setAutoindex(bool autoindex);
+		std::list<std::string> getIndex() const;
+		void setIndex(const std::list<std::string> &index);
+		std::list<std::string> getMethods() const;
+		void setMethods(const std::list<std::string> &methods);
+		int getBufferBodySize() const;
+		void setBufferBodySize(int bufferBodySize);
+		std::string getUploadDir() const;
+		void setUploadDir(const std::string &uploadDir);
+
+		void setup_default_server();
+		int getServerSd() const;
+		struct sockaddr* getSockAddr() const;
+		socklen_t* getAddrLen() const;
 
 	private:
-		Server& operator=(const Server& rhs);
-		Server(const Server& src);
+		void _create_socket_descriptor();
+		void _change_socket_options();
+		void _bind_socket();
+		void _set_listen_mode();
 
-		std::allocator<int> _alloc;
-		int _server_fd;
-		int _addrlen;
-		int _reuse_addr;
+		int _id;
+		std::string _server_name;
+		bool _is_default;
+		std::string _ip_addr;
+		int _port;
+		std::string _root;
+		bool _autoindex;
+		std::list<std::string> _index;
+		std::list<std::string> _methods;
+		int _buffer_body_size;
+		std::string _upload_dir;
+		//TODO : location (need vector of future class instance Location ?
+		//TODO : CGI params
+
+		int _server_sd;
 		struct sockaddr_in _sock_addr;
-		int _max_connection;
-		int *_connect_list;
-		fd_set _socks;
-		int _high_sock;
-		int _exit;
+		int _reuse_addr;
+		int _addr_len;
+
+		static int server_id;
 };
 
 #endif

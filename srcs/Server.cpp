@@ -12,193 +12,194 @@
 
 #include "Server.hpp"
 
-Server::Server() : _server_fd(-1), _addrlen(sizeof(_sock_addr)),
-	_reuse_addr(1), _high_sock(-1), _exit(0) {
-	_max_connection = DEFAULT_MAX_CONNECTION;
-	_connect_list = _alloc.allocate(_max_connection);
-	for (int i = 0; i < _max_connection; i++)
-		_alloc.construct(_connect_list + i, 0);
-	memset((char*)&_sock_addr, 0, _addrlen);
+int Server::server_id = 0;
+
+Server::Server() : _id(server_id++),
+	_server_sd(0), _reuse_addr(1), _addr_len(sizeof(struct sockaddr_in)) {
+	memset((char*)&_sock_addr, 0, _addr_len);
+}
+
+Server::Server(const std::string& ipAddr, int port) : _id(server_id++),
+	_is_default(true),
+	_ip_addr(ipAddr), _port(port), _server_sd(0),
+	_reuse_addr(1), _addr_len(sizeof(struct sockaddr_in)) {
+	memset((char*)&_sock_addr, 0, _addr_len);
+}
+
+Server::Server(const Server& src) {
+	*this = src;
+}
+
+Server& Server::operator=(const Server& rhs) {
+	if (this != &rhs) {
+		_id = server_id++;
+		_server_name = rhs._server_name;
+		_is_default = rhs._is_default;
+		_ip_addr = rhs._ip_addr;
+		_port = rhs._port;
+		_root = rhs._root;
+		_autoindex = rhs._autoindex;
+		_index = rhs._index;
+		_methods = rhs._methods;
+		_upload_dir = rhs._upload_dir;
+		_server_sd = rhs._server_sd;
+		_sock_addr = rhs._sock_addr;
+		_reuse_addr = rhs._reuse_addr;
+		_addr_len = rhs._addr_len;
+	}
+	return *this;
 }
 
 Server::~Server() {
-	for (int i = 0; i < _max_connection; i++)
-		_alloc.destroy(_connect_list + i);
-	_alloc.deallocate(_connect_list, _max_connection);
+
 }
 
-void Server::setup_server_socket() {
-	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (_server_fd == -1) {
+std::string Server::getServerName() const {
+	return _server_name;
+}
+
+void Server::setServerName(const std::string &serverName) {
+	_server_name = serverName;
+}
+
+int Server::getId() const {
+	return _id;
+}
+
+void Server::setId(int id) {
+	_id = id;
+}
+
+bool Server::isDefault() const {
+	return _is_default;
+}
+
+void Server::setDefault(bool isDefault) {
+	_is_default = isDefault;
+}
+
+std::string Server::getIpAddr() const {
+	return _ip_addr;
+}
+
+void Server::setIpAddr(const std::string& ipAddr) {
+	_ip_addr = ipAddr;
+}
+
+int Server::getPort() const {
+	return _port;
+}
+
+void Server::setPort(int port) {
+	_port = port;
+}
+
+std::string Server::getRoot() const {
+	return _root;
+}
+
+void Server::setRoot(const std::string &root) {
+	_root = root;
+}
+
+bool Server::isAutoindex() const {
+	return _autoindex;
+}
+
+void Server::setAutoindex(bool autoindex) {
+	_autoindex = autoindex;
+}
+
+std::list<std::string> Server::getIndex() const {
+	return _index;
+}
+
+void Server::setIndex(const std::list<std::string> &index) {
+	_index = index;
+}
+
+std::list<std::string> Server::getMethods() const {
+	return _methods;
+}
+
+void Server::setMethods(const std::list<std::string> &methods) {
+	_methods = methods;
+}
+
+int Server::getBufferBodySize() const {
+	return _buffer_body_size;
+}
+
+void Server::setBufferBodySize(int bufferBodySize) {
+	_buffer_body_size = bufferBodySize;
+}
+
+std::string Server::getUploadDir() const {
+	return _upload_dir;
+}
+
+void Server::setUploadDir(const std::string &uploadDir) {
+	_upload_dir = uploadDir;
+}
+
+void Server::setup_default_server() {
+	if (!_is_default)
+		return ;
+	this->_create_socket_descriptor();
+	this->_change_socket_options();
+	this->_bind_socket();
+	this->_set_listen_mode();
+}
+
+int Server::getServerSd() const {
+	return _server_sd;
+}
+
+struct sockaddr* Server::getSockAddr() const {
+	return (struct sockaddr*)&_sock_addr;
+}
+
+socklen_t* Server::getAddrLen() const {
+	return (socklen_t*)&_addr_len;
+}
+
+void Server::_create_socket_descriptor() {
+	_server_sd = socket(AF_INET, SOCK_STREAM, 0);
+	if (_server_sd == -1) {
 		std::cout << "Failed to create socket : ";
 		std::cout << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR,
+}
+
+void Server::_change_socket_options() {
+	if (setsockopt(_server_sd, SOL_SOCKET, SO_REUSEADDR,
 		&_reuse_addr, sizeof(_reuse_addr)) < 0) {
 		std::cout << "Failed to change socket options : ";
 		std::cout << std::strerror(errno) << std::endl;
-		close(_server_fd);
+		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
-	set_non_blocking(_server_fd);
-	_high_sock = _server_fd;
-	this->bind_socket(DEFAULT_PORT);
-	this->listen_mode();
 }
-void Server::bind_socket(int port) {
+
+void Server::_bind_socket() {
 	_sock_addr.sin_family = AF_INET;
-	_sock_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	_sock_addr.sin_port = htons(port);
+	_sock_addr.sin_addr.s_addr = inet_addr(_ip_addr.c_str());
+	_sock_addr.sin_port = htons(_port);
 
-	if (bind(_server_fd, (struct sockaddr*)&_sock_addr, _addrlen) < 0) {
-		std::cout << "Failed to bind to port " << port;
+	if (bind(_server_sd, (struct sockaddr*)&_sock_addr, _addr_len) < 0) {
+		std::cout << "Failed to bind to port " << _port;
 		std::cout << " : " << std::strerror(errno) << std::endl;
-		close(_server_fd);
+		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
 }
 
-void Server::listen_mode() {
-	if (listen(_server_fd, DEFAULT_BACKLOG) < 0) {
+void Server::_set_listen_mode() {
+	if (listen(_server_sd, DEFAULT_BACKLOG) < 0) {
 		std::cout << "Failed to listen on socket : ";
 		std::cout << std::strerror(errno) << std::endl;
-		close(_server_fd);
+		close(_server_sd);
 		exit(EXIT_FAILURE);
-	}
-}
-
-void Server::accept_connection() {
-	int connection;
-
-	connection = accept(_server_fd, (struct sockaddr*)&_sock_addr,
-		(socklen_t*)&_addrlen);
-	if (connection < 0) {
-		std::cout << "Failed to grab connection : ";
-		std::cout << std::strerror(errno) << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	set_non_blocking(connection);
-	if (connection == -1)
-		return ;
-	for (int i = 0; i < _max_connection; i++) {
-		if (_connect_list[i] == 0) {
-			std::cout << "Connection accepted: FD=" << connection;
-			std::cout << " - Slot=" << i << std::endl;
-			_alloc.construct(_connect_list + i, connection);
-			break ;
-		}
-		if (i == _max_connection - 1) {
-			std::string full_response = "Sorry, this server is too busy.\n Try again later! \r\n";
-			std::cout << "No room left for new client." << std::endl;
-			send(connection, full_response.c_str(), full_response.size(), 0);
-			close(connection);
-		}
-	}
-}
-
-void Server::connect(void) {
-	struct timeval timeout;
-	int read_socks;
-
-	this->setup_server_socket();
-	while(!_exit) {
-		this->build_select_list();
-		timeout.tv_sec = 1;
-		timeout.tv_usec = 0;
-		read_socks = select(_high_sock + 1, &_socks,
-			(fd_set*)0, (fd_set*)0, &timeout);
-		if (read_socks < 0) {
-			std::cout << "Select error: ";
-			std::cout << std::strerror(errno) << std::endl;
-			close(_server_fd);
-			exit(EXIT_FAILURE);
-		}
-		if (read_socks == 0) {
-			std::cout << ".";
-		}
-		else
-			this->read_socks();
-	}
-	close(_server_fd);
-}
-
-void Server::set_non_blocking(int socket_fd) {
-	int opts;
-
-	opts = fcntl(socket_fd, F_GETFD);
-	if (opts < 0) {
-		std::cout << "Fcntl error with F_GETFD : ";
-		std::cout << std::strerror(errno) << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	opts = (opts | O_NONBLOCK);
-	if (fcntl(socket_fd, F_SETFL, opts) < 0) {
-		std::cout << "Fcntl error with F_SETFL : ";
-		std::cout << std::strerror(errno) << std::endl;
-		exit(EXIT_FAILURE);
-	}
-}
-
-void Server::build_select_list() {
-	FD_ZERO(&_socks);
-	FD_SET(_server_fd, &_socks);
-	for(int i = 0; i < _max_connection; i++) {
-		if (_connect_list[i] != 0) {
-			FD_SET(_connect_list[i], &_socks);
-			if (_connect_list[i] > _high_sock)
-				_high_sock = _connect_list[i];
-		}
-	}
-}
-
-int Server::sock_gets(int socket_fd, char *str, size_t count) {
-	int read_return;
-	char *current_position;
-	size_t total_count = 0;
-	char last_read = 0;
-
-	current_position = str;
-	while (last_read != '\n') {
-		read_return = read(socket_fd, &last_read, 1);
-		if (read_return <= 0)
-			return -1;
-		if ((total_count < count) && (last_read != '\n')
-			&& (last_read != '\r')) {
-			*current_position = last_read;
-			current_position++;
-			total_count++;
-		}
-	}
-	if (count > 0)
-		*current_position = '\0';
-	return total_count;
-}
-
-void Server::handle_data(int socket_id) {
-	char buffer[DEFAULT_BUFFER_SIZE];
-
-	if (sock_gets(_connect_list[socket_id], buffer, DEFAULT_BUFFER_SIZE) < 0) {
-		std::cout << "Connection lost: FD=" << _connect_list[socket_id];
-		std::cout << " - Slot=" << socket_id << std::endl;
-		_alloc.construct(_connect_list + socket_id, 0);
-	} else {
-		std::cout << "Received: " << buffer << std::endl;
-		std::string received = std::string(buffer);
-		if (received == "exit")
-			_exit = 1;
-		for(int i = 0; buffer[i]; i++)
-			buffer[i] = (char)toupper(buffer[i]);
-		send(_connect_list[socket_id], buffer, strlen(buffer), 0);
-		std::cout << "Response: " << buffer << std::endl;
-	}
-}
-
-void Server::read_socks() {
-	if (FD_ISSET(_server_fd, &_socks))
-		this->accept_connection();
-	for (int i = 0; i < _max_connection; i++) {
-		if (FD_ISSET(_connect_list[i], &_socks))
-			this->handle_data(i);
 	}
 }
