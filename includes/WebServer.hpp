@@ -25,6 +25,8 @@
 # include <vector>
 # include <map>
 # include <sstream>
+# include <fstream>
+# include <ios>
 
 # include "Server.hpp"
 # include "Config.hpp"
@@ -39,8 +41,9 @@ class WebServer {
 		WebServer();
 		~WebServer();
 
-		void routine();
+		int parsing(const std::string& filepath);
 		void setup_servers();
+		void routine();
 
 		static bool verbose;
 
@@ -48,15 +51,64 @@ class WebServer {
 		WebServer(const WebServer& src);
 		WebServer& operator=(const WebServer& rhs);
 
+		/* Network functions
+		 *
+		 *
+		 *
+		 */
 		void accept_connection(const Server& server);
-		void set_non_blocking(int socket_fd);
+		static void set_non_blocking(int socket_fd);
 		void build_select_list();
 		void handle_data(int socket_id);
 		int sock_gets(int socket_fd, char *str, size_t count);
 		void read_socks();
 		void close_sockets();
 
+		/* Parsing functions for config file
+		 *
+		 *
+		 *
+		 */
+		int check_config_file(const std::string& filepath);
+		int check_main_bloc();
+		int check_server_bloc();
+		//int check_location_bloc();
+		static bool is_num(const char* str);
+		static std::string trim_comments(const std::string& line_buffer);
+		static std::string trim_whitespaces(const std::string& line_buffer);
+		static int trim_semicolon(std::vector<std::string>& tokens);
+		static std::vector<std::string> WebServer::split(const std::string& line_buffer, const std::string& charset);
+		static std::vector<std::string> split_whitespaces(const std::string& line_buffer);
+		enum t_instructions {
+			LISTEN,
+			SERVER_NAME,
+			ERROR_PAGE,
+			CLIENT_MAX_BODY_SIZE,
+			LOCATION,
+			METHODS,
+			ROOT,
+			AUTOINDEX,
+			INDEX,
+			UPLOAD_DIR,
+			CGI,
+			TOTAL_INSTRUCTIONS
+		};
+		int parse_listen(const std::vector<std::string>&, Config&);
+		int parse_server_name(const std::vector<std::string>&, Config&);
+		int parse_error_page(const std::vector<std::string>&, Config&);
+		int parse_client_max_body_size(const std::vector<std::string>&, Config&);
+		int parse_location(const std::vector<std::string>&, Config&);
+		int parse_methods(const std::vector<std::string>&, Config&);
+		int parse_root(const std::vector<std::string>&, Config&);
+		int parse_autoindex(const std::vector<std::string>&, Config&);
+		int parse_index(const std::vector<std::string>&, Config&);
+		int parse_upload_dir(const std::vector<std::string>&, Config&);
+		int parse_cgi(const std::vector<std::string>&, Config&);
+		int check_ip_format(const std::string&);
+
+		std::ifstream _config_file;
 		std::vector<Server> _servers;
+		std::vector<Config> _configs;
 		int _max_connection;
 		std::vector<int> _client_sd;
 		std::map<int, const Config&> _config_assoc;

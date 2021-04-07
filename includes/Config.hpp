@@ -23,10 +23,8 @@ class Config {
 		Config(const Config& src);
 		Config& operator=(const Config& rhs);
 
-		std::string getServerName() const;
-		void setServerName(const std::string &serverName);
-		bool isDefault() const;
-		void setDefault(bool isDefault);
+		std::list<std::string> getServerName() const;
+		void setServerName(const std::list<std::string> &serverName);
 		std::string getIpAddr() const;
 		void setIpAddr(const std::string& ipAddr);
 		int getPort() const;
@@ -39,22 +37,22 @@ class Config {
 		void setIndex(const std::list<std::string> &index);
 		std::list<std::string> getMethods() const;
 		void setMethods(const std::list<std::string> &methods);
-		int getBufferBodySize() const;
-		void setBufferBodySize(int bufferBodySize);
+		int getClientMaxBodySize() const;
+		void setClientMaxBodySize(int clientMaxBodySize);
 		std::string getUploadDir() const;
 		void setUploadDir(const std::string &uploadDir);
 
 	private:
-		std::string _server_name;
-		bool _is_default;
+		std::list<std::string> _server_name;
 		std::string _ip_addr;
 		int _port;
 		std::string _root;
 		bool _autoindex;
 		std::list<std::string> _index;
 		std::list<std::string> _methods;
-		int _buffer_body_size;
+		int _client_max_body_size;
 		std::string _upload_dir;
+
 		//TODO : location (need vector of future class instance Location ?
 		//TODO : CGI params
 };

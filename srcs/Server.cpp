@@ -39,11 +39,11 @@ int Server::getServerSd() const {
 }
 
 struct sockaddr* Server::getSockAddr() const {
-	return (struct sockaddr*)&_sock_addr;
+	return (struct sockaddr*)(&_sock_addr);
 }
 
 socklen_t* Server::getAddrLen() const {
-	return (socklen_t*)&_addr_len;
+	return (socklen_t*)(&_addr_len);
 }
 
 const Config& Server::getConfig() const{
@@ -57,8 +57,8 @@ void Server::setConfig(const Config &config) {
 void Server::_create_socket_descriptor() {
 	_server_sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_sd == -1) {
-		std::cout << "Failed to create socket : ";
-		std::cout << std::strerror(errno) << std::endl;
+		std::cerr << "Failed to create socket : ";
+		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	if (WebServer::verbose) {
@@ -77,8 +77,8 @@ void Server::setup_default_server(const Config& config) {
 void Server::_change_socket_options() {
 	if (setsockopt(_server_sd, SOL_SOCKET, SO_REUSEADDR,
 		&_reuse_addr, sizeof(_reuse_addr)) < 0) {
-		std::cout << "Failed to change socket options : ";
-		std::cout << std::strerror(errno) << std::endl;
+		std::cerr << "Failed to change socket options : ";
+		std::cerr << std::strerror(errno) << std::endl;
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
@@ -95,8 +95,8 @@ void Server::_bind_socket() {
 	_sock_addr.sin_port = htons(port);
 
 	if (bind(_server_sd, (struct sockaddr*)&_sock_addr, _addr_len) < 0) {
-		std::cout << "Failed to bind to port " << port;
-		std::cout << " : " << std::strerror(errno) << std::endl;
+		std::cerr << "Failed to bind to port " << port;
+		std::cerr << " : " << std::strerror(errno) << std::endl;
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
@@ -107,8 +107,8 @@ void Server::_bind_socket() {
 
 void Server::_set_listen_mode() const {
 	if (listen(_server_sd, DEFAULT_BACKLOG) < 0) {
-		std::cout << "Failed to listen on socket : ";
-		std::cout << std::strerror(errno) << std::endl;
+		std::cerr << "Failed to listen on socket : ";
+		std::cerr << std::strerror(errno) << std::endl;
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}

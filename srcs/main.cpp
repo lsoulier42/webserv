@@ -25,7 +25,11 @@ int main(int argc, char **argv) {
 				filepath = argument;
 		}
 	}
+	if (filepath.empty())
+		filepath = "default.conf";
+	if (!webserv.parsing(filepath))
+		return EXIT_FAILURE;
 	webserv.setup_servers();
 	webserv.routine();
-	return (0);
+	return (EXIT_SUCCESS);
 }

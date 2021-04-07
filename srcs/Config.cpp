@@ -23,14 +23,13 @@ Config::Config(const Config& src) {
 Config& Config::operator=(const Config& rhs) {
 	if (this != &rhs) {
 		_server_name = rhs._server_name;
-		_is_default = rhs._is_default;
 		_ip_addr = rhs._ip_addr;
 		_port = rhs._port;
 		_root = rhs._root;
 		_autoindex = rhs._autoindex;
 		_index = rhs._index;
 		_methods = rhs._methods;
-		_buffer_body_size = rhs._buffer_body_size;
+		_client_max_body_size = rhs._client_max_body_size;
 		_upload_dir = rhs._upload_dir;
 	}
 	return *this;
@@ -40,20 +39,12 @@ Config::~Config() {
 
 }
 
-std::string Config::getServerName() const {
+std::list<std::string> Config::getServerName() const {
 	return _server_name;
 }
 
-void Config::setServerName(const std::string &serverName) {
+void Config::setServerName(const std::list<std::string> &serverName) {
 	_server_name = serverName;
-}
-
-bool Config::isDefault() const {
-	return _is_default;
-}
-
-void Config::setDefault(bool isDefault) {
-	_is_default = isDefault;
 }
 
 std::string Config::getIpAddr() const {
@@ -104,12 +95,12 @@ void Config::setMethods(const std::list<std::string> &methods) {
 	_methods = methods;
 }
 
-int Config::getBufferBodySize() const {
-	return _buffer_body_size;
+int Config::getClientMaxBodySize() const {
+	return _client_max_body_size;
 }
 
-void Config::setBufferBodySize(int bufferBodySize) {
-	_buffer_body_size = bufferBodySize;
+void Config::setClientMaxBodySize(int clientMaxBodySize) {
+	_client_max_body_size = clientMaxBodySize;
 }
 
 std::string Config::getUploadDir() const {
