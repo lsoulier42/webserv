@@ -41,6 +41,10 @@ class Config {
 		void setClientMaxBodySize(int clientMaxBodySize);
 		std::string getUploadDir() const;
 		void setUploadDir(const std::string &uploadDir);
+		std::list<int> getErrorPageCodes() const;
+		void setErrorPageCodes(const std::list<int>& errorPageCodes);
+		std::string getErrorPagePath() const;
+		void setErrorPagePath(const std::string& errorPagePath);
 
 	private:
 		std::list<std::string> _server_name;
@@ -52,7 +56,8 @@ class Config {
 		std::list<std::string> _methods;
 		int _client_max_body_size;
 		std::string _upload_dir;
-
+		std::list<int> _error_page_codes;
+		std::string _error_page_path;
 		//TODO : location (need vector of future class instance Location ?
 		//TODO : CGI params
 };

@@ -110,3 +110,18 @@ std::string Config::getUploadDir() const {
 void Config::setUploadDir(const std::string &uploadDir) {
 	_upload_dir = uploadDir;
 }
+
+std::list<int> Config::getErrorPageCodes() const {
+	return _error_page_codes;
+}
+
+void Config::setErrorPageCodes(const std::list<int>& errorPageCodes) {
+	_error_page_codes = errorPageCodes;
+}
+std::string Config::getErrorPagePath() const {
+	return _error_page_path;
+}
+
+void Config::setErrorPagePath(const std::string& errorPagePath) {
+	_error_page_path = errorPagePath;
+}

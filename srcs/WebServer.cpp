@@ -456,12 +456,47 @@ int WebServer::parse_error_page(const std::vector<std::string>& tokens, Config& 
 		std::cerr << "`error_page' instruction needs at least 2 arguments." << std::endl;
 		return 0;
 	}
-
+	std::list<int> error_codes;
+	std::string error_path;
+	for (std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
+		if (*it != tokens.back()) {
+			if (!is_num(it->c_str())) {
+				std::cerr << "`'error_page' error codes must be numerical" << std::endl;
+				return 0;
+			}
+			//TODO: is error_code (check if error_code exist)
+			error_codes.push_back(std::strtol(it->c_str(), NULL, 10));
+		}
+		else {
+			//TODO: check open ? check format ?
+			error_path = *it;
+		}
+	}
+	config.setErrorPageCodes(error_codes);
+	config.setErrorPagePath(error_path);
 	return 1;
 }
 
 int WebServer::parse_client_max_body_size(const std::vector<std::string>& tokens, Config& config) {
-
+	if (tokens.size() == 1) {
+		std::cerr << "`client_max_body_size' instruction needs one argument." << std::endl;
+		return 0;
+	}
+	if (tokens.size() > 2) {
+		std::cerr << "`Too much arguments for `client_max_body_size' instruction." << std::endl;
+		return 0;
+	}
+	if (!is_num(tokens.back().c_str())) {
+		std::cerr << "`client_max_body_size' argument must be numerical." << std::endl;
+		return 0;
+	}
+	int client_max_body_size = std::strtol(tokens.back().c_str(), NULL, 10);
+	if (client_max_body_size == 0) {
+		std::cerr << "`client_max_body_size' argument can't be 0." << std::endl;
+		return 0;
+	}
+	config.setClientMaxBodySize(client_max_body_size);
+	return 1;
 }
 
 int WebServer::parse_location(const std::vector<std::string>& tokens, Config& config) {
