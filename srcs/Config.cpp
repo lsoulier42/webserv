@@ -12,8 +12,9 @@
 
 #include "Config.hpp"
 
-Config::Config() {
-
+Config::Config() : AConfig() {
+	_port = 0;
+	_client_max_body_size = 0;
 }
 
 Config::Config(const Config& src) {
@@ -22,15 +23,17 @@ Config::Config(const Config& src) {
 
 Config& Config::operator=(const Config& rhs) {
 	if (this != &rhs) {
+		this->_root = rhs._root;
+		this->_autoindex = rhs._autoindex;
+		this->_index = rhs._index;
+		this->_methods = rhs._methods;
+		this->_cgi = rhs._cgi;
 		_server_name = rhs._server_name;
 		_ip_addr = rhs._ip_addr;
 		_port = rhs._port;
-		_root = rhs._root;
-		_autoindex = rhs._autoindex;
-		_index = rhs._index;
-		_methods = rhs._methods;
 		_client_max_body_size = rhs._client_max_body_size;
 		_upload_dir = rhs._upload_dir;
+		_locations = rhs._locations;
 	}
 	return *this;
 }
@@ -63,38 +66,6 @@ void Config::setPort(int port) {
 	_port = port;
 }
 
-std::string Config::getRoot() const {
-	return _root;
-}
-
-void Config::setRoot(const std::string &root) {
-	_root = root;
-}
-
-bool Config::isAutoindex() const {
-	return _autoindex;
-}
-
-void Config::setAutoindex(bool autoindex) {
-	_autoindex = autoindex;
-}
-
-std::list<std::string> Config::getIndex() const {
-	return _index;
-}
-
-void Config::setIndex(const std::list<std::string> &index) {
-	_index = index;
-}
-
-std::list<std::string> Config::getMethods() const {
-	return _methods;
-}
-
-void Config::setMethods(const std::list<std::string> &methods) {
-	_methods = methods;
-}
-
 int Config::getClientMaxBodySize() const {
 	return _client_max_body_size;
 }
@@ -124,4 +95,16 @@ std::string Config::getErrorPagePath() const {
 
 void Config::setErrorPagePath(const std::string& errorPagePath) {
 	_error_page_path = errorPagePath;
+}
+
+std::string Config::getConfigType() const {
+	return "Server";
+}
+
+std::list<Location> Config::getLocations() const {
+	return _locations;
+}
+
+void Config::setLocations(const std::list<Location>& locations) {
+	_locations = locations;
 }

@@ -46,6 +46,7 @@ class WebServer {
 		void routine();
 
 		static bool verbose;
+		static std::string methods_array[TOTAL_METHODS];
 
 	private:
 		WebServer(const WebServer& src);
@@ -69,16 +70,6 @@ class WebServer {
 		 *
 		 *
 		 */
-		int check_config_file(const std::string& filepath);
-		int check_main_bloc();
-		int check_server_bloc();
-		//int check_location_bloc();
-		static bool is_num(const char* str);
-		static std::string trim_comments(const std::string& line_buffer);
-		static std::string trim_whitespaces(const std::string& line_buffer);
-		static int trim_semicolon(std::vector<std::string>& tokens);
-		static std::vector<std::string> WebServer::split(const std::string& line_buffer, const std::string& charset);
-		static std::vector<std::string> split_whitespaces(const std::string& line_buffer);
 		enum t_instructions {
 			LISTEN,
 			SERVER_NAME,
@@ -93,18 +84,110 @@ class WebServer {
 			CGI,
 			TOTAL_INSTRUCTIONS
 		};
+		enum t_methods {
+			GET,
+			HEAD,
+			POST,
+			PUT,
+			DELETE,
+			CONNECT,
+			OPTIONS,
+			TRACE,
+			TOTAL_METHODS
+		};
+		enum t_informational_codes {
+			CONTINUE 100,
+			SWITCHING_PROTOCOLS
+		};
+		enum t_successful_codes {
+			OK 200,
+			CREATED,
+			ACCEPTED,
+			NON_AUTHORITATIVE_INFORMATION,
+			NO_CONTENT,
+			RESET_CONTENT,
+			PARTIAL_CONTENT
+		};
+		enum t_redirection_codes {
+			MULTIPLE_CHOICES 300,
+			MOVED_PERMANENTLY,
+			FOUND,
+			SEE_OTHER,
+			NOT_MODIFIED,
+			USE_PROXY,
+			TEMPORARY_REDIRECT 307
+		};
+		enum t_client_error_codes {
+			BAD_REQUEST 400,
+			UNAUTHORIZED,
+			PAYMENT_REQUIRED,
+			FORBIDDEN,
+			NOT_FOUND,
+			METHOD_NOT_ALLOWED,
+			NOT_ACCEPTABLE,
+			PROXY_AUTHENTICATION_REQUIRED,
+			REQUEST_TIMEOUT,
+			CONFLICT,
+			GONE,
+			LENGTH_REQUIRED,
+			PRECONDITION_FAILED,
+			PAYLOAD_TOO_LARGE,
+			URI_TOO_LONG,
+			UNSUPPORTED_MEDIA_TYPE,
+			RANGE_NOT_SATISFIABLE,
+			EXPECTATION_FAILED,
+			UPGRADE_REQUIRED 426
+		};
+		enum t_server_error_codes {
+			INTERNAL_SERVER_ERROR 500,
+			NOT_IMPLEMENTED,
+			BAD_GATEWAY,
+			SERVICE_UNAVAILABLE,
+			GATEWAY_TIMEOUT,
+			HTTP_VERSION_NOT_SUPPORTED
+		};
+		int check_config_file(const std::string& filepath);
+		int check_main_bloc();
+		int check_server_bloc();
+		int check_location_bloc();
+		static bool is_num(const char* str);
+		static bool is_informational_code(int code);
+		static bool is_successful_code(int code);
+		static bool is_redirection_code(int code);
+		static bool is_client_error_code(int code);
+		static bool is_server_error_code(int code);
+		static bool is_error_code(int code);
+		static int method_index(const std::string&);
+
+		static std::string trim_comments(const std::string& line_buffer);
+		static std::string trim_whitespaces(const std::string& line_buffer);
+		static int trim_semicolon(std::vector<std::string>& tokens);
+		static std::vector<std::string> WebServer::split(const std::string& line_buffer, const std::string& charset);
+		static std::vector<std::string> split_whitespaces(const std::string& line_buffer);
+		static int check_ip_format(const std::string&);
+		static int check_path(const std::string&);
+
 		int parse_listen(const std::vector<std::string>&, Config&);
 		int parse_server_name(const std::vector<std::string>&, Config&);
 		int parse_error_page(const std::vector<std::string>&, Config&);
 		int parse_client_max_body_size(const std::vector<std::string>&, Config&);
 		int parse_location(const std::vector<std::string>&, Config&);
-		int parse_methods(const std::vector<std::string>&, Config&);
-		int parse_root(const std::vector<std::string>&, Config&);
-		int parse_autoindex(const std::vector<std::string>&, Config&);
-		int parse_index(const std::vector<std::string>&, Config&);
+		int parse_methods(const std::vector<std::string>&, AConfig&);
+		int parse_methods_config(const std::vector<std::string>&, Config&);
+		int parse_methods_location(const std::vector<std::string>&, Location&);
+		int parse_root(const std::vector<std::string>&, AConfig&);
+		int parse_root_config(const std::vector<std::string>&, Config&);
+		int parse_root_location(const std::vector<std::string>&, Location&);
+		int parse_autoindex(const std::vector<std::string>&, AConfig&);
+		int parse_autoindex_config(const std::vector<std::string>&, Config&);
+		int parse_autoindex_location(const std::vector<std::string>&, Location&);
+		int parse_index(const std::vector<std::string>&, AConfig&);
+		int parse_index_config(const std::vector<std::string>&, Config&);
+		int parse_index_location(const std::vector<std::string>&, Location&);
 		int parse_upload_dir(const std::vector<std::string>&, Config&);
-		int parse_cgi(const std::vector<std::string>&, Config&);
-		int check_ip_format(const std::string&);
+		int parse_cgi(const std::vector<std::string>&, AConfig&);
+		int parse_cgi_config(const std::vector<std::string>&, Config&);
+		int parse_cgi_location(const std::vector<std::string>&, Location&);
 
 		std::ifstream _config_file;
 		std::vector<Server> _servers;
@@ -115,5 +198,6 @@ class WebServer {
 		fd_set _sockets_list;
 		int _highest_socket;
 		bool _exit;
+
 };
 #endif

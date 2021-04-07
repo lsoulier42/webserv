@@ -13,6 +13,8 @@
 #include "WebServer.hpp"
 
 bool WebServer::verbose = false;
+std::string WebServer::methods_array[TOTAL_METHODS] = {"GET", "HEAD",
+	"POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE"};
 
 WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
 	_highest_socket(0), _exit(false) {
@@ -321,9 +323,9 @@ int WebServer::check_server_bloc() {
 		"root", "autoindex", "index", "upload_dir", "cgi"};
 	int (WebServer::*instructions_functions[TOTAL_INSTRUCTIONS])(const std::vector<std::string>&,
 		Config&) = { &WebServer::parse_listen, &WebServer::parse_server_name, &WebServer::parse_error_page,
-		&WebServer::parse_client_max_body_size, &WebServer::parse_location, &WebServer::parse_methods,
-		&WebServer::parse_root, &WebServer::parse_autoindex, &WebServer::parse_index,
-		&WebServer::parse_upload_dir, &WebServer::parse_cgi };
+		&WebServer::parse_client_max_body_size, &WebServer::parse_location, &WebServer::parse_methods_config,
+		&WebServer::parse_root_config, &WebServer::parse_autoindex_config, &WebServer::parse_index_config,
+		&WebServer::parse_upload_dir, &WebServer::parse_cgi_config };
 
 	while(_config_file) {
 		std::getline(_config_file, line_buffer);
@@ -380,33 +382,40 @@ int WebServer::parse_listen(const std::vector<std::string>& tokens, Config& conf
 	std::string port;
 	int port_nb;
 	size_t colon_pos;
+	std::string usage("Usage: 'listen <ip:port>;'\nip format : [0-255].[0-255].[0-255].[0-255] - port number: [1-65535]");
 
 	if (tokens.size() == 1) {
 		std::cerr << "`listen' instruction needs an argument." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	if (tokens.size() > 2) {
 		std::cerr << "Too much arguments for `listen' instruction." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	colon_pos = tokens[1].find(':');
 	if (colon_pos == std::string::npos) {
-		std::cerr << "Invalid argument format: should be <IP>:<port>;" << std::endl;
+		std::cerr << "Invalid ip:port format." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	ip_addr = tokens[1].substr(0, colon_pos);
 	if (!check_ip_format(ip_addr)) {
-		std::cerr << "Invalid IP format: " << ip_addr << std::endl;
+		std::cerr << "Invalid IP format: `" << ip_addr << "'" << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	port = tokens[1].substr(colon_pos + 1, tokens[1].size() - colon_pos - 1);
 	if (!is_num(port.c_str())) {
-		std::cerr << "Port is not a number: " << port << std::endl;
+		std::cerr << "Port is not a number: `" << port << "'" << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	port_nb = std::strtol(port.c_str(), NULL, 10);
 	if (port_nb <= 0 || port_nb > 65535) {
-		std::cerr << "Invalid port number: " << port << std::endl;
+		std::cerr << "Invalid port number: `" << port << "'" << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	config.setIpAddr(ip_addr);
@@ -439,11 +448,14 @@ int WebServer::check_ip_format(const std::string& ip) {
 }
 
 int WebServer::parse_server_name(const std::vector<std::string>& tokens, Config& config) {
+	std::list<std::string> server_names;
+	std::string usage("Usage: 'server_name <string1> <string2> [...];'");
+
 	if (tokens.size() == 1) {
 		std::cerr << "`server_name' instruction needs an argument." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
-	std::list<std::string> server_names;
 	for(std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
 		server_names.push_back(*it);
 	}
@@ -452,23 +464,37 @@ int WebServer::parse_server_name(const std::vector<std::string>& tokens, Config&
 }
 
 int WebServer::parse_error_page(const std::vector<std::string>& tokens, Config& config) {
-	if (tokens.size() < 3) {
-		std::cerr << "`error_page' instruction needs at least 2 arguments." << std::endl;
-		return 0;
-	}
 	std::list<int> error_codes;
 	std::string error_path;
+	int error_code;
+	std::string usage("Usage: 'error_page <400 401 504....> [/absolute/path];'");
+
+	if (tokens.size() < 3) {
+		std::cerr << "`error_page' instruction needs at least 2 arguments." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
 	for (std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
 		if (*it != tokens.back()) {
 			if (!is_num(it->c_str())) {
-				std::cerr << "`'error_page' error codes must be numerical" << std::endl;
+				std::cerr << "`'error_page' error codes must be numerical." << std::endl;
+				std::cerr << usage << std::endl;
 				return 0;
 			}
-			//TODO: is error_code (check if error_code exist)
-			error_codes.push_back(std::strtol(it->c_str(), NULL, 10));
+			error_code = std::strtol(it->c_str(), NULL, 10);
+			if (!is_error_code(error_code)) {
+				std::cerr << "Argument `" << *it << "' is not a valid error code." <<std::endl;
+				std::cerr << usage << std::endl;
+				return 0;
+			}
+			error_codes.push_back(error_code);
 		}
 		else {
-			//TODO: check open ? check format ?
+			if (!check_path(*it)) {
+				std::cerr << "Path error in `error_page' instruction." << std::endl;
+				std::cerr << usage << std::endl;
+				return 0;
+			}
 			error_path = *it;
 		}
 	}
@@ -477,22 +503,40 @@ int WebServer::parse_error_page(const std::vector<std::string>& tokens, Config& 
 	return 1;
 }
 
+int WebServer::check_path(const std::string &path) {
+	std::ifstream test(path.c_str());
+	if (!test) {
+		std::cerr << "The path `" << path << "' can't be opened: ";
+		std::cerr << strerror(errno) << std::endl;
+		return 0;
+	}
+	test.close();
+	return 1;
+}
+
 int WebServer::parse_client_max_body_size(const std::vector<std::string>& tokens, Config& config) {
+	int client_max_body_size;
+	std::string usage("Usage: 'client_max_body_size <positive, non null, numerical value>;'");
+
 	if (tokens.size() == 1) {
 		std::cerr << "`client_max_body_size' instruction needs one argument." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	if (tokens.size() > 2) {
 		std::cerr << "`Too much arguments for `client_max_body_size' instruction." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	if (!is_num(tokens.back().c_str())) {
 		std::cerr << "`client_max_body_size' argument must be numerical." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
-	int client_max_body_size = std::strtol(tokens.back().c_str(), NULL, 10);
+	client_max_body_size = std::strtol(tokens.back().c_str(), NULL, 10);
 	if (client_max_body_size == 0) {
 		std::cerr << "`client_max_body_size' argument can't be 0." << std::endl;
+		std::cerr << usage << std::endl;
 		return 0;
 	}
 	config.setClientMaxBodySize(client_max_body_size);
@@ -503,28 +547,233 @@ int WebServer::parse_location(const std::vector<std::string>& tokens, Config& co
 	//TODO
 }
 
-int WebServer::parse_methods(const std::vector<std::string>& tokens, Config& config) {
-
+int WebServer::method_index(const std::string& method) {
+	for(int i = 0; i < TOTAL_METHODS; i++) {
+		if (method == methods_array[i])
+			return i;
+	}
+	return -1;
 }
 
-int WebServer::parse_root(const std::vector<std::string>& tokens, Config& config) {
+int WebServer::parse_methods(const std::vector<std::string>& tokens, AConfig& config) {
+	std::list<std::string> methods;
+	bool methods_complete[TOTAL_METHODS] = {false};
+	int method_idx;
+	std::string usage("Usage: 'methods GET and/or PUT and/or HEAD [...];'");
 
+	if (tokens.size() == 1) {
+		std::cerr << "`methods' instruction needs at least one argument." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	for (std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
+		method_idx = method_index(*it);
+		if (method_idx == -1) {
+			std::cerr << "Argument `" << *it << "' is not a valid method." << std::endl;
+			std::cerr << usage << std::endl;
+			return 0;
+		}
+		if (methods_complete[method_idx]) {
+			std::cerr << "Method `" << *it << "' is present more than once." << std::endl;
+			std::cerr << usage << std::endl;
+			return 0;
+		}
+		methods_complete[method_idx] = true;
+		methods.push_back(*it);
+	}
+	config.setMethods(methods);
+	return 1;
 }
 
-int WebServer::parse_autoindex(const std::vector<std::string>& tokens, Config& config) {
-
+int WebServer::parse_methods_config(const std::vector<std::string>& tokens, Config& config) {
+	return parse_methods(tokens, config);
 }
 
-int WebServer::parse_index(const std::vector<std::string>& tokens, Config& config) {
+int WebServer::parse_methods_location(const std::vector<std::string>& tokens, Location& location) {
+	return parse_methods(tokens, location);
+}
 
+int WebServer::parse_root(const std::vector<std::string>& tokens, AConfig& config) {
+	std::string usage("Usage: 'root [/absolute/path];'");
+	std::string path;
+
+	if (tokens.size() == 1) {
+		std::cerr << "`root' instruction needs one argument." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (tokens.size() > 2) {
+		std::cerr << "Too much arguments for `root' instruction." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	path = tokens[1];
+	if (path[0] != '/') {
+		std::cerr << "Argument `" << path << "' is not an absolute path." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (!check_path(path)) {
+		std::cerr << "Path error in `root' instruction." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	config.setRoot(path);
+	return 1;
+}
+
+int WebServer::parse_root_config(const std::vector<std::string>& tokens, Config& config) {
+	return parse_root(tokens, config);
+}
+
+int WebServer::parse_root_location(const std::vector<std::string>& tokens, Location& location) {
+	return parse_root(tokens, location);
+}
+
+int WebServer::parse_autoindex(const std::vector<std::string>& tokens, AConfig& config) {
+	std::string usage("Usage: 'autoindex <on/off>;'");
+	std::string response;
+
+	if (tokens.size() == 1) {
+		std::cerr << "`autoindex' instruction needs one argument." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (tokens.size() > 2) {
+		std::cerr << "Too much arguments for `autoindex' instruction." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	response = tokens[1];
+	if (response != "on" && response != "off") {
+		std::cerr << "Argument `" << response << "' is invalid for `autoindex' instruction.";
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	config.setAutoindex(response == "on");
+	return 1;
+}
+
+int WebServer::parse_autoindex_config(const std::vector<std::string>& tokens, Config& config) {
+	return parse_autoindex(tokens, config);
+}
+
+int WebServer::parse_autoindex_location(const std::vector<std::string>& tokens, Location& location) {
+	return parse_autoindex(tokens, location);
+}
+
+int WebServer::parse_index(const std::vector<std::string>& tokens, AConfig& config) {
+	std::string usage("Usage: 'index <page1>.html <page2>.php [...];'");
+	std::list<std::string> index_pages;
+
+	if (tokens.size() == 1) {
+		std::cerr << "`index' instruction needs at least one argument." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	for (std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
+		index_pages.push_back(*it);
+	}
+	config.setIndex(index_pages);
+	return 1;
+}
+
+int WebServer::parse_index_config(const std::vector<std::string>& tokens, Config& config) {
+	return parse_index(tokens, config);
+}
+
+int WebServer::parse_index_location(const std::vector<std::string>& tokens, Location& location) {
+	return parse_index(tokens, location);
 }
 
 int WebServer::parse_upload_dir(const std::vector<std::string>& tokens, Config& config) {
+	std::string usage("Usage: 'upload_dir [/absolute/path];'");
+	std::string path;
 
+	if (tokens.size() == 1) {
+		std::cerr << std::cerr << "`upload_dir' instruction needs one argument." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (tokens.size() > 2) {
+		std::cerr << "Too much arguments for `upload_dir' instruction." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	path = tokens[1];
+	if (path[0] != '/') {
+		std::cerr << "Argument `" << path << "' is not an absolute path." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (!check_path(path)) {
+		std::cerr << "Path error in `upload_dir' instruction." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	config.setUploadDir(path);
+	return 1;
 }
 
-int WebServer::parse_cgi(const std::vector<std::string>& tokens, Config& config) {
+int WebServer::parse_cgi(const std::vector<std::string>& tokens, AConfig& config) {
+	std::string usage("Usage: 'cgi [*.<ext>] [/absolute/path];'");
+	std::string cgi_file_ext, cgi_path;
 
+	if (tokens.size() != 3) {
+		std::cerr << "`cgi' instruction needs 3 arguments." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	cgi_file_ext = tokens[1];
+	cgi_path = tokens[2];
+	if (cgi_file_ext[0] != '*' || cgi_file_ext[1] != '.') {
+		std::cerr << "Argument `" << cgi_file_ext << "' is not a valid format for cgi file extension." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (cgi_path[0] != '/') {
+		std::cerr << "Argument `" << cgi_path << "' is not an absolute path." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (!check_path(cgi_path)) {
+		std::cerr << "Path error in `cgi' instruction." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	config.setCgiExtension(cgi_file_ext);
+	config.setCgiPath(cgi_path);
+	return 1;
 }
 
+int WebServer::parse_cgi_config(const std::vector<std::string>& tokens, Config& config) {
+	return parse_cgi(tokens, config);
+}
 
+int WebServer::parse_cgi_location(const std::vector<std::string>& tokens, Location& location) {
+	return parse_cgi(tokens, location);
+}
+
+bool WebServer::is_informational_code(int code) {
+	return code == 100 || code == 101;
+}
+
+bool WebServer::is_successful_code(int code) {
+	return code >= 200 && code <= 206;
+}
+
+bool WebServer::is_redirection_code(int code) {
+	return (code >= 300 && code <= 305) || code == 307;
+}
+
+bool WebServer::is_client_error_code(int code) {
+	return (code >= 400 && code <= 417) || code == 426;
+}
+
+bool WebServer::is_server_error_code(int code) {
+	return code >= 500 && code <= 505;
+}
+
+bool WebServer::is_error_code(int code) {
+	return is_server_error_code(code) || is_client_error_code(code);
+}

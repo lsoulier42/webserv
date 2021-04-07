@@ -12,11 +12,10 @@
 
 #ifndef CONFIG_HPP
 # define CONFIG_HPP
-# include <iostream>
-# include <string>
-# include <list>
+# include "AConfig.hpp"
+# include "Location.hpp"
 
-class Config {
+class Config : public AConfig {
 	public:
 		Config();
 		~Config();
@@ -29,14 +28,6 @@ class Config {
 		void setIpAddr(const std::string& ipAddr);
 		int getPort() const;
 		void setPort(int port);
-		std::string getRoot() const;
-		void setRoot(const std::string &root);
-		bool isAutoindex() const;
-		void setAutoindex(bool autoindex);
-		std::list<std::string> getIndex() const;
-		void setIndex(const std::list<std::string> &index);
-		std::list<std::string> getMethods() const;
-		void setMethods(const std::list<std::string> &methods);
 		int getClientMaxBodySize() const;
 		void setClientMaxBodySize(int clientMaxBodySize);
 		std::string getUploadDir() const;
@@ -45,20 +36,19 @@ class Config {
 		void setErrorPageCodes(const std::list<int>& errorPageCodes);
 		std::string getErrorPagePath() const;
 		void setErrorPagePath(const std::string& errorPagePath);
+		std::list<Location> getLocations() const;
+		void setLocations(const std::list<Location>& locations);
+
+		std::string getConfigType() const;
 
 	private:
 		std::list<std::string> _server_name;
 		std::string _ip_addr;
 		int _port;
-		std::string _root;
-		bool _autoindex;
-		std::list<std::string> _index;
-		std::list<std::string> _methods;
 		int _client_max_body_size;
 		std::string _upload_dir;
 		std::list<int> _error_page_codes;
 		std::string _error_page_path;
-		//TODO : location (need vector of future class instance Location ?
-		//TODO : CGI params
+		std::list<Location> _locations;
 };
 #endif
