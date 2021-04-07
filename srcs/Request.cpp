@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 00:10:31 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 00:55:28 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,18 +14,21 @@
 
 const size_t	Request::_limit_request_line_size(8000);
 const size_t	Request::_limit_header_size(8000);
+const size_t	Request::_limit_body_size(8000);
 
 Request::Request(void) :
 	_status(EMPTY),
 	_str(),
 	_request_line(),
-	_headers() {}
+	_headers(),
+	_body() {}
 
 Request::Request(const Request &x) :
 	_status(x._status),
 	_str(x._str),
 	_request_line(x._request_line),
-	_headers(x._headers) {}
+	_headers(x._headers),
+	_body(x._body) {}
 
 Request::~Request(void) {}
 
@@ -35,6 +38,7 @@ Request
 	_str = x._str;
 	_request_line = x._request_line;
 	_headers = x._headers;
+	_body = x._body;
 	return (*this);
 }
 
@@ -44,14 +48,49 @@ Request::reset(void) {
 	_str.clear();
 	_request_line._reset();
 	_headers._reset();
+	_body.clear();
 }
 
-//TODO:: ameliorer
+//TODO:: ameliorer : chunked doit etre en dernier
 bool
 Request::_body_expected(void) const {
+	if ((_headers._key_exists("Transfer-Encoding")
+				&& (_headers._at("Transfer-Encoding")).find("chunked") != std::string::npos))
+	{
+		std::cout << "body expected because transfer encoding" << std::endl;
+		return (true);
+	}
+	if (_headers._key_exists("Content-Length"))
+	{
+		std::cout << "body expected because content-len" << std::endl;
+		return (true);
+	}
+	return (false);
+	/*
 	return ((_headers._key_exists("Transfer-Encoding")
 				&& (_headers._at("Transfer-Encoding")).find("chunked") != std::string::npos)
 			|| _headers._key_exists("Content-Length"));
+			*/
+}
+
+//TODO:: ameliorer : chunked doit etre en dernier
+bool
+Request::_body_received(void) const {
+	return ((_headers._key_exists("Transfer-Encoding")
+				&& _headers._at("Transfer-Encoding").find("chunked") != std::string::npos
+				&& _str.find("0\r\n\r\n") != std::string::npos)
+			|| (_headers._key_exists("Content-Length")
+				&& _str.size() >= static_cast<unsigned long>(std::atol(_headers._at("Content-Length").c_str()))));
+}
+
+bool
+Request::_trailer_expected(void) const {
+	return (false);
+}
+
+bool
+Request::_trailer_received(void) const {
+	return (true);
 }
 
 int
@@ -85,6 +124,21 @@ Request::_parse_request(void) {
 				_parse_header();
 			return (CONTINUE);
 		case HEADERS_RECEIVED :
+			if (_body_received()) {
+				_body = _str;
+				_str.clear();
+				if (!_trailer_expected()) {
+					_status = REQUEST_RECEIVED;
+					return (RECEIVED);
+				} else
+					_status = BODY_RECEIVED;
+			}
+			return (CONTINUE);
+		case BODY_RECEIVED :
+			if (_trailer_received()) {
+				_status = REQUEST_RECEIVED;
+				return (RECEIVED);
+			}
 			return (CONTINUE);
 		default :
 			return (CONTINUE);
