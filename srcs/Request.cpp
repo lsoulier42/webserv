@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/05 20:19:00 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 12:17:21 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,20 +29,53 @@ const Request::_method_entry	Request::_method_tab[] =
 };
 
 								Request::Request(void) :
-									_socket(0) {}
-
-								Request::Request(int socket) :
-									_socket(socket) {}
+									_status(EMPTY),
+									_str() {}
 
 								Request::Request(const Request &x) :
-									_socket(x._socket) {}
+									_status(x._status),
+									_str(x._str) {}
 
 								Request::~Request(void) {}
 
 Request							&Request::operator=(const Request &x) {
-	(void)x;
+	_status = x._status;
+	_str = x._str;
 	return (*this);
 }
+
+//TODO:: fonction reset, qui remet la request a 0 pour accueillir une nouvelle request sur la meme connexion client.
+
+void							Request::_actualize_status(void) {
+	switch (_status) {
+		case EMPTY :
+			if (_str.size() > 0)
+				_status = STARTED ;
+			break ;
+		case STARTED :
+			if (std::string::npos != _str.find("\r\n"))
+				_status = REQUEST_LINE_RECEIVED;
+			break ;
+		case REQUEST_LINE_RECEIVED :
+			if (std::string::npos != _str.find("\r\n\r\n"))
+				_status = HEADERS_RECEIVED;
+			break ;
+		case HEADERS_RECEIVED :
+			//TODO:: fonction qui dit si le body a ete recu, avec content-length et chunked
+			break ;
+		default :
+			break ;
+	}
+}
+
+int								Request::append(const std::string &new_str) {
+	//TODO:: controle de l'overflow en fonction du status de la request
+	_str += new_str;
+	_actualize_status();
+	return (SUCCESS);
+}
+
+/*
 
 int								Request::_read_request_line(char *buffer) {
 	int		ret(0);
@@ -63,7 +96,6 @@ int								Request::_read_request_line(char *buffer) {
 	return (SUCCESS);
 }
 
-//TODO:: verification prealable concernant la longueur max des methodes implementees
 int								Request::_parse_request_line(char *buffer) {
 	std::string	str(buffer);
 	size_t		first_sp(0);
@@ -119,7 +151,6 @@ int								Request::_process_request_line(void) {
 	return (SUCCESS);
 }
 
-//TODO:: gerer le retour de process_request_line
 void							Request::process(void) {
 	char	buffer[3000];
 	size_t	ret;
@@ -127,12 +158,11 @@ void							Request::process(void) {
 	buffer[ret] = '\0';
 	std::cout << std::string(buffer) << std::endl;
 	std::cout << "end" << std::endl;
-	/*
 	_process_request_line();
 	std::cout << "request : " << _request_line._request_target;
 	std::cout << "$ version : " << _request_line._http_version;
 	std::cout << "$" << std::endl;
 	_process_headers();
 	std::cout << "TRUC" << std::endl;
-	*/
 }
+*/
