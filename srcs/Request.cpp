@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 19:05:21 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 20:40:51 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,12 +18,14 @@ const size_t	Request::_limit_header_size(8000);
 Request::Request(void) :
 	_status(EMPTY),
 	_str(),
-	_request_line() {}
+	_request_line(),
+	_headers() {}
 
 Request::Request(const Request &x) :
 	_status(x._status),
 	_str(x._str),
-	_request_line(x._request_line) {}
+	_request_line(x._request_line),
+	_headers(x._headers) {}
 
 Request::~Request(void) {}
 
@@ -32,6 +34,7 @@ Request
 	_status = x._status;
 	_str = x._str;
 	_request_line = x._request_line;
+	_headers = x._headers;
 	return (*this);
 }
 
@@ -40,6 +43,7 @@ Request::reset(void) {
 	_status = EMPTY;
 	_str.clear();
 	_request_line._reset();
+	_headers._reset();
 }
 
 int
@@ -59,6 +63,7 @@ Request::_parse_request(void) {
 		case REQUEST_LINE_RECEIVED :
 			if (_str == "\r\n") {
 				std::cout << "all headers received" << std::endl;
+				_headers._render();
 				_status = HEADERS_RECEIVED;
 				return (SUCCESS);
 			}
@@ -88,8 +93,8 @@ Request::_parse_header(void) {
 		return ;
 	}
 	std::string	header_name(_str.substr(0, col));
-	std::cout << header_name << std::endl;
-	std::cout << _hash(header_name.c_str()) % 18 << std::endl;
+	std::string	header_value("truc");
+	_headers._push(header_name, header_value);
 	_str.erase(0, _str.find("\r\n") + 2);
 }
 
@@ -158,14 +163,71 @@ Request::_request_line_t::_reset(void) {
 
 const size_t	Request::_headers_t::_headers_tab_size(30);
 
-Request::_headers_
+Request::_headers_t::_headers_t(void) :
+	_tab(_headers_tab_size) {}
+
+Request::_headers_t::_headers_t(const _headers_t &x) :
+	_tab(_headers_tab_size) {
+	for (size_t i(0) ; i < _headers_tab_size ; i++)
+		if (x._tab[i])
+			_tab[i] = new std::list<_header_entry_t>(*(x._tab[i]));
+}
+
+Request::_headers_t::~_headers_t(void) {
+	_reset();
+}
+
+Request::_headers_t
+&Request::_headers_t::operator=(const _headers_t &x) {
+	for (size_t i(0) ; i < _headers_tab_size ; i++) {
+		if (_tab[i]) {
+			delete _tab[i];
+			_tab[i] = 0;
+		}
+		if (x._tab[i])
+			_tab[i] = new std::list<_header_entry_t>(*(x._tab[i]));
+	}
+	return (*this);
+}
+
+void
+Request::_headers_t::_reset(void) {
+	for (size_t i(0) ; i < _headers_tab_size ; i++)
+		if (_tab[i]) {
+			delete _tab[i];
+			_tab[i] = 0;
+		}
+}
+
+void
+Request::_headers_t::_push(const std::string &header_name, const std::string &header_value) {
+	_header_entry_t	new_entry;
+	new_entry._key = header_name;
+	new_entry._value = header_value;
+	unsigned long	index(_hash(header_name.c_str()));
+	if (!_tab[index])
+		_tab[index] = new std::list<_header_entry_t>;
+	(_tab[index])->push_front(new_entry);
+}
 
 unsigned long
 Request::_headers_t::_hash(const char *buffer) const {
 	unsigned long	hash(5381);
-	int				c;
+	char			c;
 	size_t			i(0);
-	while ((c = header[i++]))
+	while ((c = buffer[i++]))
 		hash = ((hash << 5) + hash) + c;
-	return (hash);
+	return (hash % _headers_tab_size);
+}
+
+void
+Request::_headers_t::_render(void) const {
+	for (size_t i(0) ; i < _headers_tab_size ; i++) {
+		if (_tab[i]) {
+			for (std::list<_header_entry_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
+				std::cout << "KEY : " << it->_key << std::endl;
+				std::cout << "VALUE : " << it->_value << std::endl;
+			}
+		}
+	}
 }

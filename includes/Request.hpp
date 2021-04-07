@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 19:02:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 20:33:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,8 @@
 # define SUCCESS 0
 
 # include <string>
+# include <vector>
+# include <list>
 # include <iostream>
 
 class										Request {
@@ -81,8 +83,8 @@ class										Request {
 		struct								_headers_t {
 
 			struct							_header_entry_t {
-				std::string					key;
-				std::string					value;
+				std::string					_key;
+				std::string					_value;
 			};
 
 											_headers_t(void);
@@ -91,11 +93,13 @@ class										Request {
 			_headers_t						&operator=(const _headers_t &x);
 
 			void							_reset(void);
+			void							_push(const std::string &header_name, const std::string &header_value);
 			unsigned long					_hash(const char *buf) const;
+			void							_render(void) const;
 
 			static const size_t				_headers_tab_size;
 
-			_headers_entry_t				**_tab;
+			std::vector<std::list<_header_entry_t>*>	_tab;
 
 		};
 
