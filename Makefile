@@ -6,7 +6,7 @@ HEADER_FILES = Server.hpp WebServer.hpp Client.hpp Request.hpp
 HEADERS = $(addprefix $(HEADER_DIR), $(HEADER_FILES))
 OBJS= $(addprefix $(SRC_DIR), $(SRCS:.cpp=.o))
 CC= clang++
-CFLAGS= -Wall -Wextra -Werror -std=c++98
+CFLAGS= -Wall -Wextra -Werror -std=c++98 -g3 -fsanitize=address
 INCLUDE= -I $(HEADER_DIR)
 
 ./$(SRC_DIR)%.o: ./$(SRC_DIR)%.cpp $(HEADERS)

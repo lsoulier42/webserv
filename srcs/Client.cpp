@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 12:14:15 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 14:20:59 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,14 +30,21 @@ Client							&Client::operator=(const Client &x) {
 	return (*this);
 }
 
-int								Client::process(void) {
+int								Client::read_socket(void) {
 	char	buffer[_buffer_size + 1];
 	int		ret;
-	if (0 >= (ret = read(_sd, buffer, _buffer_size)))
-		//TODO:: differentes erreurs en fonction de ret
+	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
+		if (0 == ret)
+			std::cout << "the client closed the connection." << std::endl;
+		else
+			std::cout << "error during reading." << std::endl;
 		return (FAILURE);
+	}
 	buffer[ret] = '\0';
-	_request.append(std::string(buffer));
+	if (SUCCESS != (ret = _request.append(std::string(buffer)))) {
+		std::cout << "error : " << ret << std::endl;
+		_request.reset();
+	}
 	return (SUCCESS);
 }
 

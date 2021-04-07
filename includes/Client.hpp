@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 12:13:54 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 14:00:56 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,21 +21,26 @@
 # define SUCCESS 0
 # define FAILURE -1
 
-class													Request;
-
 class													Client {
+
 	public:
+
 														Client(void);
 		explicit										Client(int sd);
 														Client(const Client &x);
 														~Client(void);
 		Client											&operator=(const Client &x);
-		int												process(void);
+
 		int												get_sd(void) const;
+		int												read_socket(void);
+
 	private:
+
 		static const size_t								_buffer_size;
+
 		const int										_sd;
 		Request											_request;
+
 };
 
 #endif

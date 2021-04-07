@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 12:17:53 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 14:22:13 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 # define SUCCESS 0
 
 # include <string>
+# include <iostream>
 
 class								Client;
 
@@ -32,7 +33,8 @@ class								Request {
 									~Request(void);
 		Request						&operator=(const Request &x);
 
-		int							append(const std::string &new_string);
+		void						reset(void);
+		int							append(const std::string &data);
 
 	private:
 
@@ -41,7 +43,7 @@ class								Request {
 			STARTED,
 			REQUEST_LINE_RECEIVED,
 			HEADERS_RECEIVED,
-			BODY_RECEIVED
+			REQUEST_RECEIVED
 		};
 
 		enum						_method_t {
@@ -76,7 +78,8 @@ class								Request {
 		std::string					_str;
 		_request_line_t				_request_line;
 
-		void						_actualize_status(void);
+		int							_parse_request(void);
+		int							_parse_request_line(void);
 };
 
 #endif
