@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 20:33:31 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 23:29:33 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@
 # include <vector>
 # include <list>
 # include <iostream>
+# include <stdexcept>
 
 class										Request {
 
@@ -93,6 +94,9 @@ class										Request {
 			_headers_t						&operator=(const _headers_t &x);
 
 			void							_reset(void);
+			bool							_key_exists(const std::string &key) const;
+			std::string						&_at(const std::string &key);
+			const std::string				&_at(const std::string &key) const;
 			void							_push(const std::string &header_name, const std::string &header_value);
 			unsigned long					_hash(const char *buf) const;
 			void							_render(void) const;
@@ -114,6 +118,7 @@ class										Request {
 		int									_parse_request(void);
 		int									_parse_request_line(void);
 		void								_parse_header(void);
+		bool								_body_expected(void) const;
 
 };
 

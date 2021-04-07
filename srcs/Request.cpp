@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 20:40:51 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/07 23:38:02 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,14 @@ Request::reset(void) {
 	_headers._reset();
 }
 
+//TODO:: ameliorer
+bool
+Request::_body_expected(void) const {
+	return ((_headers._key_exists("Transfer-Encoding")
+				&& (_headers._at("Transfer-Encoding")).find("chunked") != std::string::npos)
+			|| _headers._key_exists("Content-Length"));
+}
+
 int
 Request::_parse_request(void) {
 	switch (_status) {
@@ -64,14 +72,20 @@ Request::_parse_request(void) {
 			if (_str == "\r\n") {
 				std::cout << "all headers received" << std::endl;
 				_headers._render();
-				_status = HEADERS_RECEIVED;
+				if (_body_expected()) {
+					std::cout << "body expected received" << std::endl;
+					_status = HEADERS_RECEIVED;
+				}
+				else {
+					std::cout << "request received" << std::endl;
+					_status = REQUEST_RECEIVED;
+				}
 				return (SUCCESS);
 			}
 			if (std::string::npos != _str.find("\r\n"))
 				_parse_header();
 			return (SUCCESS);
 		case HEADERS_RECEIVED :
-			//TODO:: fonction qui dit si la requete est complete, en fonction de content-length et chunked
 			return (SUCCESS);
 		default :
 			return (SUCCESS);
@@ -93,7 +107,7 @@ Request::_parse_header(void) {
 		return ;
 	}
 	std::string	header_name(_str.substr(0, col));
-	std::string	header_value("truc");
+	std::string	header_value(_str.substr(col + 1, (_str.rfind("\r") - col - 1)));
 	_headers._push(header_name, header_value);
 	_str.erase(0, _str.find("\r\n") + 2);
 }
@@ -118,7 +132,9 @@ Request::_parse_request_line(void) {
 	if (_request_line_t::DEFAULT == _request_line_t::_method_tab[i]._method)
 		return (NOT_IMPLEMENTED);
 	_request_line._request_target = _str.substr(first_sp + 1, scnd_sp - first_sp - 1);
-	_request_line._http_version = _str.substr(scnd_sp + 1);
+	_request_line._http_version = _str.substr(scnd_sp + 1, (_str.rfind("\r") - scnd_sp - 1));
+	std::cout << "request target : " << _request_line._request_target << "$" << std::endl;
+	std::cout << "http : " << _request_line._http_version << "$" << std::endl;
 	_str.erase(0, _str.find("\r\n") + 2);
 	return (SUCCESS);
 }
@@ -210,6 +226,33 @@ Request::_headers_t::_push(const std::string &header_name, const std::string &he
 	(_tab[index])->push_front(new_entry);
 }
 
+bool
+Request::_headers_t::_key_exists(const std::string &key) const {
+	return (_tab[_hash(key.c_str())]);
+}
+
+std::string
+&Request::_headers_t::_at(const std::string &key) {
+	std::list<_header_entry_t>	*entry_list(_tab[_hash(key.c_str())]);
+	if (entry_list) {
+		for (std::list<_header_entry_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+			if (it->_key == key)
+				return (it->_value);
+	}
+	throw (std::out_of_range("Request::_headers::_at : out of range exception"));
+}
+
+const std::string
+&Request::_headers_t::_at(const std::string &key) const {
+	std::list<_header_entry_t>	*entry_list(_tab[_hash(key.c_str())]);
+	if (entry_list) {
+		for (std::list<_header_entry_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+			if (it->_key == key)
+				return (it->_value);
+	}
+	throw (std::out_of_range("Request::_headers::_at : out of range exception"));
+}
+
 unsigned long
 Request::_headers_t::_hash(const char *buffer) const {
 	unsigned long	hash(5381);
@@ -225,8 +268,8 @@ Request::_headers_t::_render(void) const {
 	for (size_t i(0) ; i < _headers_tab_size ; i++) {
 		if (_tab[i]) {
 			for (std::list<_header_entry_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
-				std::cout << "KEY : " << it->_key << std::endl;
-				std::cout << "VALUE : " << it->_value << std::endl;
+				std::cout << "KEY : " << it->_key << "$" << std::endl;
+				std::cout << "VALUE : " << it->_value << "$" << std::endl;
 			}
 		}
 	}
