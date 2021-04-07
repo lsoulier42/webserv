@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 23:29:33 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 00:10:07 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,8 @@
 # define BAD_REQUEST 400
 # define URI_TOO_LONG 414
 # define NOT_IMPLEMENTED 501
-# define SUCCESS 0
+# define CONTINUE 1
+# define RECEIVED 2
 
 # include <string>
 # include <vector>
@@ -118,6 +119,7 @@ class										Request {
 		int									_parse_request(void);
 		int									_parse_request_line(void);
 		void								_parse_header(void);
+		int									_parse_headers(void);
 		bool								_body_expected(void) const;
 
 };

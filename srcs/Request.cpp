@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 23:38:02 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 00:10:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,35 +60,34 @@ Request::_parse_request(void) {
 		case EMPTY :
 			if (_str.size() > 0)
 				_status = STARTED ;
-			return (SUCCESS);
+			return (CONTINUE);
 		case STARTED :
 			if (std::string::npos != _str.find("\r\n")) {
 				std::cout << "request line received" << std::endl;
 				_status = REQUEST_LINE_RECEIVED;
 				return (_parse_request_line());
 			}
-			return (SUCCESS);
+			return (CONTINUE);
 		case REQUEST_LINE_RECEIVED :
 			if (_str == "\r\n") {
 				std::cout << "all headers received" << std::endl;
 				_headers._render();
 				if (_body_expected()) {
-					std::cout << "body expected received" << std::endl;
+					std::cout << "body expected" << std::endl;
 					_status = HEADERS_RECEIVED;
-				}
-				else {
+				} else {
 					std::cout << "request received" << std::endl;
 					_status = REQUEST_RECEIVED;
 				}
-				return (SUCCESS);
+				return (_parse_headers());
 			}
 			if (std::string::npos != _str.find("\r\n"))
 				_parse_header();
-			return (SUCCESS);
+			return (CONTINUE);
 		case HEADERS_RECEIVED :
-			return (SUCCESS);
+			return (CONTINUE);
 		default :
-			return (SUCCESS);
+			return (CONTINUE);
 	}
 }
 
@@ -110,6 +109,18 @@ Request::_parse_header(void) {
 	std::string	header_value(_str.substr(col + 1, (_str.rfind("\r") - col - 1)));
 	_headers._push(header_name, header_value);
 	_str.erase(0, _str.find("\r\n") + 2);
+}
+
+//TODO:: ameliorer
+int
+Request::_parse_headers(void) {
+	if (!_headers._key_exists("Host"))
+		return (BAD_REQUEST);
+	_str.erase(0, _str.find("\r\n") + 2);
+	if (_status == REQUEST_RECEIVED)
+		return (RECEIVED);
+	else
+		return (CONTINUE);
 }
 
 int
@@ -136,7 +147,7 @@ Request::_parse_request_line(void) {
 	std::cout << "request target : " << _request_line._request_target << "$" << std::endl;
 	std::cout << "http : " << _request_line._http_version << "$" << std::endl;
 	_str.erase(0, _str.find("\r\n") + 2);
-	return (SUCCESS);
+	return (CONTINUE);
 }
 
 const Request::_request_line_t::_method_entry_t	Request::_request_line_t::_method_tab[] =

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/07 14:00:56 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 00:09:43 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ class													Client {
 		Client											&operator=(const Client &x);
 
 		int												get_sd(void) const;
+
 		int												read_socket(void);
 
 	private:
@@ -40,6 +41,8 @@ class													Client {
 
 		const int										_sd;
 		Request											_request;
+
+		int												_process(int status);
 
 };
 
