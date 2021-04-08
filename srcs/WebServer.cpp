@@ -12,16 +12,28 @@
 
 #include "WebServer.hpp"
 
-WebServer::WebServer(const std::vector<Server>& servers) :
-	_servers(servers),
-	_max_connection(DEFAULT_MAX_CONNECTION),
-	_highest_socket(0), _exit(0) {
+bool WebServer::verbose = false;
+
+WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
+	_highest_socket(0), _exit(false) {
 	_client_sd.assign(_max_connection, 0);
 }
 
 WebServer::~WebServer() {}
 
 void WebServer::setup_servers() {
+	std::set<std::pair<std::string, int> > default_servers;
+	std::pair<std::string, int> ip_port;
+	Server new_server;
+
+	for(std::vector<Config>::iterator it = _configs.begin(); it != _configs.end(); it++) {
+		ip_port = std::make_pair(it->getIpAddr(), it->getPort());
+		if (default_servers.find(ip_port) == default_servers.end()) {
+			default_servers.insert(ip_port);
+			new_server.setConfig(&(*it));
+			_servers.push_back(new_server);
+		}
+	}
 	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
 		it->setup_default_server();
 		set_non_blocking(it->getServerSd());
@@ -35,8 +47,8 @@ void WebServer::accept_connection(const Server& server) {
 	connection = accept(server.getServerSd(),
 		server.getSockAddr(), server.getAddrLen());
 	if (connection < 0) {
-		std::cout << "Failed to grab connection : ";
-		std::cout << std::strerror(errno) << std::endl;
+		std::cerr << "Failed to grab connection : ";
+		std::cerr << std::strerror(errno) << std::endl;
 		this->close_sockets();
 		exit(EXIT_FAILURE);
 	}
@@ -48,7 +60,7 @@ void WebServer::accept_connection(const Server& server) {
 			std::cout << "Connection accepted: FD=" << connection;
 			std::cout << " - Slot=" << i << std::endl;
 			_client_sd[i] = connection;
-			_config_assoc.insert(std::make_pair(connection, server.getId()));
+			_config_assoc.insert(std::make_pair(connection, server.getConfig()));
 			break ;
 		}
 		if (i == _max_connection - 1) {
@@ -62,8 +74,7 @@ void WebServer::accept_connection(const Server& server) {
 
 void WebServer::close_sockets() {
 	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		if (it->isDefault())
-			close(it->getServerSd());
+		close(it->getServerSd());
 	}
 	for(std::vector<int>::iterator it = _client_sd.begin(); it != _client_sd.end(); it++)
 		close(*it);
@@ -85,8 +96,8 @@ void WebServer::routine(void) {
 		nb_sockets = select(_highest_socket + 1, &_sockets_list,
 			(fd_set*)0, (fd_set*)0, &timeout);
 		if (nb_sockets < 0) {
-			std::cout << "Select error: ";
-			std::cout << std::strerror(errno) << std::endl;
+			std::cerr << "Select error: ";
+			std::cerr << std::strerror(errno) << std::endl;
 			this->close_sockets();
 			exit(EXIT_FAILURE);
 		}
@@ -104,14 +115,14 @@ void WebServer::set_non_blocking(int socket_fd) {
 
 	opts = fcntl(socket_fd, F_GETFD);
 	if (opts < 0) {
-		std::cout << "Fcntl error with F_GETFD : ";
-		std::cout << std::strerror(errno) << std::endl;
+		std::cerr << "Fcntl error with F_GETFD : ";
+		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	opts = (opts | O_NONBLOCK);
 	if (fcntl(socket_fd, F_SETFL, opts) < 0) {
-		std::cout << "Fcntl error with F_SETFL : ";
-		std::cout << std::strerror(errno) << std::endl;
+		std::cerr << "Fcntl error with F_SETFL : ";
+		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
 }
@@ -119,8 +130,7 @@ void WebServer::set_non_blocking(int socket_fd) {
 void WebServer::build_select_list() {
 	FD_ZERO(&_sockets_list);
 	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		if (it->isDefault())
-			FD_SET(it->getServerSd(), &_sockets_list);
+		FD_SET(it->getServerSd(), &_sockets_list);
 	}
 	for(std::vector<int>::iterator it = _client_sd.begin(); it != _client_sd.end(); it++) {
 		FD_SET(*it, &_sockets_list);
@@ -163,9 +173,11 @@ void WebServer::handle_data(int socket_id) {
 		std::cout << "Received: " << buffer << std::endl;
 		std::string received = std::string(buffer);
 		if (received == "exit")
-			_exit = 1;
+			_exit = true;
 		std::stringstream ss;
-		ss << "I received this from server_id: "<< _config_assoc[_client_sd[socket_id]] << std::endl;
+		const Config* configRef = _config_assoc.find(_client_sd[socket_id])->second;
+		ss << "I received this from server with port: ";
+		ss << configRef->getPort() << std::endl;
 		send(_client_sd[socket_id], ss.str().c_str(), ss.str().size(), 0);
 		std::cout << "Response: " << ss.str() << std::endl;
 	}
@@ -173,12 +185,23 @@ void WebServer::handle_data(int socket_id) {
 
 void WebServer::read_socks() {
 	for(size_t i = 0; i < _servers.size(); i++) {
-		if (_servers[i].isDefault()
-			&& FD_ISSET(_servers[i].getServerSd(), &_sockets_list))
+		if (FD_ISSET(_servers[i].getServerSd(), &_sockets_list))
 			this->accept_connection(_servers[i]);
 	}
 	for (int i = 0; i < _max_connection; i++) {
 		if (FD_ISSET(_client_sd[i], &_sockets_list))
 			this->handle_data(i);
 	}
+}
+
+int WebServer::parsing(const std::string &filepath) {
+	if (!check_config_file(filepath, _config_file))
+		return 0;
+	if (!check_main_bloc(_config_file, _configs)) {
+		std::cerr << "Error during config file parsing." << std::endl;
+		_config_file.close();
+		return 0;
+	}
+	_config_file.close();
+	return 1;
 }

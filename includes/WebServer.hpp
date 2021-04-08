@@ -25,39 +25,56 @@
 # include <vector>
 # include <map>
 # include <sstream>
+# include <fstream>
+# include <ios>
+# include <set>
 
 # include "Server.hpp"
+# include "Config.hpp"
+# include "parsing.hpp"
 
 # define DEFAULT_MAX_CONNECTION 5
 # define DEFAULT_BUFFER_SIZE 1025
 
+class Server;
+
 class WebServer {
 	public:
-		WebServer(const std::vector<Server>& servers);
+		WebServer();
 		~WebServer();
 
-		void routine();
+		int parsing(const std::string& filepath);
 		void setup_servers();
+		void routine();
+
+		static bool verbose;
 
 	private:
-		WebServer();
 		WebServer(const WebServer& src);
 		WebServer& operator=(const WebServer& rhs);
 
+		/* Network functions
+		 *
+		 *
+		 *
+		 */
 		void accept_connection(const Server& server);
-		void set_non_blocking(int socket_fd);
+		static void set_non_blocking(int socket_fd);
 		void build_select_list();
 		void handle_data(int socket_id);
 		int sock_gets(int socket_fd, char *str, size_t count);
 		void read_socks();
 		void close_sockets();
 
+		std::ifstream _config_file;
 		std::vector<Server> _servers;
+		std::vector<Config> _configs;
 		int _max_connection;
 		std::vector<int> _client_sd;
-		std::map<int, int> _config_assoc;
+		std::map<int, const Config*> _config_assoc;
 		fd_set _sockets_list;
 		int _highest_socket;
-		int _exit;
+		bool _exit;
+
 };
 #endif

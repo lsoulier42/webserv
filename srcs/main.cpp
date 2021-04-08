@@ -13,14 +13,23 @@
 #include "WebServer.hpp"
 
 int main(int argc, char **argv) {
-	Server server1_test("0.0.0.0", 8080);
-	std::vector<Server> vector1;
-	vector1.push_back(server1_test);
-	WebServer webserv(vector1);
+	WebServer webserv;
+	std::string filepath;
 
-	(void)argc;
-	(void)argv;
+	if (argc >= 2 && argc <= 3) {
+		for (int i = 1; i < argc; i++) {
+			std::string argument(argv[i]);
+			if (argument == "-verbose")
+				WebServer::verbose = true;
+			else
+				filepath = argument;
+		}
+	}
+	if (filepath.empty())
+		filepath = "default.conf";
+	if (!webserv.parsing(filepath))
+		return EXIT_FAILURE;
 	webserv.setup_servers();
 	webserv.routine();
-	return (0);
+	return (EXIT_SUCCESS);
 }
