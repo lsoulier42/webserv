@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 19:05:29 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 20:05:20 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,7 +49,7 @@ Client::read_socket(void) {
 	}
 	buffer[ret] = '\0';
 	ret = _request.append(std::string(buffer));
-	if (CONTINUE == ret)
+	if (CONTINUE_READING == ret)
 		return (SUCCESS);
 	else
 		return (_process(ret));

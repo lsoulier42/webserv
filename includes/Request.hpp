@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 18:52:52 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 21:01:21 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,8 +16,9 @@
 # define BAD_REQUEST 400
 # define URI_TOO_LONG 414
 # define NOT_IMPLEMENTED 501
-# define CONTINUE 1
-# define RECEIVED 2
+# define CONTINUE_READING 1
+# define CONTINUE_PARSING 2
+# define RECEIVED 3
 
 # include <string>
 # include <vector>
@@ -125,8 +126,7 @@ class													Request {
 	private:
 
 		enum											_request_status_t {
-			EMPTY,
-			STARTED,
+			START,
 			REQUEST_LINE_RECEIVED,
 			HEADERS_RECEIVED,
 			BODY_RECEIVED,
@@ -143,6 +143,9 @@ class													Request {
 		Headers											_headers;
 		std::string										_body;
 
+		bool											_request_line_received(void) const;
+		bool											_header_received(void) const;
+		bool											_headers_received(void) const;
 		bool											_body_expected(void) const;
 		bool											_body_received(void) const;
 		bool											_trailer_expected(void) const;
@@ -154,7 +157,7 @@ class													Request {
 		int												_headers_received_parsing(void);
 		int												_body_received_parsing(void);
 		int												_collect_request_line_elements(void);
-		void											_collect_header(void);
+		int												_collect_header(void);
 		int												_check_headers(void);
 		int												_collect_body(void);
 

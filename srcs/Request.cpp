@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 19:34:45 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 21:01:37 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,7 @@ const size_t	Request::_limit_header_size(8000);
 const size_t	Request::_limit_body_size(8000);
 
 Request::Request(void) :
-	_status(EMPTY),
+	_status(START),
 	_str(),
 	_request_line(),
 	_headers(),
@@ -66,7 +66,7 @@ Request::append(const std::string &data) {
 
 void
 Request::reset(void) {
-	_status = EMPTY;
+	_status = START;
 	_request_line.reset();
 	_headers.reset();
 	_body.clear();
@@ -82,6 +82,24 @@ Request::render(void) const {
 	std::cout << _body << "$" << std::endl << std::endl;
 }
 
+bool
+Request::_request_line_received(void) const {
+	return (_status == START && std::string::npos != _str.find("\r\n"));
+}
+
+bool
+Request::_header_received(void) const {
+	return (_status == REQUEST_LINE_RECEIVED
+			&& !_headers_received()
+			&& std::string::npos != _str.find("\r\n"));
+}
+
+bool
+Request::_headers_received(void) const {
+	return (_status == REQUEST_LINE_RECEIVED
+			&& !_str.compare(0, 2, "\r\n"));
+}
+
 //TODO:: ameliorer : chunked devrait etre le dernier element de Transfer-Encoding
 bool
 Request::_body_expected(void) const {
@@ -93,11 +111,12 @@ Request::_body_expected(void) const {
 //TODO:: ameliorer : chunked devrait etre le dernier element de Transfer-Encoding
 bool
 Request::_body_received(void) const {
-	return ((_headers.key_exists("Transfer-Encoding")
-				&& _headers.get_value("Transfer-Encoding").find("chunked") != std::string::npos
-				&& _str.find("0\r\n\r\n") != std::string::npos)
-			|| (_headers.key_exists("Content-Length")
-				&& _str.size() >= static_cast<unsigned long>(std::atol(_headers.get_value("Content-Length").c_str()))));
+	return (_status == HEADERS_RECEIVED
+			&& ((_headers.key_exists("Transfer-Encoding")
+						&& _headers.get_value("Transfer-Encoding").find("chunked") != std::string::npos
+						&& _str.find("0\r\n\r\n") != std::string::npos)
+				|| (_headers.key_exists("Content-Length")
+						&& _str.size() >= static_cast<unsigned long>(std::atol(_headers.get_value("Content-Length").c_str())))));
 }
 
 //TODO:: tout
@@ -114,45 +133,50 @@ Request::_trailer_received(void) const {
 
 int
 Request::_request_parsing(void) {
-	switch (_status) {
-		case EMPTY :
-			return (_started_request_parsing());
-		case STARTED :
-			return (_started_request_parsing());
-		case REQUEST_LINE_RECEIVED :
-			return (_request_line_received_parsing());
-		case HEADERS_RECEIVED :
-			return (_headers_received_parsing());
-		case BODY_RECEIVED :
-			return (_body_received_parsing());
-		default :
-			return (CONTINUE);
+	int	ret(CONTINUE_PARSING);
+	while (ret == CONTINUE_PARSING) {
+		switch (_status) {
+			case START :
+				ret = _started_request_parsing();
+				break ;
+			case REQUEST_LINE_RECEIVED :
+				ret = _request_line_received_parsing();
+				break ;
+			case HEADERS_RECEIVED :
+				ret = _headers_received_parsing();
+				break ;
+			case BODY_RECEIVED :
+				ret = _body_received_parsing();
+				break ;
+			default:
+				break ;
+		}
 	}
+	return (ret);
 }
+
 
 int
 Request::_started_request_parsing(void) {
-	if (_str.size() > 0 && _status == EMPTY)
-		_status = STARTED ;
-	if (std::string::npos != _str.find("\r\n")) {
+	if (_request_line_received()) {
 		_status = REQUEST_LINE_RECEIVED;
 		return (_collect_request_line_elements());
 	}
-	return (CONTINUE);
+	return (CONTINUE_READING);
 }
 
 int
 Request::_request_line_received_parsing(void) {
-	if (!_str.compare(0, 2, "\r\n")) {
+	if (_headers_received()) {
 		if (_body_expected())
 			_status = HEADERS_RECEIVED;
 		else
 			_status = REQUEST_RECEIVED;
 		return (_check_headers());
 	}
-	if (std::string::npos != _str.find("\r\n"))
-		_collect_header();
-	return (CONTINUE);
+	if (_header_received())
+		return (_collect_header());
+	return (CONTINUE_READING);
 }
 
 int
@@ -164,7 +188,7 @@ Request::_headers_received_parsing(void) {
 			_status = REQUEST_RECEIVED;
 		return (_collect_body());
 	}
-	return (CONTINUE);
+	return (CONTINUE_READING);
 }
 
 int
@@ -173,7 +197,7 @@ Request::_body_received_parsing(void) {
 		_status = REQUEST_RECEIVED;
 		return (RECEIVED);
 	}
-	return (CONTINUE);
+	return (CONTINUE_READING);
 }
 
 int
@@ -181,43 +205,48 @@ Request::_collect_request_line_elements(void) {
 	size_t		first_sp(0);
 	size_t		scnd_sp(0);
 	size_t		end_rl(_str.find("\r\n"));
-	if (std::string::npos == (first_sp = _str.find_first_of(" ")))
+	if (std::string::npos == (first_sp = _str.find_first_of(" "))
+			|| std::string::npos == (scnd_sp = _str.find_first_of(" ", first_sp + 1))) {
+		_str.erase(0, end_rl + 2);
 		return (BAD_REQUEST);
-	if (std::string::npos == (scnd_sp = _str.find_first_of(" ", first_sp + 1)))
-		return (BAD_REQUEST);
+	}
 	_request_line.set_method(_str.substr(0, first_sp));
 	_request_line.set_request_target(_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
 	_request_line.set_http_version(_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
-	_str.erase(0, _str.find("\r\n") + 2);
+	_str.erase(0, end_rl + 2);
 	if (RequestLine::DEFAULT == _request_line.get_method())
 		return (NOT_IMPLEMENTED);
-	return (CONTINUE);
+	if (_header_received() || _headers_received())
+		return (CONTINUE_PARSING);
+	return (CONTINUE_READING);
 }
 
-void
+int
 Request::_collect_header(void) {
 	size_t		col(0);
 	size_t		end_header(_str.find("\r\n"));
-	if (std::string::npos == (col = _str.find_first_of(":"))) {
-		_str.erase(0, _str.find("\r\n") + 2);
-		return ;
+	if (std::string::npos != (col = _str.find_first_of(":"))) {
+		std::string	header_name(_str.substr(0, col));
+		std::string	header_value(_str.substr(col + 1, (end_header - col - 1)));
+		_headers.insert(header_name, header_value);
 	}
-	std::string	header_name(_str.substr(0, col));
-	std::string	header_value(_str.substr(col + 1, (end_header - col - 1)));
-	_headers.insert(header_name, header_value);
-	_str.erase(0, _str.find("\r\n") + 2);
+	_str.erase(0, end_header + 2);
+	if (_header_received() || _headers_received())
+		return (CONTINUE_PARSING);
+	return (CONTINUE_READING);
 }
 
 //TODO:: ameliorer
 int
 Request::_check_headers(void) {
+	_str.erase(0, _str.find("\r\n") + 2);
 	if (!_headers.key_exists("Host"))
 		return (BAD_REQUEST);
-	_str.erase(0, _str.find("\r\n") + 2);
 	if (_status == REQUEST_RECEIVED)
 		return (RECEIVED);
-	else
-		return (CONTINUE);
+	if (_body_received())
+		return (CONTINUE_PARSING);
+	return (CONTINUE_READING);
 }
 
 //TODO:: s'assurer que chunked est le dernier element du champ Transfer-Encoding
@@ -233,8 +262,9 @@ Request::_collect_body(void) {
 	_str.erase(0, body_length);
 	if (_status == REQUEST_RECEIVED)
 		return (RECEIVED);
-	else
-		return (CONTINUE);
+	if (_trailer_received())
+		return (CONTINUE_PARSING);
+	return (CONTINUE_READING);
 }
 
 /*
