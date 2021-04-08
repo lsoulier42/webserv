@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 00:51:00 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 12:32:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,8 +36,9 @@ class													Request {
 														~Request(void);
 		Request											&operator=(const Request &x);
 
-		int												append(const std::string &data);
 		void											reset(void);
+		void											render(void) const;
+		int												append(const std::string &data);
 
 	private:
 
@@ -75,6 +76,7 @@ class													Request {
 			_request_line_t								&operator=(const _request_line_t &x);
 
 			void										_reset(void);
+			void										_render(void) const;
 
 			static const _method_entry_t				_method_tab[];
 
@@ -120,14 +122,19 @@ class													Request {
 		_headers_t										_headers;
 		std::string										_body;
 
-		int												_parse_request(void);
-		int												_parse_request_line(void);
-		void											_parse_header(void);
-		int												_parse_headers(void);
 		bool											_body_expected(void) const;
 		bool											_body_received(void) const;
 		bool											_trailer_expected(void) const;
 		bool											_trailer_received(void) const;
+		int												_request_parsing(void);
+		int												_empty_request_parsing(void);
+		int												_started_request_parsing(void);
+		int												_request_line_received_parsing(void);
+		int												_headers_received_parsing(void);
+		int												_body_received_parsing(void);
+		int												_collect_request_line_elements(void);
+		void											_collect_header(void);
+		int												_check_headers(void);
 
 };
 

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 00:55:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 12:53:11 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,29 +51,32 @@ Request::reset(void) {
 	_body.clear();
 }
 
-//TODO:: ameliorer : chunked doit etre en dernier
+int
+Request::append(const std::string &data) {
+	//TODO:: controle de l'overflow en fonction du statut de la request
+	_str += data;
+	return (_request_parsing());
+}
+
+void
+Request::render(void) const {
+	std::cout << "---REQUEST LINE---" << std::endl;
+	_request_line._render();
+	std::cout << std::endl << "---HEADERS---" << std::endl;
+	_headers._render();
+	std::cout << std::endl << "---BODY---" << std::endl;
+	std::cout << _body << "$" << std::endl << std::endl;
+}
+
+//TODO:: ameliorer : chunked doit etre le dernier element de Transfer-Encoding
 bool
 Request::_body_expected(void) const {
-	if ((_headers._key_exists("Transfer-Encoding")
-				&& (_headers._at("Transfer-Encoding")).find("chunked") != std::string::npos))
-	{
-		std::cout << "body expected because transfer encoding" << std::endl;
-		return (true);
-	}
-	if (_headers._key_exists("Content-Length"))
-	{
-		std::cout << "body expected because content-len" << std::endl;
-		return (true);
-	}
-	return (false);
-	/*
 	return ((_headers._key_exists("Transfer-Encoding")
 				&& (_headers._at("Transfer-Encoding")).find("chunked") != std::string::npos)
 			|| _headers._key_exists("Content-Length"));
-			*/
 }
 
-//TODO:: ameliorer : chunked doit etre en dernier
+//TODO:: ameliorer : chunked doit etre le dernier element de Transfer-Encoding
 bool
 Request::_body_received(void) const {
 	return ((_headers._key_exists("Transfer-Encoding")
@@ -83,102 +86,92 @@ Request::_body_received(void) const {
 				&& _str.size() >= static_cast<unsigned long>(std::atol(_headers._at("Content-Length").c_str()))));
 }
 
+//TODO:: tout
 bool
 Request::_trailer_expected(void) const {
 	return (false);
 }
 
+//TODO:: tout
 bool
 Request::_trailer_received(void) const {
 	return (true);
 }
 
 int
-Request::_parse_request(void) {
+Request::_request_parsing(void) {
 	switch (_status) {
 		case EMPTY :
-			if (_str.size() > 0)
-				_status = STARTED ;
-			return (CONTINUE);
+			return (_empty_request_parsing());
 		case STARTED :
-			if (std::string::npos != _str.find("\r\n")) {
-				std::cout << "request line received" << std::endl;
-				_status = REQUEST_LINE_RECEIVED;
-				return (_parse_request_line());
-			}
-			return (CONTINUE);
+			return (_started_request_parsing());
 		case REQUEST_LINE_RECEIVED :
-			if (_str == "\r\n") {
-				std::cout << "all headers received" << std::endl;
-				_headers._render();
-				if (_body_expected()) {
-					std::cout << "body expected" << std::endl;
-					_status = HEADERS_RECEIVED;
-				} else {
-					std::cout << "request received" << std::endl;
-					_status = REQUEST_RECEIVED;
-				}
-				return (_parse_headers());
-			}
-			if (std::string::npos != _str.find("\r\n"))
-				_parse_header();
-			return (CONTINUE);
+			return (_request_line_received_parsing());
 		case HEADERS_RECEIVED :
-			if (_body_received()) {
-				_body = _str;
-				_str.clear();
-				if (!_trailer_expected()) {
-					_status = REQUEST_RECEIVED;
-					return (RECEIVED);
-				} else
-					_status = BODY_RECEIVED;
-			}
-			return (CONTINUE);
+			return (_headers_received_parsing());
 		case BODY_RECEIVED :
-			if (_trailer_received()) {
-				_status = REQUEST_RECEIVED;
-				return (RECEIVED);
-			}
-			return (CONTINUE);
+			return (_body_received_parsing());
 		default :
 			return (CONTINUE);
 	}
 }
 
 int
-Request::append(const std::string &data) {
-	//TODO:: controle de l'overflow en fonction du status de la request
-	_str += data;
-	return (_parse_request());
+Request::_empty_request_parsing(void) {
+	if (_str.size() > 0)
+		_status = STARTED ;
+	return (CONTINUE);
 }
 
-void
-Request::_parse_header(void) {
-	size_t		col(0);
-	if (std::string::npos == (col = _str.find_first_of(":"))) {
-		_str.erase(0, _str.find("\r\n") + 2);
-		return ;
+int
+Request::_started_request_parsing(void) {
+	if (std::string::npos != _str.find("\r\n")) {
+		_status = REQUEST_LINE_RECEIVED;
+		return (_collect_request_line_elements());
 	}
-	std::string	header_name(_str.substr(0, col));
-	std::string	header_value(_str.substr(col + 1, (_str.rfind("\r") - col - 1)));
-	_headers._push(header_name, header_value);
-	_str.erase(0, _str.find("\r\n") + 2);
+	return (CONTINUE);
 }
 
-//TODO:: ameliorer
 int
-Request::_parse_headers(void) {
-	if (!_headers._key_exists("Host"))
-		return (BAD_REQUEST);
-	_str.erase(0, _str.find("\r\n") + 2);
-	if (_status == REQUEST_RECEIVED)
+Request::_request_line_received_parsing(void) {
+	if (!_str.compare(0, 2, "\r\n")) {
+		if (_body_expected())
+			_status = HEADERS_RECEIVED;
+		else
+			_status = REQUEST_RECEIVED;
+		return (_check_headers());
+	}
+	if (std::string::npos != _str.find("\r\n"))
+		_collect_header();
+	return (CONTINUE);
+}
+
+//TODO:: _str.clear() n'est pas adapte en cas de presence d'un trailer
+int
+Request::_headers_received_parsing(void) {
+	if (_body_received()) {
+		_body = _str;
+		_str.clear();
+		if (!_trailer_expected()) {
+			_status = REQUEST_RECEIVED;
+			return (RECEIVED);
+		} else
+			_status = BODY_RECEIVED;
+	}
+	return (CONTINUE);
+}
+
+int
+Request::_body_received_parsing(void) {
+	if (_trailer_received()) {
+		_status = REQUEST_RECEIVED;
 		return (RECEIVED);
-	else
-		return (CONTINUE);
+	}
+	return (CONTINUE);
 }
 
 int
-Request::_parse_request_line(void) {
+Request::_collect_request_line_elements(void) {
 	size_t		first_sp(0);
 	size_t		scnd_sp(0);
 	size_t		i(0);
@@ -198,11 +191,38 @@ Request::_parse_request_line(void) {
 		return (NOT_IMPLEMENTED);
 	_request_line._request_target = _str.substr(first_sp + 1, scnd_sp - first_sp - 1);
 	_request_line._http_version = _str.substr(scnd_sp + 1, (_str.rfind("\r") - scnd_sp - 1));
-	std::cout << "request target : " << _request_line._request_target << "$" << std::endl;
-	std::cout << "http : " << _request_line._http_version << "$" << std::endl;
 	_str.erase(0, _str.find("\r\n") + 2);
 	return (CONTINUE);
 }
+
+void
+Request::_collect_header(void) {
+	size_t		col(0);
+	if (std::string::npos == (col = _str.find_first_of(":"))) {
+		_str.erase(0, _str.find("\r\n") + 2);
+		return ;
+	}
+	std::string	header_name(_str.substr(0, col));
+	std::string	header_value(_str.substr(col + 1, (_str.rfind("\r") - col - 1)));
+	_headers._push(header_name, header_value);
+	_str.erase(0, _str.find("\r\n") + 2);
+}
+
+//TODO:: ameliorer
+int
+Request::_check_headers(void) {
+	if (!_headers._key_exists("Host"))
+		return (BAD_REQUEST);
+	_str.erase(0, _str.find("\r\n") + 2);
+	if (_status == REQUEST_RECEIVED)
+		return (RECEIVED);
+	else
+		return (CONTINUE);
+}
+
+/*
+ * REQUEST_LINE_T RELATED FUNCTIONS
+ */
 
 const Request::_request_line_t::_method_entry_t	Request::_request_line_t::_method_tab[] =
 {
@@ -241,6 +261,24 @@ Request::_request_line_t::_reset(void) {
 	_request_target.clear();
 	_http_version.clear();
 }
+
+void
+Request::_request_line_t::_render(void) const {
+	size_t	i(0);
+	while (_method_tab[i]._length) {
+		if (_method_tab[i]._method == _method) {
+			std::cout << "METHOD : " << _method_tab[i]._str << std::endl;
+			break ;
+		}
+		i++;
+	}
+	std::cout << "REQUEST TARGET : " << _request_target << "$" << std::endl;
+	std::cout << "HTTP VERSION : " << _http_version << "$" << std::endl;
+}
+
+/*
+ * HEADERS_T RELATED FUNCTIONS
+ */
 
 const size_t	Request::_headers_t::_headers_tab_size(30);
 
@@ -293,7 +331,13 @@ Request::_headers_t::_push(const std::string &header_name, const std::string &he
 
 bool
 Request::_headers_t::_key_exists(const std::string &key) const {
-	return (_tab[_hash(key.c_str())]);
+	std::list<_header_entry_t>	*entry_list(_tab[_hash(key.c_str())]);
+	if (!entry_list)
+		return (false);
+	for (std::list<_header_entry_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+		if (it->_key == key)
+			return (true);
+	return (false);
 }
 
 std::string
@@ -333,8 +377,11 @@ Request::_headers_t::_render(void) const {
 	for (size_t i(0) ; i < _headers_tab_size ; i++) {
 		if (_tab[i]) {
 			for (std::list<_header_entry_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
+				std::cout << "*" << std::endl;
 				std::cout << "KEY : " << it->_key << "$" << std::endl;
+				std::cout << "HASH : " << _hash(it->_key.c_str()) << "$" << std::endl;
 				std::cout << "VALUE : " << it->_value << "$" << std::endl;
+				std::cout << "*" << std::endl;
 			}
 		}
 	}

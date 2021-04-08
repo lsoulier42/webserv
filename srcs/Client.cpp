@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 00:07:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 12:49:44 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,8 @@ Client::read_socket(void) {
 
 int
 Client::_process(int status) {
+	std::cout << "-----> REPONSE : " << status << std::endl << std::endl;
+	_request.render();
 	_request.reset();
-	std::cout << "REPONSE : " << status << std::endl;
 	return (SUCCESS);
 }
