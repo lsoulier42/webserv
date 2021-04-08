@@ -43,9 +43,11 @@ void WebServer::setup_servers() {
 
 void WebServer::accept_connection(const Server& server) {
 	int connection;
+	struct sockaddr client_addr = *server.getSockAddr();
+	socklen_t client_socket_len = *server.getAddrLen();
 
 	connection = accept(server.getServerSd(),
-		server.getSockAddr(), server.getAddrLen());
+		&client_addr, &client_socket_len);
 	if (connection < 0) {
 		std::cerr << "Failed to grab connection : ";
 		std::cerr << std::strerror(errno) << std::endl;
@@ -63,6 +65,8 @@ void WebServer::accept_connection(const Server& server) {
 	} else {
 		std::cout << "Connection accepted: FD=" << connection << std::endl;
 		_clients.push_back(Client(connection));
+		_clients.back().set_addr(client_addr);
+		_clients.back().set_socket_len(client_socket_len);
 		_config_assoc.insert(std::make_pair(connection, server.getConfig()));
 	}
 }
@@ -133,50 +137,6 @@ void WebServer::build_select_list() {
 			_highest_socket = it->get_sd();
   }
 }
-
-int WebServer::sock_gets(int socket_fd, char *str, size_t count) {
-	int read_return;
-	char *current_position;
-	size_t total_count = 0;
-	char last_read = 0;
-
-	current_position = str;
-	while (last_read != '\n') {
-		read_return = read(socket_fd, &last_read, 1);
-		if (read_return <= 0)
-			return -1;
-		if ((total_count < count) && (last_read != '\n')
-			&& (last_read != '\r')) {
-			*current_position = last_read;
-			current_position++;
-			total_count++;
-		}
-	}
-	if (count > 0)
-		*current_position = '\0';
-	return total_count;
-}
-
-/*void WebServer::handle_data(int socket_id) {
-	char buffer[DEFAULT_BUFFER_SIZE];
-
-	if (sock_gets(_client_sd[socket_id], buffer, DEFAULT_BUFFER_SIZE) < 0) {
-		std::cout << "Connection lost: FD=" << _client_sd[socket_id];
-		std::cout << " - Slot=" << socket_id << std::endl;
-		_client_sd[socket_id] = 0;
-	} else {
-		std::cout << "Received: " << buffer << std::endl;
-		std::string received = std::string(buffer);
-		if (received == "exit")
-			_exit = true;
-		std::stringstream ss;
-		const Config* configRef = _config_assoc.find(_client_sd[socket_id])->second;
-		ss << "I received this from server with port: ";
-		ss << configRef->getPort() << std::endl;
-		send(_client_sd[socket_id], ss.str().c_str(), ss.str().size(), 0);
-		std::cout << "Response: " << ss.str() << std::endl;
-	}
-}*/
 
 void WebServer::read_socks() {
 	for(size_t i = 0; i < _servers.size(); i++) {

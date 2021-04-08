@@ -14,7 +14,7 @@
 
 Config::Config() : AConfig() {
 	_port = 0;
-	_client_max_body_size = 0;
+	_client_max_body_size = 8192;
 }
 
 Config::Config(const Config& src) {

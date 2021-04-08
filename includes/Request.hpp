@@ -13,10 +13,6 @@
 #ifndef REQUEST_HPP
 # define REQUEST_HPP
 
-# define BAD_REQUEST 400
-# define URI_TOO_LONG 414
-# define NOT_IMPLEMENTED 501
-
 # define CONTINUE_READING 1
 # define CONTINUE_PARSING 2
 # define RECEIVED 3
@@ -27,6 +23,7 @@
 # include <stdexcept>
 # include <cstdlib>
 # include <iostream>
+# include "parsing.hpp"
 
 class													Request {
 
@@ -35,19 +32,6 @@ class													Request {
 		class											RequestLine {
 
 			public:
-
-				enum									method_t {
-					GET,
-					HEAD,
-					POST,
-					PUT,
-					DELETE,
-					CONNECT,
-					OPTIONS,
-					TRACE,
-					DEFAULT
-				};
-
 														RequestLine(void);
 														RequestLine(const RequestLine &x);
 														~RequestLine(void);
@@ -65,15 +49,6 @@ class													Request {
 				void									render(void) const;
 
 			private:
-
-				struct									_method_tab_entry_t {
-					method_t							_method;
-					std::string							_str;
-					size_t								_length;
-				};
-
-				static const _method_tab_entry_t		_method_tab[];
-
 				method_t								_method;
 				std::string								_request_target;
 				std::string								_http_version;
@@ -120,6 +95,9 @@ class													Request {
 		const Headers									&get_headers(void) const;
 		const std::string								&get_body(void) const;
 
+		size_t											get_limit_body_size() const;
+		void 											set_limit_body_size(size_t size);
+
 		int												append(const std::string &data);
 		void											reset(void);
 		void											render(void) const;
@@ -137,7 +115,6 @@ class													Request {
 		static const size_t								_limit_request_line_size;
 		static const size_t								_limit_header_size;
 		static const size_t								_limit_headers_size;
-		static const size_t								_limit_body_size;
 
 		_request_status_t								_status;
 		std::string										_str;
@@ -162,7 +139,8 @@ class													Request {
 		int												_collect_header(void);
 		int												_check_headers(void);
 		int												_collect_body(void);
-
+		size_t											_limit_body_size;
+		//TODO : link to client_max_body_size config value
 };
 
 #endif

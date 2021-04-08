@@ -29,7 +29,7 @@ enum t_bracket_type {
 	CLOSING
 };
 
-enum t_methods {
+enum method_t {
 	GET,
 	HEAD,
 	POST,
@@ -38,10 +38,16 @@ enum t_methods {
 	CONNECT,
 	OPTIONS,
 	TRACE,
-	TOTAL_METHODS
+	DEFAULT
 };
 
-extern std::string methods_array[TOTAL_METHODS];
+struct method_tab_entry_t {
+	method_t							method;
+	std::string							str;
+	size_t								length;
+};
+
+extern const method_tab_entry_t	method_tab[];
 
 enum t_server_instructions {
 	LISTEN,

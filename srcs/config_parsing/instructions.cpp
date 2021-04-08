@@ -112,7 +112,7 @@ int parse_client_max_body_size(const std::vector<std::string>& tokens, Config& c
 
 int parse_methods(const std::vector<std::string>& tokens, AConfig& config) {
 	std::list<std::string> methods;
-	bool methods_complete[TOTAL_METHODS] = {false};
+	bool methods_complete[DEFAULT] = {false};
 	int method_idx;
 	std::string usage("Usage: 'methods GET and/or PUT and/or HEAD [...];'");
 

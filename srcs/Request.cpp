@@ -16,7 +16,6 @@
 const size_t	Request::_limit_request_line_size(8000);
 const size_t	Request::_limit_header_size(8000);
 const size_t	Request::_limit_headers_size(8000);
-const size_t	Request::_limit_body_size(8000);
 
 Request::Request(void) :
 	_status(START),
@@ -57,6 +56,16 @@ const Request::Headers
 const std::string
 &Request::get_body(void) const {
 	return (_body);
+}
+
+size_t
+Request::get_limit_body_size() const {
+	return _limit_body_size;
+}
+
+void
+Request::set_limit_body_size(size_t size) {
+	_limit_body_size = size;
 }
 
 //TODO:: char* plutot que std::string pour la reconnaissance du pattern CRLF (RFC 7230 p.20)
@@ -216,7 +225,7 @@ Request::_collect_request_line_elements(void) {
 	_request_line.set_request_target(_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
 	_request_line.set_http_version(_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
 	_str.erase(0, end_rl + 2);
-	if (RequestLine::DEFAULT == _request_line.get_method())
+	if (DEFAULT == _request_line.get_method())
 		return (NOT_IMPLEMENTED);
 	if (_header_received() || _headers_received())
 		return (CONTINUE_PARSING);
@@ -274,19 +283,6 @@ Request::_collect_body(void) {
  * REQUEST_LINE_T RELATED FUNCTIONS
  */
 
-const Request::RequestLine::_method_tab_entry_t	Request::RequestLine::_method_tab[] =
-{
-	{GET, "GET", 3},
-	{HEAD, "HEAD", 4},
-	{POST, "POST", 4},
-	{PUT, "PUT", 3},
-	{DELETE, "DELETE", 6},
-	{CONNECT, "CONNECT", 7},
-	{OPTIONS, "OPTIONS", 7},
-	{TRACE, "TRACE", 5},
-	{DEFAULT, "", 0}
-};
-
 Request::RequestLine::RequestLine(void) :
 	_method(DEFAULT),
 	_request_target(),
@@ -307,7 +303,7 @@ Request::RequestLine
 	return (*this);
 }
 
-Request::RequestLine::method_t
+method_t
 Request::RequestLine::get_method(void) const {
 	return (_method);
 }
@@ -325,9 +321,9 @@ const std::string
 void
 Request::RequestLine::set_method(const std::string &method_str) {
 	size_t	i(0);
-	while (_method_tab[i]._length) {
-		if (_method_tab[i]._str == method_str) {
-			_method = _method_tab[i]._method;
+	while (method_tab[i].length) {
+		if (method_tab[i].str == method_str) {
+			_method = method_tab[i].method;
 			return ;
 		}
 		i++;
@@ -355,9 +351,9 @@ Request::RequestLine::reset(void) {
 void
 Request::RequestLine::render(void) const {
 	size_t	i(0);
-	while (_method_tab[i]._length) {
-		if (_method_tab[i]._method == _method) {
-			std::cout << "METHOD : " << _method_tab[i]._str << std::endl;
+	while (method_tab[i].length) {
+		if (method_tab[i].method == _method) {
+			std::cout << "METHOD : " << method_tab[i].str << std::endl;
 			break ;
 		}
 		i++;

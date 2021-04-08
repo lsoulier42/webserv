@@ -12,11 +12,22 @@
 
 #include "parsing.hpp"
 
-std::string methods_array[TOTAL_METHODS] = {"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE"};
+const method_tab_entry_t	method_tab[] =
+		{
+				{GET, "GET", 3},
+				{HEAD, "HEAD", 4},
+				{POST, "POST", 4},
+				{PUT, "PUT", 3},
+				{DELETE, "DELETE", 6},
+				{CONNECT, "CONNECT", 7},
+				{OPTIONS, "OPTIONS", 7},
+				{TRACE, "TRACE", 5},
+				{DEFAULT, "", 0}
+		};
 
 int method_index(const std::string& method) {
-	for(int i = 0; i < TOTAL_METHODS; i++) {
-		if (method == methods_array[i])
+	for(int i = 0; i < DEFAULT; i++) {
+		if (method == method_tab[i].str)
 			return i;
 	}
 	return -1;

@@ -16,6 +16,7 @@
 # include <iostream>
 # include <unistd.h>
 # include <string>
+# include <sys/socket.h>
 # include "Request.hpp"
 
 # define SUCCESS 0
@@ -32,6 +33,10 @@ class													Client {
 		Client											&operator=(const Client &x);
 
 		int												get_sd(void) const;
+		struct sockaddr									get_addr(void) const;
+		void											set_addr(const struct sockaddr& addr);
+		socklen_t										get_socket_len(void) const;
+		void											set_socket_len(const socklen_t& socket_len);
 
 		int												read_socket(void);
 
@@ -40,6 +45,8 @@ class													Client {
 		static const size_t								_buffer_size;
 
 		const int										_sd;
+		struct sockaddr									_addr;
+		socklen_t 										_socket_len;
 		Request											_request;
 
 		int												_process(int status);

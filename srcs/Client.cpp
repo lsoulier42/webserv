@@ -39,6 +39,26 @@ Client::get_sd(void) const {
 	return (_sd);
 }
 
+struct sockaddr
+Client::get_addr(void) const {
+	return _addr;
+}
+
+void
+Client::set_addr(const struct sockaddr& addr) {
+	_addr = addr;
+}
+
+socklen_t
+Client::get_socket_len(void) const {
+	return _socket_len;
+}
+
+void
+Client::set_socket_len(const socklen_t& socket_len) {
+	_socket_len = socket_len;
+}
+
 int
 Client::read_socket(void) {
 	char	buffer[_buffer_size + 1];
