@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 16:46:12 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 19:34:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,19 +57,16 @@ const std::string
 	return (_body);
 }
 
-//TODO:: char* plutot que std::string pour la reconnaissance du pattern CRLF
+//TODO:: char* plutot que std::string pour la reconnaissance du pattern CRLF (RFC 7230 p.20)
 int
 Request::append(const std::string &data) {
-	//TODO:: controle de l'overflow en fonction du statut de la request
 	_str += data;
 	return (_request_parsing());
 }
 
-//TODO:: modifier reset pour tenir compte de fragments potentiels de la requete suivante dans _str
 void
 Request::reset(void) {
 	_status = EMPTY;
-	_str.clear();
 	_request_line.reset();
 	_headers.reset();
 	_body.clear();
@@ -85,22 +82,22 @@ Request::render(void) const {
 	std::cout << _body << "$" << std::endl << std::endl;
 }
 
-//TODO:: ameliorer : chunked doit etre le dernier element de Transfer-Encoding
+//TODO:: ameliorer : chunked devrait etre le dernier element de Transfer-Encoding
 bool
 Request::_body_expected(void) const {
 	return ((_headers.key_exists("Transfer-Encoding")
-				&& (_headers.at("Transfer-Encoding")).find("chunked") != std::string::npos)
+				&& (_headers.get_value("Transfer-Encoding")).find("chunked") != std::string::npos)
 			|| _headers.key_exists("Content-Length"));
 }
 
-//TODO:: ameliorer : chunked doit etre le dernier element de Transfer-Encoding
+//TODO:: ameliorer : chunked devrait etre le dernier element de Transfer-Encoding
 bool
 Request::_body_received(void) const {
 	return ((_headers.key_exists("Transfer-Encoding")
-				&& _headers.at("Transfer-Encoding").find("chunked") != std::string::npos
+				&& _headers.get_value("Transfer-Encoding").find("chunked") != std::string::npos
 				&& _str.find("0\r\n\r\n") != std::string::npos)
 			|| (_headers.key_exists("Content-Length")
-				&& _str.size() >= static_cast<unsigned long>(std::atol(_headers.at("Content-Length").c_str()))));
+				&& _str.size() >= static_cast<unsigned long>(std::atol(_headers.get_value("Content-Length").c_str()))));
 }
 
 //TODO:: tout
@@ -119,7 +116,7 @@ int
 Request::_request_parsing(void) {
 	switch (_status) {
 		case EMPTY :
-			return (_empty_request_parsing());
+			return (_started_request_parsing());
 		case STARTED :
 			return (_started_request_parsing());
 		case REQUEST_LINE_RECEIVED :
@@ -134,14 +131,9 @@ Request::_request_parsing(void) {
 }
 
 int
-Request::_empty_request_parsing(void) {
-	if (_str.size() > 0)
-		_status = STARTED ;
-	return (CONTINUE);
-}
-
-int
 Request::_started_request_parsing(void) {
+	if (_str.size() > 0 && _status == EMPTY)
+		_status = STARTED ;
 	if (std::string::npos != _str.find("\r\n")) {
 		_status = REQUEST_LINE_RECEIVED;
 		return (_collect_request_line_elements());
@@ -163,17 +155,14 @@ Request::_request_line_received_parsing(void) {
 	return (CONTINUE);
 }
 
-//TODO:: _str.clear() n'est pas adapte en cas de presence d'un trailer ou de fragment de la requete suivante apres la fin du body
 int
 Request::_headers_received_parsing(void) {
 	if (_body_received()) {
-		_body = _str;
-		_str.clear();
-		if (!_trailer_expected()) {
-			_status = REQUEST_RECEIVED;
-			return (RECEIVED);
-		} else
+		if (_trailer_expected())
 			_status = BODY_RECEIVED;
+		else
+			_status = REQUEST_RECEIVED;
+		return (_collect_body());
 	}
 	return (CONTINUE);
 }
@@ -191,30 +180,31 @@ int
 Request::_collect_request_line_elements(void) {
 	size_t		first_sp(0);
 	size_t		scnd_sp(0);
+	size_t		end_rl(_str.find("\r\n"));
 	if (std::string::npos == (first_sp = _str.find_first_of(" ")))
 		return (BAD_REQUEST);
 	if (std::string::npos == (scnd_sp = _str.find_first_of(" ", first_sp + 1)))
 		return (BAD_REQUEST);
-	std::string	method_str(_str.substr(0, first_sp));
 	_request_line.set_method(_str.substr(0, first_sp));
+	_request_line.set_request_target(_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
+	_request_line.set_http_version(_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
+	_str.erase(0, _str.find("\r\n") + 2);
 	if (RequestLine::DEFAULT == _request_line.get_method())
 		return (NOT_IMPLEMENTED);
-	_request_line.set_request_target(_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
-	_request_line.set_http_version(_str.substr(scnd_sp + 1, (_str.rfind("\r") - scnd_sp - 1)));
-	_str.erase(0, _str.find("\r\n") + 2);
 	return (CONTINUE);
 }
 
 void
 Request::_collect_header(void) {
 	size_t		col(0);
+	size_t		end_header(_str.find("\r\n"));
 	if (std::string::npos == (col = _str.find_first_of(":"))) {
 		_str.erase(0, _str.find("\r\n") + 2);
 		return ;
 	}
 	std::string	header_name(_str.substr(0, col));
-	std::string	header_value(_str.substr(col + 1, (_str.rfind("\r") - col - 1)));
-	_headers.push(header_name, header_value);
+	std::string	header_value(_str.substr(col + 1, (end_header - col - 1)));
+	_headers.insert(header_name, header_value);
 	_str.erase(0, _str.find("\r\n") + 2);
 }
 
@@ -224,6 +214,23 @@ Request::_check_headers(void) {
 	if (!_headers.key_exists("Host"))
 		return (BAD_REQUEST);
 	_str.erase(0, _str.find("\r\n") + 2);
+	if (_status == REQUEST_RECEIVED)
+		return (RECEIVED);
+	else
+		return (CONTINUE);
+}
+
+//TODO:: s'assurer que chunked est le dernier element du champ Transfer-Encoding
+int
+Request::_collect_body(void) {
+	size_t	body_length(0);
+	if (_headers.key_exists("Transfer-Encoding")
+			&& _headers.get_value("Transfer-Encoding").find("chunked") != std::string::npos) {
+		body_length = _str.find("0\r\n\r\n") + 5;
+	} else if (_headers.key_exists("Content-Length"))
+		body_length = static_cast<unsigned long>(std::atol(_headers.get_value("Content-Length").c_str()));
+	_body = _str.substr(0, body_length);
+	_str.erase(0, body_length);
 	if (_status == REQUEST_RECEIVED)
 		return (RECEIVED);
 	else
@@ -384,7 +391,7 @@ Request::Headers::render(void) const {
 }
 
 void
-Request::Headers::push(const std::string &header_name, const std::string &header_value) {
+Request::Headers::insert(const std::string &header_name, const std::string &header_value) {
 	header_t	new_entry;
 	new_entry.key = header_name;
 	new_entry.value = header_value;
@@ -406,25 +413,25 @@ Request::Headers::key_exists(const std::string &key) const {
 }
 
 std::string
-&Request::Headers::at(const std::string &key) {
+&Request::Headers::get_value(const std::string &key) throw(std::invalid_argument) {
 	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
 		for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
 			if (it->key == key)
 				return (it->value);
 	}
-	throw (std::out_of_range("Request::Headers::at : out of range exception"));
+	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
 }
 
 const std::string
-&Request::Headers::at(const std::string &key) const {
+&Request::Headers::get_value(const std::string &key) const throw(std::invalid_argument) {
 	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
 		for (std::list<header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
 			if (it->key == key)
 				return (it->value);
 	}
-	throw (std::out_of_range("Request::Headers::at : out of range exception"));
+	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
 }
 
 unsigned long

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 16:35:35 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 18:52:52 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,10 +92,10 @@ class													Request {
 														~Headers(void);
 				Headers									&operator=(const Headers &x);
 
-				void									push(const std::string &header_name, const std::string &header_value);
+				void									insert(const std::string &header_name, const std::string &header_value);
 				bool									key_exists(const std::string &key) const;
-				std::string								&at(const std::string &key);
-				const std::string						&at(const std::string &key) const;
+				std::string								&get_value(const std::string &key) throw (std::invalid_argument);
+				const std::string						&get_value(const std::string &key) const throw (std::invalid_argument);
 				void									reset(void);
 				void									render(void) const;
 
@@ -156,6 +156,7 @@ class													Request {
 		int												_collect_request_line_elements(void);
 		void											_collect_header(void);
 		int												_check_headers(void);
+		int												_collect_body(void);
 
 };
 

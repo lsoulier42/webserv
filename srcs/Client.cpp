@@ -6,13 +6,13 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 12:49:44 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 19:05:29 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-const size_t	Client::_buffer_size(3);
+const size_t	Client::_buffer_size(900);
 
 Client::Client(void) :
 	_sd(0) {}
