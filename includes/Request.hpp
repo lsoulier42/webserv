@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 16:03:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 16:35:35 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ class													Request {
 
 			public:
 
-				enum									_method_t {
+				enum									method_t {
 					GET,
 					HEAD,
 					POST,
@@ -48,10 +48,10 @@ class													Request {
 
 														RequestLine(void);
 														RequestLine(const RequestLine &x);
-				RequestLine								&operator=(const RequestLine &x);
 														~RequestLine(void);
+				RequestLine								&operator=(const RequestLine &x);
 
-				_method_t								get_method(void) const;
+				method_t								get_method(void) const;
 				const std::string						&get_request_target(void) const;
 				const std::string						&get_http_version(void) const;
 
@@ -65,14 +65,14 @@ class													Request {
 			private:
 
 				struct									_method_tab_entry_t {
-					_method_t							_method;
+					method_t							_method;
 					std::string							_str;
 					size_t								_length;
 				};
 
 				static const _method_tab_entry_t		_method_tab[];
 
-				_method_t								_method;
+				method_t								_method;
 				std::string								_request_target;
 				std::string								_http_version;
 
@@ -82,9 +82,9 @@ class													Request {
 
 			public:
 
-				struct									_header_t {
-					std::string							_key;
-					std::string							_value;
+				struct									header_t {
+					std::string							key;
+					std::string							value;
 				};
 
 														Headers(void);
@@ -101,8 +101,8 @@ class													Request {
 
 			private:
 
-				static const size_t						_headers_tab_size;
-				std::vector<std::list<_header_t>*>		_tab;
+				static const size_t						_tab_size;
+				std::vector<std::list<header_t>*>		_tab;
 
 				unsigned long							_hash(const char *buf) const;
 
@@ -139,8 +139,8 @@ class													Request {
 
 		_request_status_t								_status;
 		std::string										_str;
-		_request_line_t									_request_line;
-		_headers_t										_headers;
+		RequestLine										_request_line;
+		Headers											_headers;
 		std::string										_body;
 
 		bool											_body_expected(void) const;
