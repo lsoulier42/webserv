@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:39:02 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/06 22:26:38 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 21:52:40 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,8 +48,6 @@ class WebServer {
 		void accept_connection(const Server& server);
 		void set_non_blocking(int socket_fd);
 		void build_select_list();
-		void handle_data(int socket_id);
-		int sock_gets(int socket_fd, char *str, size_t count);
 		void read_socks();
 		void close_sockets();
 

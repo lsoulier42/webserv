@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/08 18:20:51 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 21:52:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@ WebServer::WebServer(const std::vector<Server>& servers) :
 	_servers(servers),
 	_max_connection(DEFAULT_MAX_CONNECTION),
 	_highest_socket(0), _exit(0) {
-//	_client_sd.assign(_max_connection, 0);
 }
 
 WebServer::~WebServer() {}
@@ -50,27 +49,9 @@ void WebServer::accept_connection(const Server& server) {
 			close(connection);
 	} else {
 		std::cout << "Connection accepted: FD=" << connection << std::endl;
-//		std::cout << " - Slot=" << i << std::endl;
 		_clients.push_back(Client(connection));
 		_config_assoc.insert(std::make_pair(connection, server.getId()));
 	}
-	/*
-	for (int i = 0; i < _max_connection; i++) {
-		if (_client_sd[i] == 0) {
-			std::cout << "Connection accepted: FD=" << connection;
-			std::cout << " - Slot=" << i << std::endl;
-			_client_sd[i] = connection;
-			_config_assoc.insert(std::make_pair(connection, server.getId()));
-			break ;
-		}
-		if (i == _max_connection - 1) {
-			std::string full_response = "Sorry, this server is too busy.\n Try again later! \r\n";
-			std::cout << "No room left for new client." << std::endl;
-			send(connection, full_response.c_str(), full_response.size(), 0);
-			close(connection);
-		}
-	}
-	*/
 }
 
 void WebServer::close_sockets() {
@@ -141,50 +122,6 @@ void WebServer::build_select_list() {
 			_highest_socket = it->get_sd();
 	}
 }
-
-int WebServer::sock_gets(int socket_fd, char *str, size_t count) {
-	int read_return;
-	char *current_position;
-	size_t total_count = 0;
-	char last_read = 0;
-
-	current_position = str;
-	while (last_read != '\n') {
-		read_return = read(socket_fd, &last_read, 1);
-		if (read_return <= 0)
-			return -1;
-		if ((total_count < count) && (last_read != '\n')
-			&& (last_read != '\r')) {
-			*current_position = last_read;
-			current_position++;
-			total_count++;
-		}
-	}
-	if (count > 0)
-		*current_position = '\0';
-	return total_count;
-}
-
-/*
-void WebServer::handle_data(int socket_id) {
-	char buffer[DEFAULT_BUFFER_SIZE];
-
-	if (sock_gets(_client_sd[socket_id], buffer, DEFAULT_BUFFER_SIZE) < 0) {
-		std::cout << "Connection lost: FD=" << _client_sd[socket_id];
-		std::cout << " - Slot=" << socket_id << std::endl;
-		_client_sd[socket_id] = 0;
-	} else {
-		std::cout << "Received: " << buffer << std::endl;
-		std::string received = std::string(buffer);
-		if (received == "exit")
-			_exit = 1;
-		std::stringstream ss;
-		ss << "I received this from server_id: "<< _config_assoc[_client_sd[socket_id]] << std::endl;
-		send(_client_sd[socket_id], ss.str().c_str(), ss.str().size(), 0);
-		std::cout << "Response: " << ss.str() << std::endl;
-	}
-}
-*/
 
 void WebServer::read_socks() {
 	for(size_t i = 0; i < _servers.size(); i++) {

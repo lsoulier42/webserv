@@ -6,14 +6,16 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 21:01:37 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 21:57:07 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
 
+//TODO:: implementer le controle du risque d'overflow
 const size_t	Request::_limit_request_line_size(8000);
 const size_t	Request::_limit_header_size(8000);
+const size_t	Request::_limit_headers_size(8000);
 const size_t	Request::_limit_body_size(8000);
 
 Request::Request(void) :
@@ -148,13 +150,13 @@ Request::_request_parsing(void) {
 			case BODY_RECEIVED :
 				ret = _body_received_parsing();
 				break ;
-			default:
+			case REQUEST_RECEIVED :
+				ret = RECEIVED;
 				break ;
 		}
 	}
 	return (ret);
 }
-
 
 int
 Request::_started_request_parsing(void) {
@@ -250,6 +252,7 @@ Request::_check_headers(void) {
 }
 
 //TODO:: s'assurer que chunked est le dernier element du champ Transfer-Encoding
+//TODO:: decoder le body si besoin
 int
 Request::_collect_body(void) {
 	size_t	body_length(0);
@@ -420,6 +423,7 @@ Request::Headers::render(void) const {
 	}
 }
 
+//TODO:: gerer l'insertion d'un header dont la cle est deja presente
 void
 Request::Headers::insert(const std::string &header_name, const std::string &header_value) {
 	header_t	new_entry;

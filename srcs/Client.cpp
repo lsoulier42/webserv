@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 20:05:20 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 21:37:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,19 +15,22 @@
 const size_t	Client::_buffer_size(900);
 
 Client::Client(void) :
-	_sd(0) {}
+	_sd(0),
+	_request() {}
 
 Client::Client(int sd) :
-	_sd(sd) {}
+	_sd(sd),
+	_request() {}
 
 Client::Client(const Client &x) :
-	_sd(x._sd) {}
+	_sd(x._sd),
+	_request(x._request) {}
 
 Client::~Client(void) {}
 
 Client
 &Client::operator=(const Client &x) {
-	(void)x;
+	_request = x._request;
 	return (*this);
 }
 
@@ -55,6 +58,11 @@ Client::read_socket(void) {
 		return (_process(ret));
 }
 
+/*
+ * ici, on traite la requete
+ * une fois traitee, la requete doit etre reset
+ * return (autre chose que SUCCESS) entrainera la fermeture de la connexion et la suppression de l'objet Client dans Webserver::read_socks()
+ */
 int
 Client::_process(int status) {
 	std::cout << "-----> REPONSE : " << status << std::endl << std::endl;

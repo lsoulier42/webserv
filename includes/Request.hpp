@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 21:01:21 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 21:49:06 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # define BAD_REQUEST 400
 # define URI_TOO_LONG 414
 # define NOT_IMPLEMENTED 501
+
 # define CONTINUE_READING 1
 # define CONTINUE_PARSING 2
 # define RECEIVED 3
@@ -135,6 +136,7 @@ class													Request {
 
 		static const size_t								_limit_request_line_size;
 		static const size_t								_limit_header_size;
+		static const size_t								_limit_headers_size;
 		static const size_t								_limit_body_size;
 
 		_request_status_t								_status;
