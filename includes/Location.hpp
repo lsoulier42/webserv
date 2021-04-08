@@ -21,9 +21,10 @@ class Location : public AConfig {
 		Location& operator=(const Location& rhs);
 		~Location();
 
-		std::string getConfigType() const;
 		std::string getPath() const;
 		void setPath(const std::string& path);
+
+		void showConfig() const;
 
 	private:
 		std::string _path;

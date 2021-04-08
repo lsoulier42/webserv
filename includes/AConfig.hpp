@@ -16,6 +16,8 @@
 # include <string>
 # include <list>
 
+# define AUTOINDEX(x) x ? "on" : "off"
+
 class AConfig {
 	public:
 		AConfig();
@@ -34,7 +36,8 @@ class AConfig {
 		std::string getCgiPath() const;
 		void setCgiPath(const std::string &cgiPath);
 
-		virtual std::string getConfigType() const = 0;
+		virtual void showConfig() const = 0;
+		void showCommonConfig() const;
 
 	protected:
 		std::string _root;

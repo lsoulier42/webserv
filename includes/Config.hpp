@@ -37,9 +37,9 @@ class Config : public AConfig {
 		std::string getErrorPagePath() const;
 		void setErrorPagePath(const std::string& errorPagePath);
 		std::list<Location> getLocations() const;
-		void setLocations(const std::list<Location>& locations);
+		void addLocation(const Location& location);
 
-		std::string getConfigType() const;
+		void showConfig() const;
 
 	private:
 		std::list<std::string> _server_name;

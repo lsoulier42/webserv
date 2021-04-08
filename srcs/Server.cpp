@@ -12,7 +12,7 @@
 
 #include "Server.hpp"
 
-Server::Server() : _server_sd(0), _reuse_addr(1),
+Server::Server() : _config(NULL), _server_sd(0), _reuse_addr(1),
 	_addr_len(sizeof(struct sockaddr_in)) {
 	memset((char*)&_sock_addr, 0, _addr_len);
 }
@@ -46,12 +46,20 @@ socklen_t* Server::getAddrLen() const {
 	return (socklen_t*)(&_addr_len);
 }
 
-const Config& Server::getConfig() const{
+const Config* Server::getConfig() const{
 	return this->_config;
 }
 
-void Server::setConfig(const Config &config) {
+void Server::setConfig(Config *config) {
 	_config = config;
+}
+
+void Server::setup_default_server() {
+	_config->showConfig();
+	this->_create_socket_descriptor();
+	this->_change_socket_options();
+	this->_bind_socket();
+	this->_set_listen_mode();
 }
 
 void Server::_create_socket_descriptor() {
@@ -66,14 +74,6 @@ void Server::_create_socket_descriptor() {
 	}
 }
 
-void Server::setup_default_server(const Config& config) {
-	this->setConfig(config);
-	this->_create_socket_descriptor();
-	this->_change_socket_options();
-	this->_bind_socket();
-	this->_set_listen_mode();
-}
-
 void Server::_change_socket_options() {
 	if (setsockopt(_server_sd, SOL_SOCKET, SO_REUSEADDR,
 		&_reuse_addr, sizeof(_reuse_addr)) < 0) {
@@ -83,15 +83,15 @@ void Server::_change_socket_options() {
 		exit(EXIT_FAILURE);
 	}
 	if (WebServer::verbose) {
-		std::cout << "Socket options changes succesfully on sd: " << _server_sd << std::endl;
+		std::cout << "Socket options changes successfully on sd: " << _server_sd << std::endl;
 	}
 }
 
 void Server::_bind_socket() {
-	int port = _config.getPort();
+	int port = _config->getPort();
 
 	_sock_addr.sin_family = AF_INET;
-	_sock_addr.sin_addr.s_addr = inet_addr(_config.getIpAddr().c_str());
+	_sock_addr.sin_addr.s_addr = inet_addr(_config->getIpAddr().c_str());
 	_sock_addr.sin_port = htons(port);
 
 	if (bind(_server_sd, (struct sockaddr*)&_sock_addr, _addr_len) < 0) {

@@ -19,18 +19,25 @@ std::string WebServer::methods_array[TOTAL_METHODS] = {"GET", "HEAD",
 WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
 	_highest_socket(0), _exit(false) {
 	_client_sd.assign(_max_connection, 0);
-	_servers.assign(1, Server());
 }
 
 WebServer::~WebServer() {}
 
 void WebServer::setup_servers() {
-	Config test;
+	std::set<std::pair<std::string, int> > default_servers;
+	std::pair<std::string, int> ip_port;
+	Server new_server;
 
-	test.setIpAddr("0.0.0.0");
-	test.setPort(80);
+	for(std::vector<Config>::iterator it = _configs.begin(); it != _configs.end(); it++) {
+		ip_port = std::make_pair(it->getIpAddr(), it->getPort());
+		if (default_servers.find(ip_port) == default_servers.end()) {
+			default_servers.insert(ip_port);
+			new_server.setConfig(&(*it));
+			_servers.push_back(new_server);
+		}
+	}
 	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		it->setup_default_server(test);
+		it->setup_default_server();
 		set_non_blocking(it->getServerSd());
 		_highest_socket = it->getServerSd();
 	}
@@ -170,9 +177,9 @@ void WebServer::handle_data(int socket_id) {
 		if (received == "exit")
 			_exit = true;
 		std::stringstream ss;
-		const Config& configRef = _config_assoc.find(_client_sd[socket_id])->second;
+		const Config* configRef = _config_assoc.find(_client_sd[socket_id])->second;
 		ss << "I received this from server with port: ";
-		ss << configRef.getPort() << std::endl;
+		ss << configRef->getPort() << std::endl;
 		send(_client_sd[socket_id], ss.str().c_str(), ss.str().size(), 0);
 		std::cout << "Response: " << ss.str() << std::endl;
 	}
@@ -193,7 +200,7 @@ int WebServer::parsing(const std::string &filepath) {
 	if (!this->check_config_file(filepath))
 		return 0;
 	if (!this->check_main_bloc()) {
-		std::cerr << "Error during parsing." << std::endl;
+		std::cerr << "Error during config file parsing." << std::endl;
 		_config_file.close();
 		return 0;
 	}
@@ -226,24 +233,36 @@ int WebServer::check_config_file(const std::string &filepath) {
 int WebServer::check_main_bloc() {
 	std::string line_buffer;
 	std::vector<std::string> tokens;
+	std::string usage("Usage: `server {'");
 
 	while(_config_file) {
 		std::getline(_config_file, line_buffer);
 		line_buffer = WebServer::trim_comments(line_buffer);
 		line_buffer = WebServer::trim_whitespaces(line_buffer);
-		if (line_buffer.empty())
-			continue;
 		tokens = WebServer::split_whitespaces(line_buffer);
-		if (tokens.size() != 2
-			|| (tokens.size() == 2
-			&& (tokens[0] != "server" || tokens[1] != "{"))) {
+		if (line_buffer.empty() || tokens.empty())
+			continue;
+		if (tokens[0] != "server") {
 			std::cerr << "Unknown instruction `" << line_buffer << "' in main context." << std::endl;
+			std::cerr << usage << std::endl;
 			return 0;
 		}
-		if (!check_server_bloc()) {
-			std::cerr << "Server context parsing error." << std::endl;
+		if (tokens.size() == 1 || (tokens.size() == 2 && tokens[1] != "{")) {
+			std::cerr << "Missing opening bracket for `server' instruction." << std::endl;
+			std::cerr << usage << std::endl;
 			return 0;
 		}
+		if (tokens.size() > 2) {
+			std::cerr << "Too much arguments for `server' instruction: " << line_buffer << std::endl;
+			std::cerr << usage << std::endl;
+			return 0;
+		}
+		if (!check_server_bloc())
+			return 0;
+	}
+	if (_configs.empty()) {
+		std::cerr << "Config file is empty." << std::endl;
+		return 0;
 	}
 	return 1;
 }
@@ -268,10 +287,10 @@ std::string WebServer::trim_whitespaces(const std::string& line_buffer) {
 	new_line = line_buffer;
 	start = new_line.find_first_not_of(whitespaces);
 	if (start != std::string::npos)
-		new_line.substr(start);
+		new_line = new_line.substr(start);
 	end = new_line.find_last_not_of(whitespaces);
 	if (end != std::string::npos)
-		new_line.substr(end);
+		new_line = new_line.substr(0, end + 1);
 	return new_line;
 }
 
@@ -282,15 +301,17 @@ std::vector<std::string> WebServer::split_whitespaces(const std::string& line_bu
 std::vector<std::string> WebServer::split(const std::string& line_buffer, const std::string& charset) {
 	std::vector<std::string> result;
 	std::string token;
-	size_t ws_pos, progress_pos = 0;
+	size_t ws_pos, progress_pos = 0, wd_len;;
 
 	while(progress_pos < line_buffer.size()) {
-		ws_pos = line_buffer.find(charset, progress_pos);
+		ws_pos = line_buffer.find_first_of(charset, progress_pos);
 		if (ws_pos == std::string::npos)
 			break;
-		token = line_buffer.substr(progress_pos, ws_pos);
-		result.push_back(token);
-		progress_pos += ws_pos + 1;
+		wd_len = ws_pos - progress_pos;
+		token = line_buffer.substr(progress_pos, wd_len);
+		progress_pos += wd_len + 1;
+		if(!token.empty())
+			result.push_back(token);
 	}
 	if (progress_pos < line_buffer.size())
 		result.push_back(line_buffer.substr(progress_pos));
@@ -299,7 +320,7 @@ std::vector<std::string> WebServer::split(const std::string& line_buffer, const 
 
 int WebServer::trim_semicolon(std::vector<std::string>& tokens) {
 	std::string last_token = tokens.back();
-	std::string::iterator ite = last_token.end();
+	std::string::iterator ite = tokens.back().end();
 	char last_char = *(--ite);
 
 	if (last_token == ";") {
@@ -308,7 +329,7 @@ int WebServer::trim_semicolon(std::vector<std::string>& tokens) {
 	}
 	if (last_char != ';')
 		return 0;
-	last_token.erase(ite);
+	tokens.back().erase(ite);
 	return 1;
 }
 
@@ -317,11 +338,11 @@ int WebServer::check_server_bloc() {
 	std::vector<std::string> tokens;
 	Config new_config;
 	bool closing_bracket = false;
-	bool instructions_complete[TOTAL_INSTRUCTIONS] = {false};
-	std::string instructions[TOTAL_INSTRUCTIONS] = {"listen", "server_name",
+	bool instructions_complete[TOTAL_SERVER_INSTRUCTIONS] = {false};
+	std::string instructions[TOTAL_SERVER_INSTRUCTIONS] = {"listen", "server_name",
 		"error_page", "client_max_body_size", "location", "methods",
 		"root", "autoindex", "index", "upload_dir", "cgi"};
-	int (WebServer::*instructions_functions[TOTAL_INSTRUCTIONS])(const std::vector<std::string>&,
+	int (WebServer::*instructions_functions[TOTAL_SERVER_INSTRUCTIONS])(const std::vector<std::string>&,
 		Config&) = { &WebServer::parse_listen, &WebServer::parse_server_name, &WebServer::parse_error_page,
 		&WebServer::parse_client_max_body_size, &WebServer::parse_location, &WebServer::parse_methods_config,
 		&WebServer::parse_root_config, &WebServer::parse_autoindex_config, &WebServer::parse_index_config,
@@ -331,14 +352,18 @@ int WebServer::check_server_bloc() {
 		std::getline(_config_file, line_buffer);
 		line_buffer = WebServer::trim_comments(line_buffer);
 		line_buffer = WebServer::trim_whitespaces(line_buffer);
-		if (line_buffer.empty())
+		tokens = WebServer::split_whitespaces(line_buffer);
+		if (line_buffer.empty() || tokens.empty())
 			continue;
-		if (line_buffer == "}") {
+		if (tokens[0] == "}") {
+			if (tokens.size() > 1) {
+				std::cerr << "Closing bracket is not the single instruction on the line." << std::endl;
+				return 0;
+			}
 			closing_bracket = true;
 			break;
 		}
-		tokens = WebServer::split_whitespaces(line_buffer);
-		for(int i = 0; i < TOTAL_INSTRUCTIONS; i++) {
+		for(int i = 0; i < TOTAL_SERVER_INSTRUCTIONS; i++) {
 			if (instructions[i] == tokens[0]) {
 				if (instructions_complete[i] && i != LOCATION) {
 					std::cerr << "Instruction `" << instructions[i] << "' is present more than once" << std::endl;
@@ -355,22 +380,22 @@ int WebServer::check_server_bloc() {
 				instructions_complete[i] = true;
 				break;
 			}
-			if (i == TOTAL_INSTRUCTIONS - 1) {
-				std::cerr << "Unknown instruction `" << tokens[0] << "'." << std::endl;
+			if (i == TOTAL_SERVER_INSTRUCTIONS - 1) {
+				std::cerr << "Unknown instruction `" << tokens[0] << "' in server context." << std::endl;
 				return 0;
 			}
 		}
 	}
 	if (!closing_bracket) {
-		std::cerr << "Found `" << line_buffer << "' when expected closing bracket `}'." << std::endl;
+		std::cerr << "Found `" << line_buffer << "' when expected closing bracket `}' in server bloc." << std::endl;
 		return 0;
 	}
 	if (!instructions_complete[LISTEN]) {
-		std::cerr << "`listen' instruction not found." << std::endl;
+		std::cerr << "`listen' instruction not found in server bloc." << std::endl;
 		return 0;
 	}
 	if (!instructions_complete[ROOT]) {
-		std::cerr << "`root' instruction not found." << std::endl;
+		std::cerr << "`root' instruction not found in server bloc." << std::endl;
 		return 0;
 	}
 	_configs.push_back(new_config);
@@ -544,7 +569,81 @@ int WebServer::parse_client_max_body_size(const std::vector<std::string>& tokens
 }
 
 int WebServer::parse_location(const std::vector<std::string>& tokens, Config& config) {
-	//TODO
+	std::string usage("Usage: 'location [/random/path/name] {'");
+	std::string path, bracket, line_buffer;
+	std::vector<std::string> location_tokens;
+	Location new_location;
+	bool closing_bracket = false;
+	bool instructions_complete[TOTAL_LOCATION_INSTRUCTIONS] = {false};
+	std::string instructions[TOTAL_LOCATION_INSTRUCTIONS] = {"methods",
+		"root", "autoindex", "index", "cgi"};
+	int (WebServer::*instructions_functions[TOTAL_LOCATION_INSTRUCTIONS])(const std::vector<std::string>&,
+		Location&) = { &WebServer::parse_methods_location, &WebServer::parse_root_location,
+		&WebServer::parse_autoindex_location, &WebServer::parse_index_location,
+		&WebServer::parse_cgi_location};
+
+	if(tokens.size() != 3) {
+		std::cerr << "`location' instruction needs one argument and an opening bracket." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	path = tokens[1];
+	bracket = tokens[2];
+	if (path[0] != '/') {
+		std::cerr << "Wrong path format in `location' instruction." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	if (bracket != "{") {
+		std::cerr << "`location' instruction needs to end with an opening bracket." << std::endl;
+		std::cerr << usage << std::endl;
+		return 0;
+	}
+	new_location.setPath(path);
+	while(_config_file) {
+		std::getline(_config_file, line_buffer);
+		line_buffer = WebServer::trim_comments(line_buffer);
+		line_buffer = WebServer::trim_whitespaces(line_buffer);
+		location_tokens = WebServer::split_whitespaces(line_buffer);
+		if (line_buffer.empty() || location_tokens.empty())
+			continue;
+		if (location_tokens[0] == "}") {
+			if (location_tokens.size() > 1) {
+				std::cerr << "Closing bracket is not the single instruction on the line." << std::endl;
+				return 0;
+			}
+			closing_bracket = true;
+			break;
+		}
+		for(int i = 0; i < TOTAL_LOCATION_INSTRUCTIONS; i++) {
+			if (instructions[i] == location_tokens[0]) {
+				if (instructions_complete[i]) {
+					std::cerr << "Instruction `" << instructions[i] << "' is present more than once" << std::endl;
+					return 0;
+				}
+				if (!trim_semicolon(location_tokens)) {
+					std::cerr << "Instruction `" << instructions[i] << "' needs an ending semicolon." << std::endl;
+					return 0;
+				}
+				if (!(this->*instructions_functions[i])(location_tokens, new_location)) {
+					std::cerr << "Parsing function error." << std::endl;
+					return 0;
+				}
+				instructions_complete[i] = true;
+				break;
+			}
+			if (i == TOTAL_LOCATION_INSTRUCTIONS - 1) {
+				std::cerr << "Unknown instruction `" << location_tokens[0] << "' in location context." << std::endl;
+				return 0;
+			}
+		}
+	}
+	if (!closing_bracket) {
+		std::cerr << "Found `" << line_buffer << "' when expected closing bracket `}' in location bloc." << std::endl;
+		return 0;
+	}
+	config.addLocation(new_location);
+	return 1;
 }
 
 int WebServer::method_index(const std::string& method) {
@@ -646,7 +745,7 @@ int WebServer::parse_autoindex(const std::vector<std::string>& tokens, AConfig& 
 	}
 	response = tokens[1];
 	if (response != "on" && response != "off") {
-		std::cerr << "Argument `" << response << "' is invalid for `autoindex' instruction.";
+		std::cerr << "Argument `" << response << "' is invalid for `autoindex' instruction." << std::endl;
 		std::cerr << usage << std::endl;
 		return 0;
 	}
@@ -726,7 +825,8 @@ int WebServer::parse_cgi(const std::vector<std::string>& tokens, AConfig& config
 	}
 	cgi_file_ext = tokens[1];
 	cgi_path = tokens[2];
-	if (cgi_file_ext[0] != '*' || cgi_file_ext[1] != '.') {
+	if (cgi_file_ext.size() < 3
+		|| (cgi_file_ext.size() > 2 && (cgi_file_ext[0] != '*' || cgi_file_ext[1] != '.'))) {
 		std::cerr << "Argument `" << cgi_file_ext << "' is not a valid format for cgi file extension." << std::endl;
 		std::cerr << usage << std::endl;
 		return 0;
@@ -741,7 +841,7 @@ int WebServer::parse_cgi(const std::vector<std::string>& tokens, AConfig& config
 		std::cerr << usage << std::endl;
 		return 0;
 	}
-	config.setCgiExtension(cgi_file_ext);
+	config.setCgiExtension(cgi_file_ext.substr(2));
 	config.setCgiPath(cgi_path);
 	return 1;
 }

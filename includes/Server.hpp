@@ -36,12 +36,12 @@ class Server {
 		Server& operator=(const Server& rhs);
 		~Server();
 
-		void setup_default_server(const Config& config);
+		void setup_default_server();
 		int getServerSd() const;
 		struct sockaddr* getSockAddr() const;
 		socklen_t* getAddrLen() const;
-		const Config& getConfig() const;
-		void setConfig(const Config& config);
+		const Config* getConfig() const;
+		void setConfig(Config* config);
 
 	private:
 		void _create_socket_descriptor();
@@ -49,7 +49,7 @@ class Server {
 		void _bind_socket();
 		void _set_listen_mode() const;
 
-		Config _config;
+		Config* _config;
 		int _server_sd;
 		struct sockaddr_in _sock_addr;
 		int _reuse_addr;

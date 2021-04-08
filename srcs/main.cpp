@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 	std::string filepath;
 
 	if (argc >= 2 && argc <= 3) {
-		for (int i = 1; i < 3; i++) {
+		for (int i = 1; i < argc; i++) {
 			std::string argument(argv[i]);
 			if (argument == "-verbose")
 				WebServer::verbose = true;

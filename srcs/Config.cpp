@@ -27,7 +27,8 @@ Config& Config::operator=(const Config& rhs) {
 		this->_autoindex = rhs._autoindex;
 		this->_index = rhs._index;
 		this->_methods = rhs._methods;
-		this->_cgi = rhs._cgi;
+		this->_cgi_path = rhs._cgi_path;
+		this->_cgi_extension = rhs._cgi_extension;
 		_server_name = rhs._server_name;
 		_ip_addr = rhs._ip_addr;
 		_port = rhs._port;
@@ -97,14 +98,31 @@ void Config::setErrorPagePath(const std::string& errorPagePath) {
 	_error_page_path = errorPagePath;
 }
 
-std::string Config::getConfigType() const {
-	return "Server";
+void Config::showConfig() const {
+	std::list<std::string>::const_iterator it;
+	std::string next;
+
+	std::cout << "Server configuration: " << std::endl;
+	std::cout << "server_name: `";
+	it = this->_server_name.begin();
+	while (it != this->_server_name.end()) {
+		std::cout << *it++;
+		next = it != this->_server_name.end() ? ", " : "'\n";
+		std::cout << next;
+	}
+	std::cout << "ip address: `" << _ip_addr << "'" << std::endl;
+	std::cout << "port: `" << _port << "'" << std::endl;
+	std::cout << "client_max_body_size: `" << _client_max_body_size << "'" << std::endl;
+	std::cout << "upload_dir: `" << _upload_dir << "'" << std::endl;
+	this->showCommonConfig();
+	for(std::list<Location>::const_iterator it = _locations.begin(); it != _locations.end(); it++)
+		it->showConfig();
 }
 
 std::list<Location> Config::getLocations() const {
 	return _locations;
 }
 
-void Config::setLocations(const std::list<Location>& locations) {
-	_locations = locations;
+void Config::addLocation(const Location &location) {
+	_locations.push_back(location);
 }

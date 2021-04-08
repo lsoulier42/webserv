@@ -27,12 +27,14 @@
 # include <sstream>
 # include <fstream>
 # include <ios>
+# include <set>
 
 # include "Server.hpp"
 # include "Config.hpp"
 
 # define DEFAULT_MAX_CONNECTION 5
 # define DEFAULT_BUFFER_SIZE 1025
+# define TOTAL_LOCATION_INSTRUCTIONS 5
 
 class Server;
 
@@ -40,6 +42,18 @@ class WebServer {
 	public:
 		WebServer();
 		~WebServer();
+
+		enum t_methods {
+			GET,
+			HEAD,
+			POST,
+			PUT,
+			DELETE,
+			CONNECT,
+			OPTIONS,
+			TRACE,
+			TOTAL_METHODS
+		};
 
 		int parsing(const std::string& filepath);
 		void setup_servers();
@@ -70,7 +84,7 @@ class WebServer {
 		 *
 		 *
 		 */
-		enum t_instructions {
+		enum t_server_instructions {
 			LISTEN,
 			SERVER_NAME,
 			ERROR_PAGE,
@@ -82,25 +96,15 @@ class WebServer {
 			INDEX,
 			UPLOAD_DIR,
 			CGI,
-			TOTAL_INSTRUCTIONS
+			TOTAL_SERVER_INSTRUCTIONS
 		};
-		enum t_methods {
-			GET,
-			HEAD,
-			POST,
-			PUT,
-			DELETE,
-			CONNECT,
-			OPTIONS,
-			TRACE,
-			TOTAL_METHODS
-		};
+
 		enum t_informational_codes {
-			CONTINUE 100,
+			CONTINUE = 100,
 			SWITCHING_PROTOCOLS
 		};
 		enum t_successful_codes {
-			OK 200,
+			OK = 200,
 			CREATED,
 			ACCEPTED,
 			NON_AUTHORITATIVE_INFORMATION,
@@ -109,16 +113,16 @@ class WebServer {
 			PARTIAL_CONTENT
 		};
 		enum t_redirection_codes {
-			MULTIPLE_CHOICES 300,
+			MULTIPLE_CHOICES = 300,
 			MOVED_PERMANENTLY,
 			FOUND,
 			SEE_OTHER,
 			NOT_MODIFIED,
 			USE_PROXY,
-			TEMPORARY_REDIRECT 307
+			TEMPORARY_REDIRECT = 307
 		};
 		enum t_client_error_codes {
-			BAD_REQUEST 400,
+			BAD_REQUEST = 400,
 			UNAUTHORIZED,
 			PAYMENT_REQUIRED,
 			FORBIDDEN,
@@ -136,10 +140,10 @@ class WebServer {
 			UNSUPPORTED_MEDIA_TYPE,
 			RANGE_NOT_SATISFIABLE,
 			EXPECTATION_FAILED,
-			UPGRADE_REQUIRED 426
+			UPGRADE_REQUIRED = 426
 		};
 		enum t_server_error_codes {
-			INTERNAL_SERVER_ERROR 500,
+			INTERNAL_SERVER_ERROR = 500,
 			NOT_IMPLEMENTED,
 			BAD_GATEWAY,
 			SERVICE_UNAVAILABLE,
@@ -149,7 +153,6 @@ class WebServer {
 		int check_config_file(const std::string& filepath);
 		int check_main_bloc();
 		int check_server_bloc();
-		int check_location_bloc();
 		static bool is_num(const char* str);
 		static bool is_informational_code(int code);
 		static bool is_successful_code(int code);
@@ -162,7 +165,7 @@ class WebServer {
 		static std::string trim_comments(const std::string& line_buffer);
 		static std::string trim_whitespaces(const std::string& line_buffer);
 		static int trim_semicolon(std::vector<std::string>& tokens);
-		static std::vector<std::string> WebServer::split(const std::string& line_buffer, const std::string& charset);
+		static std::vector<std::string> split(const std::string& line_buffer, const std::string& charset);
 		static std::vector<std::string> split_whitespaces(const std::string& line_buffer);
 		static int check_ip_format(const std::string&);
 		static int check_path(const std::string&);
@@ -194,7 +197,7 @@ class WebServer {
 		std::vector<Config> _configs;
 		int _max_connection;
 		std::vector<int> _client_sd;
-		std::map<int, const Config&> _config_assoc;
+		std::map<int, const Config*> _config_assoc;
 		fd_set _sockets_list;
 		int _highest_socket;
 		bool _exit;

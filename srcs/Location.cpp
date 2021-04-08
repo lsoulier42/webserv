@@ -26,7 +26,8 @@ Location& Location::operator=(const Location& rhs) {
 		this->_autoindex = rhs._autoindex;
 		this->_index = rhs._index;
 		this->_methods = rhs._methods;
-		this->_cgi = rhs._cgi;
+		this->_cgi_path = rhs._cgi_path;
+		this->_cgi_extension = rhs._cgi_extension;
 		_path = rhs._path;
 	}
 	return *this;
@@ -36,8 +37,11 @@ Location::~Location() {
 
 }
 
-std::string Location::getConfigType() const {
-	return "Location";
+void Location::showConfig() const {
+	std::cout << "Location configuration: " << std::endl;
+	std::cout << "path: `" << _path << "'" << std::endl;
+	this->showCommonConfig();
+	std::cout << "End of location configuration" << std::endl;
 }
 
 std::string Location::getPath() const {

@@ -67,3 +67,27 @@ std::string AConfig::getCgiPath() const {
 void AConfig::setCgiPath(const std::string &cgiPath) {
 	_cgi_path = cgiPath;
 }
+
+void AConfig::showCommonConfig() const {
+	std::list<std::string>::const_iterator it;
+	std::string next;
+
+	std::cout << "root: `" << this->_root << "'" << std::endl;
+	std::cout << "autoindex: `" << std::string(AUTOINDEX(this->_autoindex)) << "'" << std::endl;
+	std::cout << "index: `";
+	it = this->_index.begin();
+	while (it != this->_index.end()) {
+		std::cout << *it++;
+		next = it != this->_index.end() ? ", " : "'\n";
+		std::cout << next;
+	}
+	std::cout << "methods: `";
+	it = this->_methods.begin();
+	while (it != this->_methods.end()) {
+		std::cout << *it++;
+		next = it != this->_methods.end() ? ", " : "'\n";
+		std::cout << next;
+	}
+	std::cout << "cgi_path: `" << this->_cgi_path << "'" << std::endl;
+	std::cout << "cgi_extension: `" << this->_cgi_extension << "'" << std::endl;
+}
