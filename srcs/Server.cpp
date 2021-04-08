@@ -55,7 +55,8 @@ void Server::setConfig(Config *config) {
 }
 
 void Server::setup_default_server() {
-	_config->showConfig();
+	if (WebServer::verbose)
+		_config->showConfig();
 	this->_create_socket_descriptor();
 	this->_change_socket_options();
 	this->_bind_socket();
@@ -70,7 +71,7 @@ void Server::_create_socket_descriptor() {
 		exit(EXIT_FAILURE);
 	}
 	if (WebServer::verbose) {
-		std::cout << "Success, server sd created is : " << _server_sd << std::endl;
+		std::cout << "Server socket successfully created at file descriptor " << _server_sd << std::endl;
 	}
 }
 
@@ -83,7 +84,7 @@ void Server::_change_socket_options() {
 		exit(EXIT_FAILURE);
 	}
 	if (WebServer::verbose) {
-		std::cout << "Socket options changes successfully on sd: " << _server_sd << std::endl;
+		std::cout << "Socket options changes successfully on file descriptor " << _server_sd << std::endl;
 	}
 }
 
@@ -101,7 +102,8 @@ void Server::_bind_socket() {
 		exit(EXIT_FAILURE);
 	}
 	if (WebServer::verbose) {
-		std::cout << "Sd: " << _server_sd << " successfully bind on port: " << port << std::endl;
+		std::cout << "Server with file descriptor " << _server_sd;
+		std::cout << " has been successfully bind on port: " << port << std::endl;
 	}
 }
 
@@ -113,6 +115,7 @@ void Server::_set_listen_mode() const {
 		exit(EXIT_FAILURE);
 	}
 	if (WebServer::verbose) {
-		std::cout << "Sd: " << _server_sd << " successfully set in listen mode." << std::endl;
+		std::cout << "Server with file descriptor " << _server_sd;
+		std::cout << " has been successfully set in listen mode" << std::endl;
 	}
 }

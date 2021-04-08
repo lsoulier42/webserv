@@ -102,13 +102,15 @@ void Config::showConfig() const {
 	std::list<std::string>::const_iterator it;
 	std::string next;
 
-	std::cout << "Server configuration: " << std::endl;
-	std::cout << "server_name: `";
-	it = this->_server_name.begin();
-	while (it != this->_server_name.end()) {
-		std::cout << *it++;
-		next = it != this->_server_name.end() ? ", " : "'\n";
-		std::cout << next;
+	std::cout << std::endl << "Server configuration: " << std::endl;
+	if (!_server_name.empty()) {
+		std::cout << "server_name: `";
+		it = this->_server_name.begin();
+		while (it != this->_server_name.end()) {
+			std::cout << *it++;
+			next = it != this->_server_name.end() ? ", " : "'\n";
+			std::cout << next;
+		}
 	}
 	std::cout << "ip address: `" << _ip_addr << "'" << std::endl;
 	std::cout << "port: `" << _port << "'" << std::endl;
@@ -117,6 +119,7 @@ void Config::showConfig() const {
 	this->showCommonConfig();
 	for(std::list<Location>::const_iterator it = _locations.begin(); it != _locations.end(); it++)
 		it->showConfig();
+	std::cout << std::endl;
 }
 
 std::list<Location> Config::getLocations() const {
