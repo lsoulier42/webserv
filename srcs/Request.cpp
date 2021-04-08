@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 12:53:11 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 15:16:35 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,11 @@ Request
 	_headers = x._headers;
 	_body = x._body;
 	return (*this);
+}
+
+const std::string
+&Request::get_body(void) const {
+	return (_body);
 }
 
 void
@@ -187,7 +192,7 @@ Request::_collect_request_line_elements(void) {
 		}
 		i++;
 	}
-	if (_request_line_t::DEFAULT == _request_line_t::_method_tab[i]._method)
+	if (DEFAULT == _request_line_t::_method_tab[i]._method)
 		return (NOT_IMPLEMENTED);
 	_request_line._request_target = _str.substr(first_sp + 1, scnd_sp - first_sp - 1);
 	_request_line._http_version = _str.substr(scnd_sp + 1, (_str.rfind("\r") - scnd_sp - 1));
@@ -289,7 +294,7 @@ Request::_headers_t::_headers_t(const _headers_t &x) :
 	_tab(_headers_tab_size) {
 	for (size_t i(0) ; i < _headers_tab_size ; i++)
 		if (x._tab[i])
-			_tab[i] = new std::list<_header_entry_t>(*(x._tab[i]));
+			_tab[i] = new std::list<_header_t>(*(x._tab[i]));
 }
 
 Request::_headers_t::~_headers_t(void) {
@@ -304,7 +309,7 @@ Request::_headers_t
 			_tab[i] = 0;
 		}
 		if (x._tab[i])
-			_tab[i] = new std::list<_header_entry_t>(*(x._tab[i]));
+			_tab[i] = new std::list<_header_t>(*(x._tab[i]));
 	}
 	return (*this);
 }
@@ -320,21 +325,21 @@ Request::_headers_t::_reset(void) {
 
 void
 Request::_headers_t::_push(const std::string &header_name, const std::string &header_value) {
-	_header_entry_t	new_entry;
+	_header_t	new_entry;
 	new_entry._key = header_name;
 	new_entry._value = header_value;
 	unsigned long	index(_hash(header_name.c_str()));
 	if (!_tab[index])
-		_tab[index] = new std::list<_header_entry_t>;
+		_tab[index] = new std::list<_header_t>;
 	(_tab[index])->push_front(new_entry);
 }
 
 bool
 Request::_headers_t::_key_exists(const std::string &key) const {
-	std::list<_header_entry_t>	*entry_list(_tab[_hash(key.c_str())]);
+	std::list<_header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (!entry_list)
 		return (false);
-	for (std::list<_header_entry_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+	for (std::list<_header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
 		if (it->_key == key)
 			return (true);
 	return (false);
@@ -342,9 +347,9 @@ Request::_headers_t::_key_exists(const std::string &key) const {
 
 std::string
 &Request::_headers_t::_at(const std::string &key) {
-	std::list<_header_entry_t>	*entry_list(_tab[_hash(key.c_str())]);
+	std::list<_header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
-		for (std::list<_header_entry_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+		for (std::list<_header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
 			if (it->_key == key)
 				return (it->_value);
 	}
@@ -353,9 +358,9 @@ std::string
 
 const std::string
 &Request::_headers_t::_at(const std::string &key) const {
-	std::list<_header_entry_t>	*entry_list(_tab[_hash(key.c_str())]);
+	std::list<_header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
-		for (std::list<_header_entry_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+		for (std::list<_header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
 			if (it->_key == key)
 				return (it->_value);
 	}
@@ -376,7 +381,7 @@ void
 Request::_headers_t::_render(void) const {
 	for (size_t i(0) ; i < _headers_tab_size ; i++) {
 		if (_tab[i]) {
-			for (std::list<_header_entry_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
+			for (std::list<_header_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
 				std::cout << "*" << std::endl;
 				std::cout << "KEY : " << it->_key << "$" << std::endl;
 				std::cout << "HASH : " << _hash(it->_key.c_str()) << "$" << std::endl;

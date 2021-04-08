@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 12:32:31 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/08 16:03:30 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,13 +22,91 @@
 # include <string>
 # include <vector>
 # include <list>
-# include <iostream>
 # include <stdexcept>
 # include <cstdlib>
+# include <iostream>
 
 class													Request {
 
 	public:
+
+		class											RequestLine {
+
+			public:
+
+				enum									_method_t {
+					GET,
+					HEAD,
+					POST,
+					PUT,
+					DELETE,
+					CONNECT,
+					OPTIONS,
+					TRACE,
+					DEFAULT
+				};
+
+														RequestLine(void);
+														RequestLine(const RequestLine &x);
+				RequestLine								&operator=(const RequestLine &x);
+														~RequestLine(void);
+
+				_method_t								get_method(void) const;
+				const std::string						&get_request_target(void) const;
+				const std::string						&get_http_version(void) const;
+
+				void									set_method(const std::string &method_str);
+				void									set_request_target(const std::string &request_target);
+				void									set_http_version(const std::string &http_version);
+
+				void									reset(void);
+				void									render(void) const;
+
+			private:
+
+				struct									_method_tab_entry_t {
+					_method_t							_method;
+					std::string							_str;
+					size_t								_length;
+				};
+
+				static const _method_tab_entry_t		_method_tab[];
+
+				_method_t								_method;
+				std::string								_request_target;
+				std::string								_http_version;
+
+		};
+
+		class											Headers {
+
+			public:
+
+				struct									_header_t {
+					std::string							_key;
+					std::string							_value;
+				};
+
+														Headers(void);
+														Headers(const Headers &x);
+														~Headers(void);
+				Headers									&operator=(const Headers &x);
+
+				void									push(const std::string &header_name, const std::string &header_value);
+				bool									key_exists(const std::string &key) const;
+				std::string								&at(const std::string &key);
+				const std::string						&at(const std::string &key) const;
+				void									reset(void);
+				void									render(void) const;
+
+			private:
+
+				static const size_t						_headers_tab_size;
+				std::vector<std::list<_header_t>*>		_tab;
+
+				unsigned long							_hash(const char *buf) const;
+
+		};
 
 														Request(void);
 		explicit										Request(int socket);
@@ -36,9 +114,13 @@ class													Request {
 														~Request(void);
 		Request											&operator=(const Request &x);
 
+		const RequestLine								&get_request_line(void) const;
+		const Headers									&get_headers(void) const;
+		const std::string								&get_body(void) const;
+
+		int												append(const std::string &data);
 		void											reset(void);
 		void											render(void) const;
-		int												append(const std::string &data);
 
 	private:
 
@@ -49,67 +131,6 @@ class													Request {
 			HEADERS_RECEIVED,
 			BODY_RECEIVED,
 			REQUEST_RECEIVED
-		};
-
-		struct											_request_line_t {
-
-			enum										_method_t {
-				GET,
-				HEAD,
-				POST,
-				PUT,
-				DELETE,
-				CONNECT,
-				OPTIONS,
-				TRACE,
-				DEFAULT
-			};
-
-			struct										_method_entry_t {
-				_method_t								_method;
-				std::string								_str;
-				size_t									_length;
-			};
-
-														_request_line_t(void);
-														_request_line_t(const _request_line_t &x);
-			_request_line_t								&operator=(const _request_line_t &x);
-
-			void										_reset(void);
-			void										_render(void) const;
-
-			static const _method_entry_t				_method_tab[];
-
-			_method_t									_method;
-			std::string									_request_target;
-			std::string									_http_version;
-
-		};
-
-		struct											_headers_t {
-
-			struct										_header_entry_t {
-				std::string								_key;
-				std::string								_value;
-			};
-
-														_headers_t(void);
-														_headers_t(const _headers_t &x);
-														~_headers_t(void);
-			_headers_t									&operator=(const _headers_t &x);
-
-			void										_reset(void);
-			bool										_key_exists(const std::string &key) const;
-			std::string									&_at(const std::string &key);
-			const std::string							&_at(const std::string &key) const;
-			void										_push(const std::string &header_name, const std::string &header_value);
-			unsigned long								_hash(const char *buf) const;
-			void										_render(void) const;
-
-			static const size_t							_headers_tab_size;
-
-			std::vector<std::list<_header_entry_t>*>	_tab;
-
 		};
 
 		static const size_t								_limit_request_line_size;
