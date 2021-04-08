@@ -6,11 +6,12 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/02 15:32:15 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/02 15:32:18 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/06 20:07:01 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include "Request.hpp"
 
 Server::Server() : _config(NULL), _server_sd(0), _reuse_addr(1),
 	_addr_len(sizeof(struct sockaddr_in)) {
