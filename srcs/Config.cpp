@@ -130,7 +130,7 @@ void Config::addLocation(const Location &location) {
 	_locations.push_back(location);
 }
 
-std::list<const Config*> Config::getConfigs(const std::vector<Config>& configs, const Config* default_config) {
+std::list<const Config*> Config::buildConfigsList(const std::vector<Config>& configs, const Config* default_config) {
 	std::list<const Config*> config_list;
 
 	for(std::vector<Config>::const_iterator it = configs.begin(); it != configs.end(); it++) {

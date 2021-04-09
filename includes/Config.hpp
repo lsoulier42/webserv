@@ -42,7 +42,7 @@ class Config : public AConfig {
 
 		void showConfig() const;
 
-		static std::list<const Config*> getConfigs(const std::vector<Config>& configs, const Config* default_config);
+		static std::list<const Config*> buildConfigsList(const std::vector<Config>& configs, const Config* default_config);
 
 	private:
 		std::list<std::string> _server_name;

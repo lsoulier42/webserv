@@ -31,7 +31,7 @@ enum instruction_t {
 	SERVER_NAME,
 	ERROR_PAGE,
 	CLIENT_MAX_BODY_SIZE,
-	LOCATION,
+	LOCATION_INSTRUCTION,
 	METHODS,
 	ROOT,
 	AUTOINDEX,
@@ -86,29 +86,57 @@ enum status_code_t {
 	TOTAL_STATUS_CODE
 };
 
+enum header_names_t {
+	ACCEPT_CHARSETS,
+	ACCEPT_LANGUAGE,
+	ALLOW,
+	AUTHORIZATION,
+	CONTENT_LANGUAGE,
+	CONTENT_LENGTH,
+	CONTENT_LOCATION,
+	CONTENT_TYPE,
+	DATE,
+	HOST,
+	LAST_MODIFIED,
+	LOCATION,
+	REFERER,
+	RETRY_AFTER,
+	SERVER,
+	TRANSFER_ENCODING,
+	USER_AGENT,
+	WWW_AUTHENTICATE,
+	TOTAL_HEADER_NAMES
+};
+
 class Syntax {
 	public:
 		Syntax();
 		~Syntax();
 
 		struct method_tab_entry_t {
-			method_t		method;
-			std::string		str;
+			method_t		method_index;
+			std::string		name;
 		};
-		struct instructions_tab_entry_t {
-			instruction_t	instruction;
-			std::string 	str;
+		struct instruction_tab_entry_t {
+			instruction_t	instruction_index;
+			std::string 	name;
 		};
 		struct status_code_tab_entry_t {
-			status_code_t	index;
+			status_code_t	code_index;
 			size_t 			code;
-			std::string		str;
+			std::string		reason_phrase;
+		};
+
+		struct header_tab_entry_t {
+			header_names_t	header_index;
+			std::string		name;
 		};
 
 		static const method_tab_entry_t	method_tab[];
-		static const instructions_tab_entry_t server_instructions_tab[];
-		static const instructions_tab_entry_t location_instructions_tab[];
+		static const instruction_tab_entry_t server_instructions_tab[];
+		static const instruction_tab_entry_t location_instructions_tab[];
 		static const status_code_tab_entry_t status_codes_tab[];
+		static const header_tab_entry_t headers_tab[];
 
 		static bool is_informational_code(int code);
 		static bool is_successful_code(int code);
@@ -116,7 +144,8 @@ class Syntax {
 		static bool is_client_error_code(int code);
 		static bool is_server_error_code(int code);
 		static bool is_error_code(int code);
-		static int method_index(const std::string& method);
+		static int fetch_method_index(const std::string& method);
+		static bool is_implemented_header(const std::string& header_name);
 
 	private:
 		Syntax(const Syntax& src);
