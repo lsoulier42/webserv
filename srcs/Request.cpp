@@ -6,56 +6,38 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 21:57:07 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 13:50:22 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
 
-//TODO:: implementer le controle du risque d'overflow
-const size_t	Request::_limit_request_line_size(8000);
-const size_t	Request::_limit_header_size(8000);
-const size_t	Request::_limit_headers_size(8000);
-
 Request::Request(void) :
+	AHTTPMessage(),
 	_status(START),
 	_str(),
-	_request_line(),
-	_headers(),
-	_body() {}
+	_request_line() {}
 
 Request::Request(const Request &x) :
+	AHTTPMessage(x),
 	_status(x._status),
 	_str(x._str),
-	_request_line(x._request_line),
-	_headers(x._headers),
-	_body(x._body) {}
+	_request_line(x._request_line) {}
 
 Request::~Request(void) {}
 
 Request
 &Request::operator=(const Request &x) {
+	AHTTPMessage::operator=(x);
 	_status = x._status;
 	_str = x._str;
 	_request_line = x._request_line;
-	_headers = x._headers;
-	_body = x._body;
 	return (*this);
 }
 
 const Request::RequestLine
 &Request::get_request_line(void) const {
 	return (_request_line);
-}
-
-const Request::Headers
-&Request::get_headers(void) const {
-	return (_headers);
-}
-
-const std::string
-&Request::get_body(void) const {
-	return (_body);
 }
 
 size_t
@@ -77,10 +59,9 @@ Request::append(const std::string &data) {
 
 void
 Request::reset(void) {
+	AHTTPMessage::reset();
 	_status = START;
 	_request_line.reset();
-	_headers.reset();
-	_body.clear();
 }
 
 void
@@ -88,9 +69,9 @@ Request::render(void) const {
 	std::cout << "---REQUEST LINE---" << std::endl;
 	_request_line.render();
 	std::cout << std::endl << "---HEADERS---" << std::endl;
-	_headers.render();
+	get_headers().render();
 	std::cout << std::endl << "---BODY---" << std::endl;
-	std::cout << _body << "$" << std::endl << std::endl;
+	std::cout << get_body() << "$" << std::endl << std::endl;
 }
 
 bool
@@ -114,20 +95,20 @@ Request::_headers_received(void) const {
 //TODO:: ameliorer : chunked devrait etre le dernier element de Transfer-Encoding
 bool
 Request::_body_expected(void) const {
-	return ((_headers.key_exists("Transfer-Encoding")
-				&& (_headers.get_value("Transfer-Encoding")).find("chunked") != std::string::npos)
-			|| _headers.key_exists("Content-Length"));
+	return ((get_headers().key_exists("Transfer-Encoding")
+				&& (get_headers().get_value("Transfer-Encoding")).find("chunked") != std::string::npos)
+			|| get_headers().key_exists("Content-Length"));
 }
 
 //TODO:: ameliorer : chunked devrait etre le dernier element de Transfer-Encoding
 bool
 Request::_body_received(void) const {
 	return (_status == HEADERS_RECEIVED
-			&& ((_headers.key_exists("Transfer-Encoding")
-						&& _headers.get_value("Transfer-Encoding").find("chunked") != std::string::npos
+			&& ((get_headers().key_exists("Transfer-Encoding")
+						&& get_headers().get_value("Transfer-Encoding").find("chunked") != std::string::npos
 						&& _str.find("0\r\n\r\n") != std::string::npos)
-				|| (_headers.key_exists("Content-Length")
-						&& _str.size() >= static_cast<unsigned long>(std::atol(_headers.get_value("Content-Length").c_str())))));
+				|| (get_headers().key_exists("Content-Length")
+						&& _str.size() >= static_cast<unsigned long>(std::atol(get_headers().get_value("Content-Length").c_str())))));
 }
 
 //TODO:: tout
@@ -239,7 +220,7 @@ Request::_collect_header(void) {
 	if (std::string::npos != (col = _str.find_first_of(":"))) {
 		std::string	header_name(_str.substr(0, col));
 		std::string	header_value(_str.substr(col + 1, (end_header - col - 1)));
-		_headers.insert(header_name, header_value);
+		get_headers().insert(header_name, header_value);
 	}
 	_str.erase(0, end_header + 2);
 	if (_header_received() || _headers_received())
@@ -251,7 +232,7 @@ Request::_collect_header(void) {
 int
 Request::_check_headers(void) {
 	_str.erase(0, _str.find("\r\n") + 2);
-	if (!_headers.key_exists("Host"))
+	if (!get_headers().key_exists("Host"))
 		return (BAD_REQUEST);
 	if (_status == REQUEST_RECEIVED)
 		return (RECEIVED);
@@ -265,12 +246,12 @@ Request::_check_headers(void) {
 int
 Request::_collect_body(void) {
 	size_t	body_length(0);
-	if (_headers.key_exists("Transfer-Encoding")
-			&& _headers.get_value("Transfer-Encoding").find("chunked") != std::string::npos) {
+	if (get_headers().key_exists("Transfer-Encoding")
+			&& get_headers().get_value("Transfer-Encoding").find("chunked") != std::string::npos) {
 		body_length = _str.find("0\r\n\r\n") + 5;
-	} else if (_headers.key_exists("Content-Length"))
-		body_length = static_cast<unsigned long>(std::atol(_headers.get_value("Content-Length").c_str()));
-	_body = _str.substr(0, body_length);
+	} else if (get_headers().key_exists("Content-Length"))
+		body_length = static_cast<unsigned long>(std::atol(get_headers().get_value("Content-Length").c_str()));
+	set_body(_str.substr(0, body_length));
 	_str.erase(0, body_length);
 	if (_status == REQUEST_RECEIVED)
 		return (RECEIVED);
@@ -284,22 +265,22 @@ Request::_collect_body(void) {
  */
 
 Request::RequestLine::RequestLine(void) :
+	AStartLine(),
 	_method(DEFAULT_METHOD),
-	_request_target(),
-	_http_version() {}
+	_request_target() {}
 
 Request::RequestLine::RequestLine(const RequestLine &x) :
+	AStartLine(x),
 	_method(x._method),
-	_request_target(x._request_target),
-	_http_version(x._http_version) {}
+	_request_target(x._request_target) {}
 
 Request::RequestLine::~RequestLine(void) {}
 
 Request::RequestLine
 &Request::RequestLine::operator=(const RequestLine &x) {
+	AStartLine::operator=(x);
 	_method = x._method;
 	_request_target = x._request_target;
-	_http_version = x._http_version;
 	return (*this);
 }
 
@@ -311,11 +292,6 @@ Request::RequestLine::get_method(void) const {
 const std::string
 &Request::RequestLine::get_request_target(void) const {
 	return (_request_target);
-}
-
-const std::string
-&Request::RequestLine::get_http_version(void) const {
-	return (_http_version);
 }
 
 void
@@ -337,15 +313,10 @@ Request::RequestLine::set_request_target(const std::string &request_target) {
 }
 
 void
-Request::RequestLine::set_http_version(const std::string &http_version) {
-	_http_version = http_version;
-}
-
-void
 Request::RequestLine::reset(void) {
+	AStartLine::reset();
 	_method = DEFAULT_METHOD;
 	_request_target.clear();
-	_http_version.clear();
 }
 
 void
@@ -359,117 +330,5 @@ Request::RequestLine::render(void) const {
 		i++;
 	}
 	std::cout << "REQUEST TARGET : " << _request_target << "$" << std::endl;
-	std::cout << "HTTP VERSION : " << _http_version << "$" << std::endl;
-}
-
-/*
- * HEADERS_T RELATED FUNCTIONS
- */
-
-const size_t	Request::Headers::_tab_size(30);
-
-Request::Headers::Headers(void) :
-	_tab(_tab_size) {}
-
-Request::Headers::Headers(const Headers &x) :
-	_tab(_tab_size) {
-	for (size_t i(0) ; i < _tab_size ; i++)
-		if (x._tab[i])
-			_tab[i] = new std::list<header_t>(*(x._tab[i]));
-}
-
-Request::Headers::~Headers(void) {
-	reset();
-}
-
-Request::Headers
-&Request::Headers::operator=(const Headers &x) {
-	for (size_t i(0) ; i < _tab_size ; i++) {
-		if (_tab[i]) {
-			delete _tab[i];
-			_tab[i] = 0;
-		}
-		if (x._tab[i])
-			_tab[i] = new std::list<header_t>(*(x._tab[i]));
-	}
-	return (*this);
-}
-
-void
-Request::Headers::reset(void) {
-	for (size_t i(0) ; i < _tab_size ; i++)
-		if (_tab[i]) {
-			delete _tab[i];
-			_tab[i] = 0;
-		}
-}
-
-void
-Request::Headers::render(void) const {
-	for (size_t i(0) ; i < _tab_size ; i++) {
-		if (_tab[i]) {
-			for (std::list<header_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
-				std::cout << "*" << std::endl;
-				std::cout << "KEY : " << it->key << "$" << std::endl;
-				std::cout << "HASH : " << _hash(it->key.c_str()) << "$" << std::endl;
-				std::cout << "VALUE : " << it->value << "$" << std::endl;
-				std::cout << "*" << std::endl;
-			}
-		}
-	}
-}
-
-//TODO:: gerer l'insertion d'un header dont la cle est deja presente
-void
-Request::Headers::insert(const std::string &header_name, const std::string &header_value) {
-	header_t	new_entry;
-	new_entry.key = header_name;
-	new_entry.value = header_value;
-	unsigned long	index(_hash(header_name.c_str()));
-	if (!_tab[index])
-		_tab[index] = new std::list<header_t>;
-	(_tab[index])->push_front(new_entry);
-}
-
-bool
-Request::Headers::key_exists(const std::string &key) const {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
-	if (!entry_list)
-		return (false);
-	for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-		if (it->key == key)
-			return (true);
-	return (false);
-}
-
-std::string
-&Request::Headers::get_value(const std::string &key) throw(std::invalid_argument) {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
-	if (entry_list) {
-		for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-			if (it->key == key)
-				return (it->value);
-	}
-	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
-}
-
-const std::string
-&Request::Headers::get_value(const std::string &key) const throw(std::invalid_argument) {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
-	if (entry_list) {
-		for (std::list<header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-			if (it->key == key)
-				return (it->value);
-	}
-	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
-}
-
-unsigned long
-Request::Headers::_hash(const char *buffer) const {
-	unsigned long	hash(5381);
-	char			c;
-	size_t			i(0);
-	while ((c = buffer[i++]))
-		hash = ((hash << 5) + hash) + c;
-	return (hash % _tab_size);
+	std::cout << "HTTP VERSION : " << get_http_version() << "$" << std::endl;
 }

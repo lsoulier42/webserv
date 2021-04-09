@@ -1,10 +1,10 @@
 NAME = webserv
 
-SRCS_FILES = main.cpp Server.cpp WebServer.cpp AConfig.cpp Config.cpp Location.cpp \
+SRCS_FILES = main.cpp Server.cpp WebServer.cpp AConfig.cpp Config.cpp Location.cpp AHTTPMessage.cpp \
 	config_parsing/check_bloc.cpp config_parsing/errors.cpp config_parsing/instructions.cpp \
 	config_parsing/utils.cpp Client.cpp Request.cpp
 HEADER_FILES = Server.hpp WebServer.hpp Client.hpp Request.hpp parsing.hpp AConfig.hpp \
-	Config.hpp Location.hpp
+	Config.hpp Location.hpp AHTTPMessage.hpp
 
 SRCS_DIR = ./srcs/
 SRCS_SUB_DIR = config_parsing/

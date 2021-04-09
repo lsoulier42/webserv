@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 21:49:06 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/09 18:55:19 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,12 +24,13 @@
 # include <cstdlib>
 # include <iostream>
 # include "parsing.hpp"
+# include "AHTTPMessage.hpp"
 
-class													Request {
+class													Request : public AHTTPMessage {
 
 	public:
 
-		class											RequestLine {
+		class											RequestLine : public AHTTPMessage::AStartLine {
 
 			public:
 														RequestLine(void);
@@ -39,49 +40,17 @@ class													Request {
 
 				method_t								get_method(void) const;
 				const std::string						&get_request_target(void) const;
-				const std::string						&get_http_version(void) const;
 
 				void									set_method(const std::string &method_str);
 				void									set_request_target(const std::string &request_target);
-				void									set_http_version(const std::string &http_version);
 
 				void									reset(void);
 				void									render(void) const;
 
 			private:
+
 				method_t								_method;
 				std::string								_request_target;
-				std::string								_http_version;
-
-		};
-
-		class											Headers {
-
-			public:
-
-				struct									header_t {
-					std::string							key;
-					std::string							value;
-				};
-
-														Headers(void);
-														Headers(const Headers &x);
-														~Headers(void);
-				Headers									&operator=(const Headers &x);
-
-				void									insert(const std::string &header_name, const std::string &header_value);
-				bool									key_exists(const std::string &key) const;
-				std::string								&get_value(const std::string &key) throw (std::invalid_argument);
-				const std::string						&get_value(const std::string &key) const throw (std::invalid_argument);
-				void									reset(void);
-				void									render(void) const;
-
-			private:
-
-				static const size_t						_tab_size;
-				std::vector<std::list<header_t>*>		_tab;
-
-				unsigned long							_hash(const char *buf) const;
 
 		};
 
@@ -92,10 +61,8 @@ class													Request {
 		Request											&operator=(const Request &x);
 
 		const RequestLine								&get_request_line(void) const;
-		const Headers									&get_headers(void) const;
-		const std::string								&get_body(void) const;
-
 		size_t											get_limit_body_size() const;
+
 		void 											set_limit_body_size(size_t size);
 
 		int												append(const std::string &data);
@@ -112,15 +79,10 @@ class													Request {
 			REQUEST_RECEIVED
 		};
 
-		static const size_t								_limit_request_line_size;
-		static const size_t								_limit_header_size;
-		static const size_t								_limit_headers_size;
-
 		_request_status_t								_status;
 		std::string										_str;
+		size_t											_limit_body_size;
 		RequestLine										_request_line;
-		Headers											_headers;
-		std::string										_body;
 
 		bool											_request_line_received(void) const;
 		bool											_header_received(void) const;
@@ -139,7 +101,6 @@ class													Request {
 		int												_collect_header(void);
 		int												_check_headers(void);
 		int												_collect_body(void);
-		size_t											_limit_body_size;
 		//TODO : link to client_max_body_size config value
 };
 
