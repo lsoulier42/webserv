@@ -37,6 +37,8 @@ class													Client {
 		void											set_addr(const struct sockaddr& addr);
 		socklen_t										get_socket_len(void) const;
 		void											set_socket_len(const socklen_t& socket_len);
+		std::list<const Config*>						get_configs() const;
+		void 											set_configs(const std::list<const Config*>& configs);
 
 		int												read_socket(void);
 
@@ -47,6 +49,7 @@ class													Client {
 		const int										_sd;
 		struct sockaddr									_addr;
 		socklen_t 										_socket_len;
+		std::list<const Config*>						_configs;
 		Request											_request;
 
 		int												_process(int status);

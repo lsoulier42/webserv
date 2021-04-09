@@ -12,6 +12,7 @@
 
 #ifndef CONFIG_HPP
 # define CONFIG_HPP
+# include <vector>
 # include "AConfig.hpp"
 # include "Location.hpp"
 
@@ -40,6 +41,8 @@ class Config : public AConfig {
 		void addLocation(const Location& location);
 
 		void showConfig() const;
+
+		static std::list<const Config*> getConfigs(const std::vector<Config>& configs, const Config* default_config);
 
 	private:
 		std::list<std::string> _server_name;

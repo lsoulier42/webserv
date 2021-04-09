@@ -225,7 +225,7 @@ Request::_collect_request_line_elements(void) {
 	_request_line.set_request_target(_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
 	_request_line.set_http_version(_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
 	_str.erase(0, end_rl + 2);
-	if (DEFAULT == _request_line.get_method())
+	if (DEFAULT_METHOD == _request_line.get_method())
 		return (NOT_IMPLEMENTED);
 	if (_header_received() || _headers_received())
 		return (CONTINUE_PARSING);
@@ -284,7 +284,7 @@ Request::_collect_body(void) {
  */
 
 Request::RequestLine::RequestLine(void) :
-	_method(DEFAULT),
+	_method(DEFAULT_METHOD),
 	_request_target(),
 	_http_version() {}
 
@@ -321,14 +321,14 @@ const std::string
 void
 Request::RequestLine::set_method(const std::string &method_str) {
 	size_t	i(0);
-	while (method_tab[i].length) {
-		if (method_tab[i].str == method_str) {
-			_method = method_tab[i].method;
+	while (i < DEFAULT_METHOD) {
+		if (Syntax::method_tab[i].str == method_str) {
+			_method = Syntax::method_tab[i].method;
 			return ;
 		}
 		i++;
 	}
-	_method = DEFAULT;
+	_method = DEFAULT_METHOD;
 }
 
 void
@@ -343,7 +343,7 @@ Request::RequestLine::set_http_version(const std::string &http_version) {
 
 void
 Request::RequestLine::reset(void) {
-	_method = DEFAULT;
+	_method = DEFAULT_METHOD;
 	_request_target.clear();
 	_http_version.clear();
 }
@@ -351,9 +351,9 @@ Request::RequestLine::reset(void) {
 void
 Request::RequestLine::render(void) const {
 	size_t	i(0);
-	while (method_tab[i].length) {
-		if (method_tab[i].method == _method) {
-			std::cout << "METHOD : " << method_tab[i].str << std::endl;
+	while (i < DEFAULT_METHOD) {
+		if (Syntax::method_tab[i].method == _method) {
+			std::cout << "METHOD : " << Syntax::method_tab[i].str << std::endl;
 			break ;
 		}
 		i++;

@@ -12,51 +12,6 @@
 
 #include "parsing.hpp"
 
-const method_tab_entry_t	method_tab[] =
-		{
-				{GET, "GET", 3},
-				{HEAD, "HEAD", 4},
-				{POST, "POST", 4},
-				{PUT, "PUT", 3},
-				{DELETE, "DELETE", 6},
-				{CONNECT, "CONNECT", 7},
-				{OPTIONS, "OPTIONS", 7},
-				{TRACE, "TRACE", 5},
-				{DEFAULT, "", 0}
-		};
-
-int method_index(const std::string& method) {
-	for(int i = 0; i < DEFAULT; i++) {
-		if (method == method_tab[i].str)
-			return i;
-	}
-	return -1;
-}
-
-bool is_informational_code(int code) {
-	return code == 100 || code == 101;
-}
-
-bool is_successful_code(int code) {
-	return code >= 200 && code <= 206;
-}
-
-bool is_redirection_code(int code) {
-	return (code >= 300 && code <= 305) || code == 307;
-}
-
-bool is_client_error_code(int code) {
-	return (code >= 400 && code <= 417) || code == 426;
-}
-
-bool is_server_error_code(int code) {
-	return code >= 500 && code <= 505;
-}
-
-bool is_error_code(int code) {
-	return is_server_error_code(code) || is_client_error_code(code);
-}
-
 int mandatory_instruction_not_found(const std::string& instruction) {
 	std::cerr << "`" << instruction <<"' instruction not found in server bloc." << std::endl;
 	return 0;

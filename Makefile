@@ -1,11 +1,11 @@
 NAME= webserv
 SRCS= main.cpp Server.cpp WebServer.cpp AConfig.cpp Config.cpp Location.cpp \
 	config_parsing/check_bloc.cpp config_parsing/errors.cpp config_parsing/instructions.cpp \
-	config_parsing/utils.cpp Client.cpp Request.cpp
+	config_parsing/utils.cpp Client.cpp Request.cpp Syntax.cpp
 SRC_DIR = srcs/
 HEADER_DIR = includes/
 HEADER_FILES = Server.hpp WebServer.hpp Client.hpp Request.hpp parsing.hpp AConfig.hpp \
-	Config.hpp Location.hpp
+	Config.hpp Location.hpp Syntax.hpp
 HEADERS = $(addprefix $(HEADER_DIR), $(HEADER_FILES))
 OBJS= $(addprefix $(SRC_DIR), $(SRCS:.cpp=.o))
 CC= clang++

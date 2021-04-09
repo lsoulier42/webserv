@@ -59,6 +59,16 @@ Client::set_socket_len(const socklen_t& socket_len) {
 	_socket_len = socket_len;
 }
 
+std::list<const Config*>
+Client::get_configs() const {
+	return _configs;
+}
+
+void
+Client::set_configs(const std::list<const Config*>& configs) {
+	_configs = configs;
+}
+
 int
 Client::read_socket(void) {
 	char	buffer[_buffer_size + 1];

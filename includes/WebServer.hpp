@@ -70,7 +70,6 @@ class WebServer {
 		std::vector<Config> _configs;
 		int _max_connection;
 		std::vector<Client> _clients;
-    std::map<int, const Config*> _config_assoc;
 		fd_set _sockets_list;
 		int _highest_socket;
 		bool _exit;

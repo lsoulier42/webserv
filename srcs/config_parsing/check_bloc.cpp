@@ -68,9 +68,6 @@ int check_server_bloc(std::ifstream& config_file, std::vector<Config>& configs) 
 	Config new_config;
 	bool closing_bracket = false;
 	bool instructions_complete[TOTAL_SERVER_INSTRUCTIONS] = {false};
-	std::string instructions[TOTAL_SERVER_INSTRUCTIONS] = {"listen", "server_name",
-	   "error_page", "client_max_body_size", "location", "methods",
-	   "root", "autoindex", "index", "upload_dir", "cgi"};
 	int (*instructions_functions[TOTAL_SERVER_INSTRUCTIONS])(const std::vector<std::string>&,
 		Config&) = { &parse_listen, &parse_server_name, &parse_error_page,
 		&parse_client_max_body_size, NULL, &parse_methods_config,
@@ -91,11 +88,11 @@ int check_server_bloc(std::ifstream& config_file, std::vector<Config>& configs) 
 			break;
 		}
 		for(int i = 0; i < TOTAL_SERVER_INSTRUCTIONS; i++) {
-			if (instructions[i] == tokens[0]) {
+			if (Syntax::server_instructions_tab[i].str == tokens[0]) {
 				if (instructions_complete[i] && i != LOCATION)
-					return (multiple_instructions_found(instructions[i]));
+					return (multiple_instructions_found(Syntax::server_instructions_tab[i].str));
 				if (i != LOCATION && !trim_semicolon(tokens))
-					return semicolon_not_found(instructions[i]);
+					return semicolon_not_found(Syntax::server_instructions_tab[i].str);
 				if ((i != LOCATION && !(*instructions_functions[i])(tokens, new_config))
 					|| (i == LOCATION && !check_location_bloc(config_file, tokens, new_config)))
 					return 0;
@@ -123,8 +120,6 @@ int check_location_bloc(std::ifstream& config_file, const std::vector<std::strin
 	Location new_location;
 	bool closing_bracket = false;
 	bool instructions_complete[TOTAL_LOCATION_INSTRUCTIONS] = {false};
-	std::string instructions[TOTAL_LOCATION_INSTRUCTIONS] = {"methods",
-		"root", "autoindex", "index", "cgi"};
 	int (*instructions_functions[TOTAL_LOCATION_INSTRUCTIONS])(const std::vector<std::string>&,
 		Location&) = { &parse_methods_location, &parse_root_location,
 		&parse_autoindex_location, &parse_index_location, &parse_cgi_location};
@@ -152,11 +147,11 @@ int check_location_bloc(std::ifstream& config_file, const std::vector<std::strin
 			break;
 		}
 		for(int i = 0; i < TOTAL_LOCATION_INSTRUCTIONS; i++) {
-			if (instructions[i] == location_tokens[0]) {
+			if (Syntax::location_instructions_tab[i].str == location_tokens[0]) {
 				if (instructions_complete[i])
-					return (multiple_instructions_found(instructions[i]));
+					return (multiple_instructions_found(Syntax::location_instructions_tab[i].str));
 				if (!trim_semicolon(location_tokens))
-					return semicolon_not_found(instructions[i]);
+					return semicolon_not_found(Syntax::location_instructions_tab[i].str);
 				if (!(*instructions_functions[i])(location_tokens, new_location))
 					return 0;
 				instructions_complete[i] = true;
