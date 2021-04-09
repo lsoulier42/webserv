@@ -69,13 +69,13 @@ const Syntax::status_code_tab_entry_t Syntax::status_codes_tab[] =
 	{HTTP_VERSION_NOT_SUPPORTED, 505, "HTTP Version Not Supported"}
 };
 
-const Syntax::instructions_tab_entry_t Syntax::server_instructions_tab[] =
+const Syntax::instruction_tab_entry_t Syntax::server_instructions_tab[] =
 {
 	{LISTEN, "listen"},
 	{SERVER_NAME, "server_name"},
 	{ERROR_PAGE, "error_page"},
 	{CLIENT_MAX_BODY_SIZE, "client_max_body_size"},
-	{LOCATION, "location"},
+	{LOCATION_INSTRUCTION, "location"},
 	{METHODS, "methods"},
 	{ROOT, "root"},
 	{AUTOINDEX, "autoindex"},
@@ -84,13 +84,35 @@ const Syntax::instructions_tab_entry_t Syntax::server_instructions_tab[] =
 	{CGI, "cgi"}
 };
 
-const Syntax::instructions_tab_entry_t Syntax::location_instructions_tab[] =
+const Syntax::instruction_tab_entry_t Syntax::location_instructions_tab[] =
 {
 	server_instructions_tab[METHODS],
 	server_instructions_tab[ROOT],
 	server_instructions_tab[AUTOINDEX],
 	server_instructions_tab[INDEX],
 	server_instructions_tab[CGI]
+};
+
+const Syntax::header_tab_entry_t Syntax::headers_tab[] =
+{
+	{ACCEPT_CHARSETS, "Accept-Charsets"},
+	{ACCEPT_LANGUAGE, "Accept-Language"},
+	{ALLOW, "Allow"},
+	{AUTHORIZATION, "Authorization"},
+	{CONTENT_LANGUAGE, "Content-Language"},
+	{CONTENT_LENGTH, "Content-Length"},
+	{CONTENT_LOCATION, "Content-Location"},
+	{CONTENT_TYPE, "Content-Type"},
+	{DATE, "Date"},
+	{HOST, "Host"},
+	{LAST_MODIFIED, "Last-Modified"},
+	{LOCATION, "Location"},
+	{REFERER, "Referer"},
+	{RETRY_AFTER, "Retry-After"},
+	{SERVER, "Server"},
+	{TRANSFER_ENCODING, "Transfer-Encoding"},
+	{USER_AGENT, "User-Agent"},
+	{WWW_AUTHENTICATE, "WWW-Authenticate"}
 };
 
 bool Syntax::is_informational_code(int code) {
@@ -117,10 +139,18 @@ bool Syntax::is_error_code(int code) {
 	return is_server_error_code(code) || is_client_error_code(code);
 }
 
-int Syntax::method_index(const std::string& method) {
+int Syntax::fetch_method_index(const std::string& method) {
 	for(int i = 0; i < DEFAULT_METHOD; i++) {
-		if (method == Syntax::method_tab[i].str)
+		if (method == Syntax::method_tab[i].name)
 			return i;
 	}
 	return -1;
+}
+
+bool Syntax::is_implemented_header(const std::string &header_name) {
+	for(int i = 0; i < TOTAL_HEADER_NAMES; i++) {
+		if (header_name == Syntax::headers_tab[i].name)
+			return true;
+	}
+	return false;
 }

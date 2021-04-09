@@ -88,13 +88,13 @@ int check_server_bloc(std::ifstream& config_file, std::vector<Config>& configs) 
 			break;
 		}
 		for(int i = 0; i < TOTAL_SERVER_INSTRUCTIONS; i++) {
-			if (Syntax::server_instructions_tab[i].str == tokens[0]) {
-				if (instructions_complete[i] && i != LOCATION)
-					return (multiple_instructions_found(Syntax::server_instructions_tab[i].str));
-				if (i != LOCATION && !trim_semicolon(tokens))
-					return semicolon_not_found(Syntax::server_instructions_tab[i].str);
-				if ((i != LOCATION && !(*instructions_functions[i])(tokens, new_config))
-					|| (i == LOCATION && !check_location_bloc(config_file, tokens, new_config)))
+			if (Syntax::server_instructions_tab[i].name == tokens[0]) {
+				if (instructions_complete[i] && i != LOCATION_INSTRUCTION)
+					return (multiple_instructions_found(Syntax::server_instructions_tab[i].name));
+				if (i != LOCATION_INSTRUCTION && !trim_semicolon(tokens))
+					return semicolon_not_found(Syntax::server_instructions_tab[i].name);
+				if ((i != LOCATION_INSTRUCTION && !(*instructions_functions[i])(tokens, new_config))
+					|| (i == LOCATION_INSTRUCTION && !check_location_bloc(config_file, tokens, new_config)))
 					return 0;
 				instructions_complete[i] = true;
 				break;
@@ -147,11 +147,11 @@ int check_location_bloc(std::ifstream& config_file, const std::vector<std::strin
 			break;
 		}
 		for(int i = 0; i < TOTAL_LOCATION_INSTRUCTIONS; i++) {
-			if (Syntax::location_instructions_tab[i].str == location_tokens[0]) {
+			if (Syntax::location_instructions_tab[i].name == location_tokens[0]) {
 				if (instructions_complete[i])
-					return (multiple_instructions_found(Syntax::location_instructions_tab[i].str));
+					return (multiple_instructions_found(Syntax::location_instructions_tab[i].name));
 				if (!trim_semicolon(location_tokens))
-					return semicolon_not_found(Syntax::location_instructions_tab[i].str);
+					return semicolon_not_found(Syntax::location_instructions_tab[i].name);
 				if (!(*instructions_functions[i])(location_tokens, new_location))
 					return 0;
 				instructions_complete[i] = true;

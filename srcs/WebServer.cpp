@@ -67,7 +67,7 @@ void WebServer::accept_connection(const Server& server) {
 		_clients.push_back(Client(connection));
 		_clients.back().set_addr(client_addr);
 		_clients.back().set_socket_len(client_socket_len);
-		_clients.back().set_configs(Config::getConfigs(_configs, server.getConfig()));
+		_clients.back().set_configs(Config::buildConfigsList(_configs, server.getConfig()));
 	}
 }
 

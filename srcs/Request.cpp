@@ -322,8 +322,8 @@ void
 Request::RequestLine::set_method(const std::string &method_str) {
 	size_t	i(0);
 	while (i < DEFAULT_METHOD) {
-		if (Syntax::method_tab[i].str == method_str) {
-			_method = Syntax::method_tab[i].method;
+		if (Syntax::method_tab[i].name == method_str) {
+			_method = Syntax::method_tab[i].method_index;
 			return ;
 		}
 		i++;
@@ -352,8 +352,8 @@ void
 Request::RequestLine::render(void) const {
 	size_t	i(0);
 	while (i < DEFAULT_METHOD) {
-		if (Syntax::method_tab[i].method == _method) {
-			std::cout << "METHOD : " << Syntax::method_tab[i].str << std::endl;
+		if (Syntax::method_tab[i].method_index == _method) {
+			std::cout << "METHOD : " << Syntax::method_tab[i].name << std::endl;
 			break ;
 		}
 		i++;

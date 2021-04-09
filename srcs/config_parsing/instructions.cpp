@@ -119,7 +119,7 @@ int parse_methods(const std::vector<std::string>& tokens, AConfig& config) {
 	if (tokens.size() < 2)
 		return (instruction_need_at_least(1, tokens[0], usage));
 	for (std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
-		method_idx = Syntax::method_index(*it);
+		method_idx = Syntax::fetch_method_index(*it);
 		if (method_idx == -1) {
 			std::cerr << "Argument `" << *it << "' is not a valid method." << std::endl;
 			std::cerr << usage << std::endl;
