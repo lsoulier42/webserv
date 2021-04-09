@@ -58,6 +58,7 @@ const Syntax::status_code_tab_entry_t Syntax::status_codes_tab[] =
 	{PAYLOAD_TOO_LARGE, 413, "Payload Too Large"},
 	{URI_TOO_LONG, 414, "URI Too Long"},
 	{UNSUPPORTED_MEDIA_TYPE, 415, "Unsupported Media Type"},
+	{RANGE_NOT_SATISFIABLE, 416, "Range Not Satisfiable"},
 	{EXPECTATION_FAILED, 417, "Expectation Failed"},
 	{UPGRADE_REQUIRED, 426, "Upgrade Required"},
 	{INTERNAL_SERVER_ERROR, 500, "Internal Server Error"},
