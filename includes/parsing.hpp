@@ -21,99 +21,13 @@
 # include <fstream>
 
 # include "Config.hpp"
+# include "Syntax.hpp"
 
 # define TOTAL_LOCATION_INSTRUCTIONS 5
 
 enum t_bracket_type {
 	OPENING,
 	CLOSING
-};
-
-enum method_t {
-	GET,
-	HEAD,
-	POST,
-	PUT,
-	DELETE,
-	CONNECT,
-	OPTIONS,
-	TRACE,
-	DEFAULT
-};
-
-struct method_tab_entry_t {
-	method_t							method;
-	std::string							str;
-	size_t								length;
-};
-
-extern const method_tab_entry_t	method_tab[];
-
-enum t_server_instructions {
-	LISTEN,
-	SERVER_NAME,
-	ERROR_PAGE,
-	CLIENT_MAX_BODY_SIZE,
-	LOCATION,
-	METHODS,
-	ROOT,
-	AUTOINDEX,
-	INDEX,
-	UPLOAD_DIR,
-	CGI,
-	TOTAL_SERVER_INSTRUCTIONS
-};
-
-enum t_informational_codes {
-	CONTINUE = 100,
-	SWITCHING_PROTOCOLS
-};
-enum t_successful_codes {
-	OK = 200,
-	CREATED,
-	ACCEPTED,
-	NON_AUTHORITATIVE_INFORMATION,
-	NO_CONTENT,
-	RESET_CONTENT,
-	PARTIAL_CONTENT
-};
-enum t_redirection_codes {
-	MULTIPLE_CHOICES = 300,
-	MOVED_PERMANENTLY,
-	FOUND,
-	SEE_OTHER,
-	NOT_MODIFIED,
-	USE_PROXY,
-	TEMPORARY_REDIRECT = 307
-};
-enum t_client_error_codes {
-	BAD_REQUEST = 400,
-	UNAUTHORIZED,
-	PAYMENT_REQUIRED,
-	FORBIDDEN,
-	NOT_FOUND,
-	METHOD_NOT_ALLOWED,
-	NOT_ACCEPTABLE,
-	PROXY_AUTHENTICATION_REQUIRED,
-	REQUEST_TIMEOUT,
-	CONFLICT,
-	GONE,
-	LENGTH_REQUIRED,
-	PRECONDITION_FAILED,
-	PAYLOAD_TOO_LARGE,
-	URI_TOO_LONG,
-	UNSUPPORTED_MEDIA_TYPE,
-	RANGE_NOT_SATISFIABLE,
-	EXPECTATION_FAILED,
-	UPGRADE_REQUIRED = 426
-};
-enum t_server_error_codes {
-	INTERNAL_SERVER_ERROR = 500,
-	NOT_IMPLEMENTED,
-	BAD_GATEWAY,
-	SERVICE_UNAVAILABLE,
-	GATEWAY_TIMEOUT,
-	HTTP_VERSION_NOT_SUPPORTED
 };
 
 int 						check_config_file(const std::string &filepath, std::ifstream& config_file);
@@ -150,14 +64,6 @@ int							parse_upload_dir(const std::vector<std::string>&, Config&);
 int							parse_cgi(const std::vector<std::string>&, AConfig&);
 int							parse_cgi_config(const std::vector<std::string>&, Config&);
 int							parse_cgi_location(const std::vector<std::string>&, Location&);
-
-bool 						is_informational_code(int code);
-bool 						is_successful_code(int code);
-bool 						is_redirection_code(int code);
-bool 						is_client_error_code(int code);
-bool 						is_server_error_code(int code);
-bool 						is_error_code(int code);
-int 						method_index(const std::string&);
 
 int							check_path(const std::string &path, const std::string& instruction,
 										  const std::string& usage);

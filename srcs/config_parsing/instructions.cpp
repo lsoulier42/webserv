@@ -74,7 +74,7 @@ int parse_error_page(const std::vector<std::string>& tokens, Config& config) {
 			if (!is_num(it->c_str()))
 				return (argument_not_numerical(*it, tokens[0], usage));
 			error_code = std::strtol(it->c_str(), NULL, 10);
-			if (!is_error_code(error_code)) {
+			if (!Syntax::is_error_code(error_code)) {
 				std::cerr << "Argument `" << *it << "' is not a valid error code." <<std::endl;
 				std::cerr << usage << std::endl;
 				return 0;
@@ -112,14 +112,14 @@ int parse_client_max_body_size(const std::vector<std::string>& tokens, Config& c
 
 int parse_methods(const std::vector<std::string>& tokens, AConfig& config) {
 	std::list<std::string> methods;
-	bool methods_complete[DEFAULT] = {false};
+	bool methods_complete[DEFAULT_METHOD] = {false};
 	int method_idx;
 	std::string usage("Usage: 'methods GET and/or PUT and/or HEAD [...];'");
 
 	if (tokens.size() < 2)
 		return (instruction_need_at_least(1, tokens[0], usage));
 	for (std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
-		method_idx = method_index(*it);
+		method_idx = Syntax::method_index(*it);
 		if (method_idx == -1) {
 			std::cerr << "Argument `" << *it << "' is not a valid method." << std::endl;
 			std::cerr << usage << std::endl;

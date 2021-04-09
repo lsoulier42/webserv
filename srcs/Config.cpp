@@ -117,8 +117,8 @@ void Config::showConfig() const {
 	std::cout << "client_max_body_size: `" << _client_max_body_size << "'" << std::endl;
 	std::cout << "upload_dir: `" << _upload_dir << "'" << std::endl;
 	this->showCommonConfig();
-	for(std::list<Location>::const_iterator it = _locations.begin(); it != _locations.end(); it++)
-		it->showConfig();
+	for(std::list<Location>::const_iterator cit = _locations.begin(); cit != _locations.end(); cit++)
+		cit->showConfig();
 	std::cout << std::endl;
 }
 
@@ -128,4 +128,15 @@ std::list<Location> Config::getLocations() const {
 
 void Config::addLocation(const Location &location) {
 	_locations.push_back(location);
+}
+
+std::list<const Config*> Config::getConfigs(const std::vector<Config>& configs, const Config* default_config) {
+	std::list<const Config*> config_list;
+
+	for(std::vector<Config>::const_iterator it = configs.begin(); it != configs.end(); it++) {
+		if (default_config->getIpAddr() == it->getIpAddr()
+			&& default_config->getPort() == it->getPort())
+			config_list.push_back(it.operator->());
+	}
+	return config_list;
 }
