@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/09 18:55:19 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/09 20:23:07 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,8 +62,6 @@ class													Request : public AHTTPMessage {
 
 		const RequestLine								&get_request_line(void) const;
 		size_t											get_limit_body_size() const;
-
-		void 											set_limit_body_size(size_t size);
 
 		int												append(const std::string &data);
 		void											reset(void);
