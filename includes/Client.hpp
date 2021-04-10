@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 17:33:37 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 21:30:01 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,8 @@ class Client {
 
 	public:
 
+		typedef std::pair<Request, Response> > exchange_t;
+
 		Client(void);
 		explicit Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::list<const Config*> &configs);
 		Client(const Client &x);
@@ -33,9 +35,6 @@ class Client {
 		Client &operator=(const Client &x);
 
 		int get_sd(void) const;
-		//struct sockaddr get_addr(void) const;
-		//socklen_t get_socket_len(void) const;
-		//std::list<const Config*> get_configs() const;
 
 		int read_socket(void);
 
@@ -48,7 +47,8 @@ class Client {
 		const socklen_t _socket_len;
 		const std::list<const Config*> _configs;
 		std::string _str;
-		std::vector<Request> _requests;
+		std::vector<exchange_t> _exchanges;
+		bool _closing;
 
 		int _process(int status);
 		bool _request_line_received(void) const;
