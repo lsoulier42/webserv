@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 13:51:17 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 16:23:08 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,14 +15,12 @@
 Request::Request(void) :
 	AHTTPMessage(),
 	_status(START),
-	_str(),
 	_limit_body_size(),
 	_request_line() {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
 	_status(x._status),
-	_str(x._str),
 	_limit_body_size(x._limit_body_size),
 	_request_line(x._request_line) {}
 
@@ -32,10 +30,24 @@ Request
 &Request::operator=(const Request &x) {
 	AHTTPMessage::operator=(x);
 	_status = x._status;
-	_str = x._str;
 	_limit_body_size = x._limit_body_size;
 	_request_line = x._request_line;
 	return (*this);
+}
+
+Request::request_status_t
+Request::get_status(void) const {
+	return (_status);
+}
+
+size_t
+Request::get_limit_body_size() const {
+	return _limit_body_size;
+}
+
+Request::RequestLine
+&Request::get_request_line(void) {
+	return (_request_line);
 }
 
 const Request::RequestLine
@@ -43,9 +55,9 @@ const Request::RequestLine
 	return (_request_line);
 }
 
-size_t
-Request::get_limit_body_size() const {
-	return _limit_body_size;
+void
+Request::set_status(request_status_t status) {
+	_status = status;
 }
 
 void
@@ -54,16 +66,19 @@ Request::set_limit_body_size(size_t size) {
 }
 
 //TODO:: char* plutot que std::string pour la reconnaissance du pattern CRLF (RFC 7230 p.20)
+/*
 int
 Request::append(const std::string &data) {
 	_str += data;
 	return (_request_parsing());
 }
+*/
 
 void
 Request::reset(void) {
 	AHTTPMessage::reset();
 	_status = START;
+	_limit_body_size = 0;
 	_request_line.reset();
 }
 
@@ -77,6 +92,7 @@ Request::render(void) const {
 	std::cout << get_body() << "$" << std::endl << std::endl;
 }
 
+/*
 bool
 Request::_request_line_received(void) const {
 	return (_status == START && std::string::npos != _str.find("\r\n"));
@@ -262,6 +278,7 @@ Request::_collect_body(void) {
 		return (CONTINUE_PARSING);
 	return (CONTINUE_READING);
 }
+*/
 
 /*
  * REQUEST_LINE_T RELATED FUNCTIONS

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:24:38 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/09 18:53:44 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 16:13:15 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,7 +92,7 @@ AHTTPMessage::AStartLine::reset(void) {
  * Headers related functions
  */
 
-const size_t	AHTTPMessage::Headers::_tab_size(30);
+const size_t AHTTPMessage::Headers::_tab_size(30);
 
 AHTTPMessage::Headers::Headers(void) :
 	_tab(_tab_size) {}
@@ -136,9 +136,9 @@ AHTTPMessage::Headers::render(void) const {
 		if (_tab[i]) {
 			for (std::list<header_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
 				std::cout << "*" << std::endl;
-				std::cout << "KEY : " << it->key << "$" << std::endl;
-				std::cout << "HASH : " << _hash(it->key.c_str()) << "$" << std::endl;
-				std::cout << "VALUE : " << it->value << "$" << std::endl;
+				std::cout << "KEY : " << it->first << "$" << std::endl;
+				std::cout << "HASH : " << _hash(it->first.c_str()) << "$" << std::endl;
+				std::cout << "VALUE : " << it->second << "$" << std::endl;
 				std::cout << "*" << std::endl;
 			}
 		}
@@ -147,14 +147,11 @@ AHTTPMessage::Headers::render(void) const {
 
 //TODO:: gerer l'insertion d'un header dont la cle est deja presente
 void
-AHTTPMessage::Headers::insert(const std::string &header_name, const std::string &header_value) {
-	header_t	new_entry;
-	new_entry.key = header_name;
-	new_entry.value = header_value;
-	unsigned long	index(_hash(header_name.c_str()));
+AHTTPMessage::Headers::insert(const header_t &header) {
+	unsigned long	index(_hash(header.first.c_str()));
 	if (!_tab[index])
 		_tab[index] = new std::list<header_t>;
-	(_tab[index])->push_front(new_entry);
+	(_tab[index])->push_front(header);
 }
 
 bool
@@ -163,7 +160,7 @@ AHTTPMessage::Headers::key_exists(const std::string &key) const {
 	if (!entry_list)
 		return (false);
 	for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-		if (it->key == key)
+		if (it->first == key)
 			return (true);
 	return (false);
 }
@@ -173,8 +170,8 @@ std::string
 	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
 		for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-			if (it->key == key)
-				return (it->value);
+			if (it->first == key)
+				return (it->second);
 	}
 	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
 }
@@ -184,8 +181,8 @@ const std::string
 	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
 		for (std::list<header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-			if (it->key == key)
-				return (it->value);
+			if (it->first == key)
+				return (it->second);
 	}
 	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
 }

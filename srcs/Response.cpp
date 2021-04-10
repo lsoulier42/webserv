@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 20:00:24 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/09 20:16:21 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 16:34:13 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,11 @@ Response
 	return (*this);
 }
 
+StatusLine
+&Response::get_status_line(void) {
+	return (_status_line);
+}
+
 const StatusLine
 &Response::get_status_line(void) const {
 	return (_status_line);
@@ -48,37 +53,28 @@ Response::render(void) const {
 
 Response::StatusLine::StatusLine(void) :
 	AStartLine(),
-	_status_code(),
-	_reason_phrase() {}
+	_status_code(TOTAL_STATUS_CODE) {}
 
 Response::StatusLine::StatusLine(const StatusLine &x) :
 	AStartLine(x),
-	_status_code(x._status_code),
-	_reason_phrase(x._reason_phrase) {}
+	_status_code(x._status_code) {}
 
 Response::StatusLine
 &Response::StatusLine::operator=(const StatusLine &x) {
 	AStartLine::operator=(x);
 	_status_code = x._status_code;
-	_reason_phrase = x._reason_phrase;
 	return (*this);
 }
 
-int
+status_code_t
 Response::StatusLine::get_status_code(void) const {
 	return (_status_code);
-}
-
-const std::string
-&Response::StatusLine::get_reason_phrase(void) const {
-	return (_reason_phrase);
 }
 
 void
 Response::StatusLine::reset(void) {
 	AStartLine::reset();
-	_status_code = 0;
-	_reason_phrase.clear();
+	_status_code = TOTAL_STATUS_CODE;
 }
 
 void
