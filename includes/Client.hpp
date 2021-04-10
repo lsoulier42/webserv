@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 16:16:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 17:33:37 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,19 +27,15 @@ class Client {
 	public:
 
 		Client(void);
-		explicit Client(int sd);
+		explicit Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::list<const Config*> &configs);
 		Client(const Client &x);
 		~Client(void);
 		Client &operator=(const Client &x);
 
 		int get_sd(void) const;
-		struct sockaddr get_addr(void) const;
-
-		void set_addr(const struct sockaddr& addr);
-		socklen_t get_socket_len(void) const;
-		void set_socket_len(const socklen_t& socket_len);
-		std::list<const Config*> get_configs() const;
-		void set_configs(const std::list<const Config*>& configs);
+		//struct sockaddr get_addr(void) const;
+		//socklen_t get_socket_len(void) const;
+		//std::list<const Config*> get_configs() const;
 
 		int read_socket(void);
 
@@ -48,10 +44,11 @@ class Client {
 		static const size_t _buffer_size;
 
 		const int _sd;
-		struct sockaddr _addr;
-		socklen_t _socket_len;
-		std::list<const Config*> _configs;
-		Request _request;
+		const struct sockaddr _addr;
+		const socklen_t _socket_len;
+		const std::list<const Config*> _configs;
+		std::string _str;
+		std::vector<Request> _requests;
 
 		int _process(int status);
 		bool _request_line_received(void) const;

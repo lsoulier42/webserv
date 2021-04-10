@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/08 21:52:05 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 17:31:03 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,10 +64,12 @@ void WebServer::accept_connection(const Server& server) {
 			close(connection);
 	} else {
 		std::cout << "Connection accepted: FD=" << connection << std::endl;
-		_clients.push_back(Client(connection));
+		_clients.push_back(Client(connection, client_addr, client_socket_len, Configs::buildConfigsList(_configs, server.getConfig())));
+		/*
 		_clients.back().set_addr(client_addr);
 		_clients.back().set_socket_len(client_socket_len);
 		_clients.back().set_configs(Config::buildConfigsList(_configs, server.getConfig()));
+		*/
 	}
 }
 
