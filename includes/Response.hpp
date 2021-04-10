@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 19:21:17 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 16:29:07 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 22:51:50 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 # define RESPONSE_HPP
 
 # include "AHTTPMessage.hpp"
+# include "parsing.hpp"
 
 class Response : public AHTTPMessage {
 
@@ -25,12 +26,12 @@ class Response : public AHTTPMessage {
 
 				StatusLine(void);
 				StatusLine(const StatusLine &x);
-				~StatustLine(void);
+				~StatusLine(void);
 				StatusLine &operator=(const StatusLine &x);
 
 				status_code_t get_status_code(void) const;
 
-				void set_status_code(int status_code);
+				void set_status_code(status_code_t status_code);
 
 				void reset(void);
 				void render(void) const;

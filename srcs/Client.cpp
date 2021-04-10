@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 22:14:54 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 22:38:54 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,31 +69,31 @@ Client::read_socket(void) {
 	}
 	buffer[ret] = '\0';
 	_input_str += (std::string(buffer));
-	_request_parsing();
+	_input_str_parsing();
 	return (_process());
 }
 
 bool
 Client::_request_line_received(const Request &current_request) const {
-	return (current_request.get_status() == START && std::string::npos != _input_str.find("\r\n"));
+	return (current_request.get_status() == Request::START && std::string::npos != _input_str.find("\r\n"));
 }
 
 bool
 Client::_header_received(const Request &current_request) const {
-	return (current_request.get_status() == REQUEST_LINE_RECEIVED
+	return (current_request.get_status() == Request::REQUEST_LINE_RECEIVED
 			&& !_headers_received(current_request)
 			&& std::string::npos != _input_str.find("\r\n"));
 }
 
 bool
 Client::_headers_received(const Request &current_request) const {
-	return (current_request.get_status() == REQUEST_LINE_RECEIVED
+	return (current_request.get_status() == Request::REQUEST_LINE_RECEIVED
 			&& !_input_str.compare(0, 2, "\r\n"));
 }
 
 bool
 Client::_body_received(const Request &current_request) const {
-	return (current_request.get_status() == HEADERS_RECEIVED
+	return (current_request.get_status() == Request::HEADERS_RECEIVED
 			&& ((current_request.get_headers().key_exists("Transfer-Encoding")
 						&& current_request.get_headers().get_value("Transfer-Encoding").find("chunked") != std::string::npos
 						&& _input_str.find("0\r\n\r\n") != std::string::npos)
@@ -103,29 +103,48 @@ Client::_body_received(const Request &current_request) const {
 
 bool
 Client::_trailer_received(const Request &current_request) const {
-	(void)current_request;
-	return (false);
+	return (current_request.get_status() == Request::BODY_RECEIVED
+			&& !_trailers_received(current_request)
+			&& std::string::npos != _input_str.find("\r\n"));
+}
+
+bool
+Client::_trailers_received(const Request &current_request) const {
+	return (current_request.get_status() == Request::BODY_RECEIVED
+			&& !_input_str.compare(0, 2, "\r\n"));
+}
+
+bool
+Client::_body_expected(const Request &current_request) const {
+	return ((current_request.get_headers().key_exists("Transfer-Encoding")
+				&& (current_request.get_headers().get_value("Transfer-Encoding")).find("chunked") != std::string::npos)
+			|| current_request.get_headers().key_exists("Content-Length"));
+}
+
+bool
+Client::_trailer_expected(const Request &current_request) const {
+	return ((current_request.get_headers().key_exists("Trailer")));
 }
 
 void
 Client::_input_str_parsing(void) {
 	while (!_closing && !_input_str.empty()) {
-		if (_exchanges.empty() || _exchanges.back().first.get_status() == REQUEST_RECEIVED)
+		if (_exchanges.empty() || _exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
 			_exchanges.push_back(std::make_pair(Request(), Response()));
 		exchange_t	&current_exchange(_exchanges.back());
 		if (_request_line_received(current_exchange.first) && SUCCESS != _collect_request_line_elements(current_exchange))
 			return ;
-		while (_header_received(current_request))
-			_collect_header(current_request);
-		if (_headers_received(current_request) && SUCCESS != _check_headers(current_request))
+		while (_header_received(current_exchange.first))
+			_collect_header(current_exchange);
+		if (_headers_received(current_exchange.first) && SUCCESS != _check_headers(current_exchange))
 			return ;
-		if (_body_received(current_request))
-			_collect_body(current_request);
-		/*
-		if (_trailer_received(current_request))
-			_collect_header(current_request);
-			*/
-		if (current_request.get_status() != REQUEST_RECEIVED)
+		if (_body_received(current_exchange.first))
+			_collect_body(current_exchange);
+		while (_trailer_received(current_exchange.first))
+			_collect_header(current_exchange);
+		if (_trailers_received(current_exchange.first))
+			current_exchange.first.set_status(Request::REQUEST_RECEIVED);
+		if (current_exchange.first.get_status() != Request::REQUEST_RECEIVED)
 			return ;
 	}
 }
@@ -135,7 +154,7 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 	size_t		first_sp(0);
 	size_t		scnd_sp(0);
 	size_t		end_rl(_input_str.find("\r\n"));
-	exchange.first.set_status(REQUEST_LINE_RECEIVED);
+	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
 	if (std::string::npos == (first_sp = _input_str.find_first_of(" "))
 			|| std::string::npos == (scnd_sp = _input_str.find_first_of(" ", first_sp + 1))) {
 		_input_str.erase(0, end_rl + 2);
@@ -171,9 +190,9 @@ Client::_collect_header(exchange_t &exchange) {
 int
 Client::_check_headers(exchange_t &exchange) {
 	if (_body_expected(exchange.first))
-		exchange.first.set_status(HEADERS_RECEIVED);
+		exchange.first.set_status(Request::HEADERS_RECEIVED);
 	else
-		exchange.first.set_status(REQUEST_RECEIVED);
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 	_input_str.erase(0, _input_str.find("\r\n") + 2);
 	if (!exchange.first.get_headers().key_exists("Host")) {
 		exchange.second.get_status_line().set_status_code(BAD_REQUEST);
@@ -186,9 +205,9 @@ Client::_check_headers(exchange_t &exchange) {
 int
 Client::_collect_body(exchange_t &exchange) {
 	if (_trailer_expected(exchange.first))
-		exchange.first.set_status(BODY_RECEIVED);
+		exchange.first.set_status(Request::BODY_RECEIVED);
 	else
-		exchange.first.set_status(REQUEST_RECEIVED);
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 	size_t	body_length(0);
 	if (exchange.first.get_headers().key_exists("Transfer-Encoding")
 			&& exchange.first.get_headers().get_value("Transfer-Encoding").find("chunked") != std::string::npos) {
@@ -201,17 +220,13 @@ Client::_collect_body(exchange_t &exchange) {
 }
 
 int
-Client::_collect_trailer(exchange_t &exchange) {
-}
-
-/*
- * ici, on traite la requete
- * une fois traitee, la requete doit etre reset
- * return (autre chose que SUCCESS) entrainera la fermeture de la connexion et la suppression de l'objet Client dans Webserver::read_socks()
- */
-int
 Client::_process(void) {
-	_request.render();
-	_request.reset();
+	for (std::vector<exchange_t>::iterator it(_exchanges.begin()) ; it != _exchanges.end() ; ) {
+		if (it->first.get_status() == Request::REQUEST_RECEIVED) {
+			it->first.render();
+			it = _exchanges.erase(it);
+		} else
+			it++;
+	}
 	return (SUCCESS);
 }

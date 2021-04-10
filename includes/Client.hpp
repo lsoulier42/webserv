@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 21:30:01 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 22:40:49 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,8 +16,10 @@
 # include <iostream>
 # include <unistd.h>
 # include <string>
+# include <vector>
 # include <sys/socket.h>
 # include "Request.hpp"
+# include "Response.hpp"
 
 # define SUCCESS 0
 # define FAILURE -1
@@ -26,7 +28,7 @@ class Client {
 
 	public:
 
-		typedef std::pair<Request, Response> > exchange_t;
+		typedef std::pair<Request, Response> exchange_t;
 
 		Client(void);
 		explicit Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::list<const Config*> &configs);
@@ -46,28 +48,24 @@ class Client {
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const Config*> _configs;
-		std::string _str;
+		std::string _input_str;
 		std::vector<exchange_t> _exchanges;
 		bool _closing;
 
-		int _process(int status);
-		bool _request_line_received(void) const;
-		bool _header_received(void) const;
-		bool _headers_received(void) const;
-		bool _body_expected(void) const;
-		bool _body_received(void) const;
-		bool _trailer_expected(void) const;
-		bool _trailer_received(void) const;
-		int _request_parsing(void);
-		int _empty_request_parsing(void);
-		int _started_request_parsing(void);
-		int _request_line_received_parsing(void);
-		int _headers_received_parsing(void);
-		int _body_received_parsing(void);
-		int _collect_request_line_elements(void);
-		int _collect_header(void);
-		int _check_headers(void);
-		int _collect_body(void);
+		bool _request_line_received(const Request &request) const;
+		bool _header_received(const Request &request) const;
+		bool _headers_received(const Request &request) const;
+		bool _body_received(const Request &request) const;
+		bool _trailer_received(const Request &request) const;
+		bool _trailers_received(const Request &request) const;
+		bool _body_expected(const Request &request) const;
+		bool _trailer_expected(const Request &request) const;
+		void _input_str_parsing(void);
+		int _collect_request_line_elements(exchange_t &exchange);
+		int _collect_header(exchange_t &exchange);
+		int _check_headers(exchange_t &exchange);
+		int _collect_body(exchange_t &exchange);
+		int _process(void);
 
 };
 
