@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 19:21:17 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/09 20:21:50 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 13:42:58 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ class													Response : public AHTTPMessage {
 														StatustLine(void);
 				StatusLine								&operator=(const StatusLine &x);
 
-				int										get_status_code(void) const;
+				status_code_t									get_status_code(void) const;
 				const std::string						&get_reason_phrase(void) const;
 
 				void									set_status_code(int status_code);
@@ -38,7 +38,7 @@ class													Response : public AHTTPMessage {
 
 			private:
 
-				int										_status_code;
+				status_code_t							_status_code;
 				std::string								_reason_phrase;
 
 		};
