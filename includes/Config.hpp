@@ -16,6 +16,8 @@
 # include "AConfig.hpp"
 # include "Location.hpp"
 
+# define DEFAULT_MAX_BODY_SIZE 8192
+
 class Config : public AConfig {
 	public:
 		Config();
@@ -23,8 +25,8 @@ class Config : public AConfig {
 		Config(const Config& src);
 		Config& operator=(const Config& rhs);
 
-		std::list<std::string> getServerName() const;
-		void setServerName(const std::list<std::string> &serverName);
+		std::list<std::string> getServerNames() const;
+		void setServerNames(const std::list<std::string> &serverNames);
 		std::string getIpAddr() const;
 		void setIpAddr(const std::string& ipAddr);
 		int getPort() const;
@@ -45,7 +47,7 @@ class Config : public AConfig {
 		static std::list<const Config*> buildConfigsList(const std::vector<Config>& configs, const Config* default_config);
 
 	private:
-		std::list<std::string> _server_name;
+		std::list<std::string> _server_names;
 		std::string _ip_addr;
 		int _port;
 		int _client_max_body_size;

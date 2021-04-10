@@ -16,7 +16,10 @@
 # include <string>
 # include <list>
 
+# define DEFAULT_AUTOINDEX false
 # define AUTOINDEX(x) x ? "on" : "off"
+# define DEFAULT_ALLOWED_METHOD "GET"
+# define DEFAULT_INDEX "index.html"
 
 class AConfig {
 	public:
