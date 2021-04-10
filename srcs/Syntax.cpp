@@ -154,3 +154,117 @@ bool Syntax::is_implemented_header(const std::string &header_name) {
 	}
 	return false;
 }
+
+std::multimap<float, std::string> Syntax::split_weight(const std::vector<std::string>& elements_split) {
+	std::multimap<float, std::string> value_weight;
+	std::vector<std::string> weight_split;
+	std::string effective_value;
+	std::string q_weight;
+	float effective_weight;
+
+	for(std::vector<std::string>::const_iterator it = elements_split.begin();
+		it != elements_split.end(); it++) {
+		weight_split = split(*it, ";");
+		if (weight_split.size() > 2) {
+			std::cerr << status_codes_tab[BAD_REQUEST].reason_phrase << std::endl;
+			value_weight.clear();
+			return value_weight;
+		}
+		if (!weight_split.empty() && weight_split.size() != 1) {
+			effective_value = weight_split[0];
+			q_weight = weight_split[1];
+			if (q_weight.compare(0, 2, "q=") != 0)	{
+				std::cerr << status_codes_tab[BAD_REQUEST].reason_phrase << std::endl;
+				value_weight.clear();
+				return value_weight;
+			}
+			effective_weight = std::strtol(q_weight.substr(2).c_str(), NULL, 10);
+		}
+		else {
+			effective_value = *it;
+			effective_weight = 1;
+		}
+		value_weight.insert(std::make_pair(effective_weight, effective_value));
+	}
+	return value_weight;
+}
+
+std::list<std::string> Syntax::parse_header_value(const Request::Headers::header_t& header) {
+	std::list<std::string> new_list;
+	std::multimap<float, std::string> value_weight;
+	std::vector<std::string> elements_split;
+
+	elements_split = split(header.value, ", ");
+	if (!elements_split.empty()) {
+		value_weight = split_weight(elements_split);
+		if (value_weight.empty()) {
+			return new_list;
+		}
+	}
+	for(std::multimap<float, std::string>::const_reverse_iterator rit = value_weight.rbegin();
+		rit != value_weight.rend(); rit++)
+		new_list.push_back(rit->second);
+	return new_list;
+}
+
+template<typename T>
+bool Syntax::is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {
+	if (value == "*")
+		return true;
+	for (size_t i = 0; i < accepted_size; i++) {
+		if(accepted_value[i].name == value)
+			return true;
+	}
+	return false;
+}
+
+const Syntax::accepted_charsets_entry_t Syntax::charsets_tab[] =
+{
+	{UTF_8, "utf-8"},
+	{ISO_8859_1, "iso-8859-1"},
+	{UNICODE_1_1, "unicode-1-1"}
+};
+
+int Syntax::accept_charset_handler(const Request::Headers::header_t& header) {
+	std::list<std::string> charsets = parse_header_value(header);
+
+	for(std::list<std::string>::const_iterator it = charsets.begin(); it != charsets.end(); it++) {
+		//Parsing checker : si le charset n'est pas gere par le server : erreur 406
+		if (!Syntax::is_accepted_value<Syntax::accepted_charsets_entry_t>(*it,
+			Syntax::charsets_tab, TOTAL_ACCEPTED_CHARSETS)) {
+			std::cerr << status_codes_tab[NOT_ACCEPTABLE].reason_phrase << std::endl;
+			return 0;
+		}
+		//TODO: handler
+	}
+	return 1;
+}
+
+const Syntax::accepted_languages_entry_t Syntax::languages_tab[] =
+{
+	{FR, "fr"},
+	{FR_BE, "fr-BE"},
+	{FR_CA, "fr-CA"},
+	{FR_CH, "fr-CH"},
+	{FR_FR, "fr-FR"},
+	{FR_LU, "fr-LU"},
+	{EN, "en"},
+	{EN_CA, "en-CA"},
+	{EN_GB, "en-GB"},
+	{EN_US, "en-US"}
+};
+
+int Syntax::accept_language_handler(const Request::Headers::header_t& header) {
+	std::list<std::string> languages = parse_header_value(header);
+
+	for(std::list<std::string>::const_iterator it = languages.begin(); it != languages.end(); it++) {
+		//Parsing checker : si le language n'est pas gere par le server : erreur 406
+		if (!Syntax::is_accepted_value<Syntax::accepted_languages_entry_t>(*it,
+				Syntax::languages_tab, TOTAL_ACCEPTED_CHARSETS)) {
+			std::cerr << status_codes_tab[NOT_ACCEPTABLE].reason_phrase << std::endl;
+			return 0;
+		}
+		//TODO: handler
+	}
+	return 1;
+}

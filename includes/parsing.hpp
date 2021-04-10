@@ -25,6 +25,8 @@
 
 # define TOTAL_LOCATION_INSTRUCTIONS 5
 
+class Syntax;
+
 enum t_bracket_type {
 	OPENING,
 	CLOSING
