@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:08:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 16:10:42 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/11 01:58:40 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 # include <vector>
 # include <list>
 # include <iostream>
+# include <stdexcept>
 
 class AHTTPMessage {
 
@@ -27,6 +28,7 @@ class AHTTPMessage {
 			public:
 
 				AStartLine(void);
+				AStartLine(const AStartLine &x);
 				virtual ~AStartLine(void);
 
 				const std::string &get_http_version(void) const;
@@ -38,7 +40,6 @@ class AHTTPMessage {
 
 			protected:
 
-				AStartLine(const AStartLine &x);
 				AStartLine &operator=(const AStartLine &x);
 
 			private:
@@ -75,6 +76,7 @@ class AHTTPMessage {
 		};
 
 		AHTTPMessage(void);
+		AHTTPMessage(const AHTTPMessage &x);
 		virtual ~AHTTPMessage(void);
 
 		Headers &get_headers(void);
@@ -88,7 +90,6 @@ class AHTTPMessage {
 
 	protected:
 
-		AHTTPMessage(const AHTTPMessage &x);
 		AHTTPMessage &operator=(const AHTTPMessage &x);
 
 	private:

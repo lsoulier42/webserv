@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 22:40:49 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/11 03:59:40 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,15 @@
 # include <iostream>
 # include <unistd.h>
 # include <string>
-# include <vector>
+# include <list>
+# include <stdlib.h>
 # include <sys/socket.h>
 # include "Request.hpp"
 # include "Response.hpp"
 
 # define SUCCESS 0
 # define FAILURE -1
+# define PENDING 1
 
 class Client {
 
@@ -49,7 +51,8 @@ class Client {
 		const socklen_t _socket_len;
 		const std::list<const Config*> _configs;
 		std::string _input_str;
-		std::vector<exchange_t> _exchanges;
+		std::string _output_str;
+		std::list<exchange_t> _exchanges;
 		bool _closing;
 
 		bool _request_line_received(const Request &request) const;
@@ -65,7 +68,12 @@ class Client {
 		int _collect_header(exchange_t &exchange);
 		int _check_headers(exchange_t &exchange);
 		int _collect_body(exchange_t &exchange);
-		int _process(void);
+		int _process(exchange_t &exchange);
+		int _fill_response(exchange_t &exchange);
+		int _open_file_to_read(void);
+		int _read_file(void);
+		int _build_output_str(exchange_t &exchange);
+		int _write_socket(exchange_t &exchange);
 
 };
 

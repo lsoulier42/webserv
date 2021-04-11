@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:24:38 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 16:13:15 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/11 02:02:29 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,10 +55,6 @@ AHTTPMessage::reset(void) {
 	_body.clear();
 }
 
-/*
- * AStartLine related functions
- */
-
 AHTTPMessage::AStartLine::AStartLine(void) :
 	_http_version() {}
 
@@ -87,10 +83,6 @@ void
 AHTTPMessage::AStartLine::reset(void) {
 	_http_version.clear();
 }
-
-/*
- * Headers related functions
- */
 
 const size_t AHTTPMessage::Headers::_tab_size(30);
 
@@ -145,7 +137,6 @@ AHTTPMessage::Headers::render(void) const {
 	}
 }
 
-//TODO:: gerer l'insertion d'un header dont la cle est deja presente
 void
 AHTTPMessage::Headers::insert(const header_t &header) {
 	unsigned long	index(_hash(header.first.c_str()));

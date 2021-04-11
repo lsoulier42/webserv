@@ -6,13 +6,13 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 22:38:54 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/11 04:03:12 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-const size_t	Client::_buffer_size(900);
+const size_t	Client::_buffer_size(3);
 
 Client::Client(void) :
 	_sd(),
@@ -20,6 +20,7 @@ Client::Client(void) :
 	_socket_len(),
 	_configs(),
 	_input_str(),
+	_output_str(),
 	_exchanges(),
 	_closing(false) {}
 
@@ -29,6 +30,7 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::li
 	_socket_len(socket_len),
 	_configs(configs),
 	_input_str(),
+	_output_str(),
 	_exchanges(),
 	_closing(false) {}
 
@@ -38,6 +40,7 @@ Client::Client(const Client &x) :
 	_socket_len(x._socket_len),
 	_configs(x._configs),
 	_input_str(x._input_str),
+	_output_str(x._output_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing) {}
 
@@ -47,6 +50,7 @@ Client
 &Client::operator=(const Client &x) {
 	_exchanges = x._exchanges;
 	_input_str = x._input_str;
+	_output_str = x._output_str;
 	_closing = x._closing;
 	return (*this);
 }
@@ -70,7 +74,9 @@ Client::read_socket(void) {
 	buffer[ret] = '\0';
 	_input_str += (std::string(buffer));
 	_input_str_parsing();
-	return (_process());
+	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
+		return (_process(_exchanges.front()));
+	return (SUCCESS);
 }
 
 bool
@@ -154,14 +160,15 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 	size_t		first_sp(0);
 	size_t		scnd_sp(0);
 	size_t		end_rl(_input_str.find("\r\n"));
-	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
 	if (std::string::npos == (first_sp = _input_str.find_first_of(" "))
 			|| std::string::npos == (scnd_sp = _input_str.find_first_of(" ", first_sp + 1))) {
 		_input_str.erase(0, end_rl + 2);
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 		exchange.second.get_status_line().set_status_code(BAD_REQUEST);
 		_closing = true;
 		return (FAILURE);
 	}
+	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
 	exchange.first.get_request_line().set_method(_input_str.substr(0, first_sp));
 	exchange.first.get_request_line().set_request_target(_input_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
 	exchange.first.get_request_line().set_http_version(_input_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
@@ -219,14 +226,62 @@ Client::_collect_body(exchange_t &exchange) {
 	return (SUCCESS);
 }
 
+//TODO:: remplir l'objet Response. return SUCESS si on reussit a aller jusqu'au bout, PENDING si on est bloque par la lecture d'un fichier
 int
-Client::_process(void) {
-	for (std::vector<exchange_t>::iterator it(_exchanges.begin()) ; it != _exchanges.end() ; ) {
-		if (it->first.get_status() == Request::REQUEST_RECEIVED) {
-			it->first.render();
-			it = _exchanges.erase(it);
-		} else
-			it++;
-	}
+Client::_fill_response(exchange_t &exchange) {
+	bool	need_syscall_read(false);
+	exchange.first.render();
+	exchange.second.get_status_line().set_status_code(OK);
+	exchange.second.get_status_line().set_http_version("HTTP/1.1");
+	exchange.second.get_headers().insert(std::make_pair("Truc", "Bidule chose chouette"));
+	exchange.second.set_body("Bip bop boup\r\n");
+	if (need_syscall_read)
+		return (_open_file_to_read());
+	return (_build_output_str(exchange));
+}
+
+//on ouvre le fichier
+//on actualise la valeur d'un attribut _fd
+//on ajoute le fd aux fd monitores par select
+int
+Client::_open_file_to_read(void) {
 	return (SUCCESS);
+}
+
+//fonction appelee lorsque select nous autorise a read le fd
+//on lit le fichier et lorsqu'on l'a termine
+//on peut passer a la suite du process de la requete
+int
+Client::_read_file(void) {
+	bool	end_file(true);
+	exchange_t	&exchange(_exchanges.front());
+	if (end_file)
+		return (_build_output_str(exchange));
+	return (SUCCESS);
+}
+
+//TODO:: transformer l'objet Response en une char* a envoyer avec write sur le socket dans la fonction _write_socket()
+int
+Client::_build_output_str(exchange_t &exchange) {
+	_output_str.clear();
+	_output_str += exchange.second.get_body();
+	return (_write_socket(exchange));
+}
+
+//TODO:: envoyer la char* _output_str sur le socket
+int
+Client::_write_socket(exchange_t &exchange) {
+	(void)exchange;
+	write(_sd, _output_str.c_str(), _output_str.size());
+	//ici, return FAILURE si besoin
+	_exchanges.pop_front();
+	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
+		return (_process(_exchanges.front()));
+	return (SUCCESS);
+}
+
+int
+Client::_process(exchange_t &exchange) {
+	exchange.first.set_status(Request::REQUEST_PROCESSED);
+	return (_fill_response(exchange));
 }

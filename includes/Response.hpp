@@ -6,15 +6,16 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 19:21:17 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 22:51:50 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/10 23:01:43 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef RESPONSE_HPP
 # define RESPONSE_HPP
 
-# include "AHTTPMessage.hpp"
+# include <iostream>
 # include "parsing.hpp"
+# include "AHTTPMessage.hpp"
 
 class Response : public AHTTPMessage {
 

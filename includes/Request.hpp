@@ -6,22 +6,14 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 22:41:17 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/11 02:23:25 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef REQUEST_HPP
 # define REQUEST_HPP
 
-# define CONTINUE_READING 1
-# define CONTINUE_PARSING 2
-# define RECEIVED 3
-
 # include <string>
-# include <vector>
-# include <list>
-# include <stdexcept>
-# include <cstdlib>
 # include <iostream>
 # include "parsing.hpp"
 # include "Syntax.hpp"
@@ -61,7 +53,8 @@ class Request : public AHTTPMessage {
 			REQUEST_LINE_RECEIVED,
 			HEADERS_RECEIVED,
 			BODY_RECEIVED,
-			REQUEST_RECEIVED
+			REQUEST_RECEIVED,
+			REQUEST_PROCESSED
 		};
 
 		Request(void);
