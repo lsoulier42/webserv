@@ -25,7 +25,7 @@ int parse_listen(const std::vector<std::string>& tokens, Config& config) {
 	colon_pos = tokens[1].find(':');
 	if (colon_pos != std::string::npos) {
 		ip_addr = tokens[1].substr(0, colon_pos);
-		if (!check_ip_format(ip_addr)) {
+		if (!Syntax::check_ip_format(ip_addr)) {
 			std::cerr << "Invalid IP format: `" << ip_addr << "'" << std::endl;
 			std::cerr << usage << std::endl;
 			return 0;
@@ -34,7 +34,7 @@ int parse_listen(const std::vector<std::string>& tokens, Config& config) {
 	}
 	else
 		port = tokens[1];
-	if (!is_num(port.c_str()))
+	if (!Syntax::is_num(port.c_str()))
 		return (argument_not_numerical(port, tokens[0], usage));
 	port_nb = std::strtol(port.c_str(), NULL, 10);
 	if (port_nb <= 0 || port_nb > 65535) {
@@ -70,7 +70,7 @@ int parse_error_page(const std::vector<std::string>& tokens, Config& config) {
 		return (instruction_need_at_least(2, tokens[0], usage));
 	for (std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
 		if (*it != tokens.back()) {
-			if (!is_num(it->c_str()))
+			if (!Syntax::is_num(it->c_str()))
 				return (argument_not_numerical(*it, tokens[0], usage));
 			error_code = std::strtol(it->c_str(), NULL, 10);
 			if (!Syntax::is_error_code(error_code)) {
@@ -97,7 +97,7 @@ int parse_client_max_body_size(const std::vector<std::string>& tokens, Config& c
 
 	if (tokens.size() != 2)
 		return (invalid_number_arguments(1, tokens.size() - 1, tokens[0], usage));
-	if (!is_num(tokens.back().c_str()))
+	if (!Syntax::is_num(tokens.back().c_str()))
 		return (argument_not_numerical(tokens.back(), tokens[0], usage));
 	client_max_body_size = std::strtol(tokens.back().c_str(), NULL, 10);
 	if (client_max_body_size == 0) {

@@ -41,9 +41,9 @@ int check_main_bloc(std::ifstream& config_file, std::vector<Config>& configs) {
 
 	while(config_file) {
 		std::getline(config_file, line_buffer);
-		line_buffer = trim_comments(line_buffer);
-		line_buffer = trim_whitespaces(line_buffer);
-		tokens = split_whitespaces(line_buffer);
+		line_buffer = Syntax::trim_comments(line_buffer);
+		line_buffer = Syntax::trim_whitespaces(line_buffer);
+		tokens = Syntax::split_whitespaces(line_buffer);
 		if (line_buffer.empty() || tokens.empty())
 			continue;
 		if (tokens[0] != "server")
@@ -76,9 +76,9 @@ int check_server_bloc(std::ifstream& config_file, std::vector<Config>& configs) 
 
 	while(config_file) {
 		std::getline(config_file, line_buffer);
-		line_buffer = trim_comments(line_buffer);
-		line_buffer = trim_whitespaces(line_buffer);
-		tokens = split_whitespaces(line_buffer);
+		line_buffer = Syntax::trim_comments(line_buffer);
+		line_buffer = Syntax::trim_whitespaces(line_buffer);
+		tokens = Syntax::split_whitespaces(line_buffer);
 		if (line_buffer.empty() || tokens.empty())
 			continue;
 		if (tokens[0] == "}") {
@@ -91,7 +91,7 @@ int check_server_bloc(std::ifstream& config_file, std::vector<Config>& configs) 
 			if (Syntax::server_instructions_tab[i].name == tokens[0]) {
 				if (instructions_complete[i] && i != LOCATION_INSTRUCTION)
 					return (multiple_instructions_found(Syntax::server_instructions_tab[i].name));
-				if (i != LOCATION_INSTRUCTION && !trim_semicolon(tokens))
+				if (i != LOCATION_INSTRUCTION && !Syntax::trim_semicolon(tokens))
 					return semicolon_not_found(Syntax::server_instructions_tab[i].name);
 				if ((i != LOCATION_INSTRUCTION && !(*instructions_functions[i])(tokens, new_config))
 					|| (i == LOCATION_INSTRUCTION && !check_location_bloc(config_file, tokens, new_config)))
@@ -135,9 +135,9 @@ int check_location_bloc(std::ifstream& config_file, const std::vector<std::strin
 	new_location.setPath(path);
 	while(config_file) {
 		std::getline(config_file, line_buffer);
-		line_buffer = trim_comments(line_buffer);
-		line_buffer = trim_whitespaces(line_buffer);
-		location_tokens = split_whitespaces(line_buffer);
+		line_buffer = Syntax::trim_comments(line_buffer);
+		line_buffer = Syntax::trim_whitespaces(line_buffer);
+		location_tokens = Syntax::split_whitespaces(line_buffer);
 		if (line_buffer.empty() || location_tokens.empty())
 			continue;
 		if (location_tokens[0] == "}") {
@@ -150,7 +150,7 @@ int check_location_bloc(std::ifstream& config_file, const std::vector<std::strin
 			if (Syntax::location_instructions_tab[i].name == location_tokens[0]) {
 				if (instructions_complete[i])
 					return (multiple_instructions_found(Syntax::location_instructions_tab[i].name));
-				if (!trim_semicolon(location_tokens))
+				if (!Syntax::trim_semicolon(location_tokens))
 					return semicolon_not_found(Syntax::location_instructions_tab[i].name);
 				if (!(*instructions_functions[i])(location_tokens, new_location))
 					return 0;

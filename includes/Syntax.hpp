@@ -16,9 +16,8 @@
 # include <list>
 # include <vector>
 # include <map>
-# include "Request.hpp"
-
-class Request;
+# include <cstdlib>
+# include "AHTTPMessage.hpp"
 
 enum method_t {
 	GET,
@@ -183,14 +182,31 @@ class Syntax {
 		static bool is_client_error_code(int code);
 		static bool is_server_error_code(int code);
 		static bool is_error_code(int code);
+
 		static int fetch_method_index(const std::string& method);
+
+		static std::string	trim_comments(const std::string &line_buffer);
+		static bool is_num(const char* str);
+		static int check_ip_format(const std::string& ip);
+		static std::string trim_whitespaces(const std::string& line_buffer);
+		static std::vector<std::string> split_whitespaces(const std::string& line_buffer);
+		static std::vector<std::string> split(const std::string& line_buffer, const std::string& charset);
+		static int trim_semicolon(std::vector<std::string>& tokens);
+
 		static bool is_implemented_header(const std::string& header_name);
-		static std::list<std::string> parse_header_value(const header_t& header);
+		static std::list<std::string> parse_header_value(const AHTTPMessage::Headers::header_t& header);
 		static std::multimap<float, std::string> split_weight(const std::vector<std::string>& elements_split);
-		static int accept_charset_handler(const Request::Headers::header_t& header);
+		
 		template<typename T>
-		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size);
-		static int accept_language_handler(const Request::Headers::header_t& header);
+		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {
+			if (value == "*")
+				return true;
+			for (size_t i = 0; i < accepted_size; i++) {
+				if(accepted_value[i].name == value)
+					return true;
+			}
+			return false;
+		}
 
 	private:
 		Syntax(const Syntax& src);
