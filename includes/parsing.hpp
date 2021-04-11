@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   config_parsing.hpp                                 :+:      :+:    :+:   */
+/*   parsing.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/08 13:10:23 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/08 13:10:24 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/09 14:54:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 # include <cstdlib>
 # include <cstring>
 # include <fstream>
+# include <errno.h>
 
 # include "Config.hpp"
 # include "Syntax.hpp"

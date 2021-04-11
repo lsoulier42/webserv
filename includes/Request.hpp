@@ -6,141 +6,79 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/08 21:49:06 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/11 02:23:25 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef REQUEST_HPP
 # define REQUEST_HPP
 
-# define CONTINUE_READING 1
-# define CONTINUE_PARSING 2
-# define RECEIVED 3
-
 # include <string>
-# include <vector>
-# include <list>
-# include <stdexcept>
-# include <cstdlib>
 # include <iostream>
 # include "parsing.hpp"
+# include "Syntax.hpp"
+# include "AHTTPMessage.hpp"
 
-class													Request {
+class Request : public AHTTPMessage {
 
 	public:
 
-		class											RequestLine {
-
-			public:
-														RequestLine(void);
-														RequestLine(const RequestLine &x);
-														~RequestLine(void);
-				RequestLine								&operator=(const RequestLine &x);
-
-				method_t								get_method(void) const;
-				const std::string						&get_request_target(void) const;
-				const std::string						&get_http_version(void) const;
-
-				void									set_method(const std::string &method_str);
-				void									set_request_target(const std::string &request_target);
-				void									set_http_version(const std::string &http_version);
-
-				void									reset(void);
-				void									render(void) const;
-
-			private:
-				method_t								_method;
-				std::string								_request_target;
-				std::string								_http_version;
-
-		};
-
-		class											Headers {
+		class RequestLine : public AHTTPMessage::AStartLine {
 
 			public:
 
-				struct									header_t {
-					std::string							key;
-					std::string							value;
-				};
+				RequestLine(void);
+				RequestLine(const RequestLine &x);
+				~RequestLine(void);
+				RequestLine &operator=(const RequestLine &x);
 
-														Headers(void);
-														Headers(const Headers &x);
-														~Headers(void);
-				Headers									&operator=(const Headers &x);
+				method_t get_method(void) const;
+				const std::string &get_request_target(void) const;
 
-				void									insert(const std::string &header_name, const std::string &header_value);
-				bool									key_exists(const std::string &key) const;
-				std::string								&get_value(const std::string &key) throw (std::invalid_argument);
-				const std::string						&get_value(const std::string &key) const throw (std::invalid_argument);
-				void									reset(void);
-				void									render(void) const;
+				void set_method(const std::string &method_str);
+				void set_request_target(const std::string &request_target);
+
+				void reset(void);
+				void render(void) const;
 
 			private:
 
-				static const size_t						_tab_size;
-				std::vector<std::list<header_t>*>		_tab;
-
-				unsigned long							_hash(const char *buf) const;
+				method_t _method;
+				std::string _request_target;
 
 		};
 
-														Request(void);
-		explicit										Request(int socket);
-														Request(const Request &x);
-														~Request(void);
-		Request											&operator=(const Request &x);
-
-		const RequestLine								&get_request_line(void) const;
-		const Headers									&get_headers(void) const;
-		const std::string								&get_body(void) const;
-
-		size_t											get_limit_body_size() const;
-		void 											set_limit_body_size(size_t size);
-
-		int												append(const std::string &data);
-		void											reset(void);
-		void											render(void) const;
-
-	private:
-
-		enum											_request_status_t {
+		enum request_status_t {
 			START,
 			REQUEST_LINE_RECEIVED,
 			HEADERS_RECEIVED,
 			BODY_RECEIVED,
-			REQUEST_RECEIVED
+			REQUEST_RECEIVED,
+			REQUEST_PROCESSED
 		};
 
-		static const size_t								_limit_request_line_size;
-		static const size_t								_limit_header_size;
-		static const size_t								_limit_headers_size;
+		Request(void);
+		Request(const Request &x);
+		~Request(void);
+		Request &operator=(const Request &x);
 
-		_request_status_t								_status;
-		std::string										_str;
-		RequestLine										_request_line;
-		Headers											_headers;
-		std::string										_body;
+		request_status_t get_status(void) const;
+		size_t get_limit_body_size(void) const;
+		RequestLine &get_request_line(void);
+		const RequestLine &get_request_line(void) const;
 
-		bool											_request_line_received(void) const;
-		bool											_header_received(void) const;
-		bool											_headers_received(void) const;
-		bool											_body_expected(void) const;
-		bool											_body_received(void) const;
-		bool											_trailer_expected(void) const;
-		bool											_trailer_received(void) const;
-		int												_request_parsing(void);
-		int												_empty_request_parsing(void);
-		int												_started_request_parsing(void);
-		int												_request_line_received_parsing(void);
-		int												_headers_received_parsing(void);
-		int												_body_received_parsing(void);
-		int												_collect_request_line_elements(void);
-		int												_collect_header(void);
-		int												_check_headers(void);
-		int												_collect_body(void);
-		size_t											_limit_body_size;
-		//TODO : link to client_max_body_size config value
+		void set_status(request_status_t status);
+		void set_limit_body_size(size_t limit_body_size);
+
+		void reset(void);
+		void render(void) const;
+
+	private:
+
+		request_status_t _status;
+		size_t _limit_body_size;
+		RequestLine _request_line;
+
 };
 
 #endif
