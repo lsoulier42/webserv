@@ -13,28 +13,27 @@
 #include "parsing.hpp"
 
 int parse_listen(const std::vector<std::string>& tokens, Config& config) {
-	std::string ip_addr;
+	std::string ip_addr = "0.0.0.0";
 	std::string port;
 	int port_nb;
 	size_t colon_pos;
-	std::string usage("Usage: 'listen <ip:port>;'");
+	std::string usage("Usage: 'listen <[optional_ip:]port>;'");
 
 	usage += "ip format : [0-255].[0-255].[0-255].[0-255] - port number: [1-65535]";
 	if (tokens.size() != 2)
 		return (invalid_number_arguments(2, tokens.size() - 1, tokens[0], usage));
 	colon_pos = tokens[1].find(':');
-	if (colon_pos == std::string::npos) {
-		std::cerr << "Invalid ip:port format." << std::endl;
-		std::cerr << usage << std::endl;
-		return 0;
+	if (colon_pos != std::string::npos) {
+		ip_addr = tokens[1].substr(0, colon_pos);
+		if (!check_ip_format(ip_addr)) {
+			std::cerr << "Invalid IP format: `" << ip_addr << "'" << std::endl;
+			std::cerr << usage << std::endl;
+			return 0;
+		}
+		port = tokens[1].substr(colon_pos + 1);
 	}
-	ip_addr = tokens[1].substr(0, colon_pos);
-	if (!check_ip_format(ip_addr)) {
-		std::cerr << "Invalid IP format: `" << ip_addr << "'" << std::endl;
-		std::cerr << usage << std::endl;
-		return 0;
-	}
-	port = tokens[1].substr(colon_pos + 1, tokens[1].size() - colon_pos - 1);
+	else
+		port = tokens[1];
 	if (!is_num(port.c_str()))
 		return (argument_not_numerical(port, tokens[0], usage));
 	port_nb = std::strtol(port.c_str(), NULL, 10);
@@ -57,7 +56,7 @@ int parse_server_name(const std::vector<std::string>& tokens, Config& config) {
 	for(std::vector<std::string>::const_iterator it = ++tokens.begin(); it != tokens.end(); it++) {
 		server_names.push_back(*it);
 	}
-	config.setServerName(server_names);
+	config.setServerNames(server_names);
 	return 1;
 }
 

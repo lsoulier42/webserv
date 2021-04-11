@@ -13,8 +13,8 @@
 #include "Config.hpp"
 
 Config::Config() : AConfig() {
-	_port = 0;
-	_client_max_body_size = 8192;
+	_port = 80;
+	_client_max_body_size = DEFAULT_MAX_BODY_SIZE;
 }
 
 Config::Config(const Config& src) {
@@ -29,7 +29,7 @@ Config& Config::operator=(const Config& rhs) {
 		this->_methods = rhs._methods;
 		this->_cgi_path = rhs._cgi_path;
 		this->_cgi_extension = rhs._cgi_extension;
-		_server_name = rhs._server_name;
+		_server_names = rhs._server_names;
 		_ip_addr = rhs._ip_addr;
 		_port = rhs._port;
 		_client_max_body_size = rhs._client_max_body_size;
@@ -43,12 +43,12 @@ Config::~Config() {
 
 }
 
-std::list<std::string> Config::getServerName() const {
-	return _server_name;
+std::list<std::string> Config::getServerNames() const {
+	return _server_names;
 }
 
-void Config::setServerName(const std::list<std::string> &serverName) {
-	_server_name = serverName;
+void Config::setServerNames(const std::list<std::string> &serverName) {
+	_server_names = serverName;
 }
 
 std::string Config::getIpAddr() const {
@@ -103,12 +103,12 @@ void Config::showConfig() const {
 	std::string next;
 
 	std::cout << std::endl << "Server configuration: " << std::endl;
-	if (!_server_name.empty()) {
+	if (!_server_names.empty()) {
 		std::cout << "server_name: `";
-		it = this->_server_name.begin();
-		while (it != this->_server_name.end()) {
+		it = this->_server_names.begin();
+		while (it != this->_server_names.end()) {
 			std::cout << *it++;
-			next = it != this->_server_name.end() ? ", " : "'\n";
+			next = it != this->_server_names.end() ? ", " : "'\n";
 			std::cout << next;
 		}
 	}

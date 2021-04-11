@@ -41,6 +41,7 @@ class													Client {
 		void 											set_configs(const std::list<const Config*>& configs);
 
 		int												read_socket(void);
+		const Config*									extractVirtualServer() const;
 
 	private:
 
