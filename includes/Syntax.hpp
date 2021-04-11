@@ -17,7 +17,6 @@
 # include <vector>
 # include <map>
 # include <cstdlib>
-# include "AHTTPMessage.hpp"
 
 enum method_t {
 	GET,
@@ -194,9 +193,9 @@ class Syntax {
 		static int trim_semicolon(std::vector<std::string>& tokens);
 
 		static bool is_implemented_header(const std::string& header_name);
-		static std::list<std::string> parse_header_value(const AHTTPMessage::Headers::header_t& header);
+		static std::list<std::string> parse_header_value(const std::string& unparsed_value);
 		static std::multimap<float, std::string> split_weight(const std::vector<std::string>& elements_split);
-		
+
 		template<typename T>
 		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {
 			if (value == "*")

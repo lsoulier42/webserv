@@ -295,13 +295,13 @@ Client::_process(exchange_t &exchange) {
  *
  */
 
-const Config*
-Client::_extract_virtual_server(const exchange_t& exchange) const {
+void
+Client::_extract_virtual_server(exchange_t& exchange) {
 	std::string host_requested;
 	std::vector<std::string> host_elements;
 	std::string effective_host;
 	std::list<std::string> server_names;
-	const Config* virtual_server_found = NULL;
+	const Config* virtual_server = NULL;
 
 	if (exchange.first.get_headers().key_exists("Host")) {
 		host_requested = exchange.first.get_headers().get_value("Host");
@@ -314,24 +314,24 @@ Client::_extract_virtual_server(const exchange_t& exchange) const {
 		for (std::list<std::string>::const_iterator cit = server_names.begin();
 			cit != server_names.end(); it++) {
 			if (*cit == effective_host) {
-				virtual_server_found = *it;
+				virtual_server = *it;
 				break;
 			}
 		}
-		if (virtual_server_found)
+		if (virtual_server)
 			break;
 	}
-	return virtual_server_found ? virtual_server_found : _configs.front();
+	virtual_server = virtual_server ? virtual_server : _configs.front();
+	exchange.first.set_virtual_server(virtual_server);
 }
 
-int Client::_accept_language_handler(const AHTTPMessage::Headers::header_t& header) {
-	std::list<std::string> languages = Syntax::parse_header_value(header);
+int Client::_accept_charset_handler(exchange_t& exchange, const std::list<std::string>& charsets_list) {
+	Response::StatusLine status_line = exchange.second.get_status_line();
 
-	for(std::list<std::string>::const_iterator it = languages.begin(); it != languages.end(); it++) {
-		//Parsing checker : si le language n'est pas gere par le server : erreur 406
-		if (!Syntax::is_accepted_value<Syntax::accepted_languages_entry_t>(*it,
-				Syntax::languages_tab, TOTAL_ACCEPTED_CHARSETS)) {
-			std::cerr << Syntax::status_codes_tab[NOT_ACCEPTABLE].reason_phrase << std::endl;
+	for(std::list<std::string>::const_iterator it = charsets_list.begin(); it != charsets_list.end(); it++) {
+		if (!Syntax::is_accepted_value<Syntax::accepted_charsets_entry_t>(*it,
+			Syntax::charsets_tab, TOTAL_ACCEPTED_CHARSETS)) {
+			status_line.set_status_code(NOT_ACCEPTABLE);
 			return 0;
 		}
 		//TODO: handler
@@ -339,17 +339,131 @@ int Client::_accept_language_handler(const AHTTPMessage::Headers::header_t& head
 	return 1;
 }
 
-int Client::_accept_charset_handler(const AHTTPMessage::Headers::header_t& header) {
-	std::list<std::string> charsets = Syntax::parse_header_value(header);
+int Client::_accept_language_handler(exchange_t& exchange, const std::list<std::string>& languages_list) {
+	Response::StatusLine status_line = exchange.second.get_status_line();
 
-	for(std::list<std::string>::const_iterator it = charsets.begin(); it != charsets.end(); it++) {
-		//Parsing checker : si le charset n'est pas gere par le server : erreur 406
-		if (!Syntax::is_accepted_value<Syntax::accepted_charsets_entry_t>(*it,
-				Syntax::charsets_tab, TOTAL_ACCEPTED_CHARSETS)) {
-			std::cerr << Syntax::status_codes_tab[NOT_ACCEPTABLE].reason_phrase << std::endl;
+	for(std::list<std::string>::const_iterator it = languages_list.begin(); it != languages_list.end(); it++) {
+		if (!Syntax::is_accepted_value<Syntax::accepted_languages_entry_t>(*it,
+				Syntax::languages_tab, TOTAL_ACCEPTED_CHARSETS)) {
+			status_line.set_status_code(NOT_ACCEPTABLE);
 			return 0;
 		}
 		//TODO: handler
+	}
+	return 1;
+}
+
+bool Client::_is_allowed_method(std::list<std::string> allowed_methods, const std::string& method) {
+	for (std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
+		if (*it == method)
+			return true;
+	}
+	return false;
+}
+
+int Client::_allow_handler(exchange_t& exchange, const std::list<std::string>& methods_list) {
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::list<std::string> allowed_methods;
+
+	for(std::list<std::string>::const_iterator it = methods_list.begin(); it != methods_list.end(); it++) {
+		if (!Syntax::is_accepted_value<Syntax::method_tab_entry_t>(*it,
+			Syntax::method_tab, DEFAULT_METHOD)) {
+			status_line.set_status_code(BAD_REQUEST);
+			return 0;
+		}
+		allowed_methods = exchange.first.get_virtual_server()->getMethods();
+		if (!_is_allowed_method(allowed_methods, *it)) {
+			status_line.set_status_code(METHOD_NOT_ALLOWED);
+			return 0;
+		}
+		//TODO: handler
+	}
+	return 1;
+}
+
+bool Client::_check_credentials(const std::string& credential) {
+	(void)credential;
+	//TODO: find out how authorization fields are made
+	return true;
+}
+
+int Client::_authorization_handler(exchange_t& exchange, const std::list<std::string>& credentials_list) {
+	std::string credential;
+	Response::StatusLine status_line = exchange.second.get_status_line();
+
+	if (credentials_list.size() != 1) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	credential = credentials_list.front();
+	if (!_check_credentials(credential)) {
+		status_line.set_status_code(UNAUTHORIZED);
+		return 0;
+	}
+	//TODO: handler
+	return 1;
+}
+
+bool Client::_transfer_encoding_is_set(const exchange_t& exchange) {
+	const AHTTPMessage::Headers& headers = exchange.first.get_headers();
+
+	return headers.key_exists(Syntax::headers_tab[TRANSFER_ENCODING].name);
+}
+
+int Client::_content_length_handler(exchange_t& exchange, const std::list<std::string>& content_length_list) {
+	std::string content_length_str;
+	unsigned long content_length;
+	Response::StatusLine status_line = exchange.second.get_status_line();
+
+	if(_transfer_encoding_is_set(exchange)) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	if (content_length_list.size() != 1) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	content_length_str = content_length_list.front();
+	if (!Syntax::is_num(content_length_str.c_str())) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	content_length = std::strtol(content_length_str.c_str(), NULL, 10);
+	if (content_length > exchange.first.get_virtual_server()->getClientMaxBodySize()) {
+		status_line.set_status_code(PAYLOAD_TOO_LARGE);
+		return (0);
+	}
+	//TODO: handler
+	return (1);
+}
+
+int Client::_headers_handler(exchange_t& exchange) {
+	const AHTTPMessage::Headers& headers = exchange.first.get_headers();
+	std::list<std::string> value_list;
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	bool header_complete[TOTAL_HEADER_NAMES] = {false};
+	int (Client::*handler_functions[])(exchange_t&, const std::list<std::string>&) = {&Client::_accept_charset_handler,
+		&Client::_accept_language_handler, &Client::_allow_handler, &Client::_authorization_handler, &Client::_content_length_handler};
+	/* TODO::
+	 * check champs multiples++++++++++++++++++
+	 *
+	 */
+	for(size_t i = 0; i < TOTAL_HEADER_NAMES; i++) {
+		if (headers.key_exists(Syntax::headers_tab[i].name)) {
+			value_list = Syntax::parse_header_value(headers.get_value(Syntax::headers_tab[i].name));
+			if (value_list.empty()) {
+				status_line.set_status_code(BAD_REQUEST);
+				_closing = true;
+				exchange.first.set_status(Request::REQUEST_RECEIVED);
+				return 0;
+			}
+			if (!(this->*handler_functions[i])(exchange, value_list)) {
+				_closing = true;
+				exchange.first.set_status(Request::REQUEST_RECEIVED);
+				return 0;
+			}
+			header_complete[i] = true;
+		}
 	}
 	return 1;
 }

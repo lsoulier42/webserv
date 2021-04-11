@@ -15,13 +15,11 @@
 Request::Request(void) :
 	AHTTPMessage(),
 	_status(START),
-	_limit_body_size(),
 	_request_line() {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
 	_status(x._status),
-	_limit_body_size(x._limit_body_size),
 	_request_line(x._request_line) {}
 
 Request::~Request(void) {}
@@ -30,7 +28,6 @@ Request
 &Request::operator=(const Request &x) {
 	AHTTPMessage::operator=(x);
 	_status = x._status;
-	_limit_body_size = x._limit_body_size;
 	_request_line = x._request_line;
 	return (*this);
 }
@@ -38,11 +35,6 @@ Request
 Request::request_status_t
 Request::get_status(void) const {
 	return (_status);
-}
-
-size_t
-Request::get_limit_body_size() const {
-	return _limit_body_size;
 }
 
 Request::RequestLine
@@ -61,15 +53,9 @@ Request::set_status(request_status_t status) {
 }
 
 void
-Request::set_limit_body_size(size_t size) {
-	_limit_body_size = size;
-}
-
-void
 Request::reset(void) {
 	AHTTPMessage::reset();
 	_status = START;
-	_limit_body_size = 0;
 	_request_line.reset();
 }
 
@@ -150,4 +136,12 @@ Request::RequestLine::render(void) const {
 	}
 	std::cout << "REQUEST TARGET : " << _request_target << "$" << std::endl;
 	std::cout << "HTTP VERSION : " << get_http_version() << "$" << std::endl;
+}
+
+const Config* Request::get_virtual_server() const {
+	return _virtual_server;
+}
+
+void Request::set_virtual_server(const Config* virtual_server) {
+	_virtual_server = virtual_server;
 }

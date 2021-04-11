@@ -115,6 +115,27 @@ const Syntax::header_tab_entry_t Syntax::headers_tab[] =
 	{WWW_AUTHENTICATE, "WWW-Authenticate"}
 };
 
+const Syntax::accepted_charsets_entry_t Syntax::charsets_tab[] =
+{
+	{UTF_8, "utf-8"},
+	{ISO_8859_1, "iso-8859-1"},
+	{UNICODE_1_1, "unicode-1-1"}
+};
+
+const Syntax::accepted_languages_entry_t Syntax::languages_tab[] =
+{
+	{FR, "fr"},
+	{FR_BE, "fr-BE"},
+	{FR_CA, "fr-CA"},
+	{FR_CH, "fr-CH"},
+	{FR_FR, "fr-FR"},
+	{FR_LU, "fr-LU"},
+	{EN, "en"},
+	{EN_CA, "en-CA"},
+	{EN_GB, "en-GB"},
+	{EN_US, "en-US"}
+};
+
 bool Syntax::is_informational_code(int code) {
 	return code == 100 || code == 101;
 }
@@ -256,7 +277,6 @@ std::multimap<float, std::string> Syntax::split_weight(const std::vector<std::st
 		it != elements_split.end(); it++) {
 		weight_split = Syntax::split(*it, ";");
 		if (weight_split.size() > 2) {
-			std::cerr << status_codes_tab[BAD_REQUEST].reason_phrase << std::endl;
 			value_weight.clear();
 			return value_weight;
 		}
@@ -264,7 +284,6 @@ std::multimap<float, std::string> Syntax::split_weight(const std::vector<std::st
 			effective_value = weight_split[0];
 			q_weight = weight_split[1];
 			if (q_weight.compare(0, 2, "q=") != 0)	{
-				std::cerr << status_codes_tab[BAD_REQUEST].reason_phrase << std::endl;
 				value_weight.clear();
 				return value_weight;
 			}
@@ -279,12 +298,12 @@ std::multimap<float, std::string> Syntax::split_weight(const std::vector<std::st
 	return value_weight;
 }
 
-std::list<std::string> Syntax::parse_header_value(const AHTTPMessage::Headers::header_t& header) {
+std::list<std::string> Syntax::parse_header_value(const std::string& unparsed_value) {
 	std::list<std::string> new_list;
 	std::multimap<float, std::string> value_weight;
 	std::vector<std::string> elements_split;
 
-	elements_split = Syntax::split(header.second, ", ");
+	elements_split = Syntax::split(unparsed_value, ", ");
 	if (!elements_split.empty()) {
 		value_weight = split_weight(elements_split);
 		if (value_weight.empty()) {
@@ -296,24 +315,3 @@ std::list<std::string> Syntax::parse_header_value(const AHTTPMessage::Headers::h
 		new_list.push_back(rit->second);
 	return new_list;
 }
-
-const Syntax::accepted_charsets_entry_t Syntax::charsets_tab[] =
-{
-	{UTF_8, "utf-8"},
-	{ISO_8859_1, "iso-8859-1"},
-	{UNICODE_1_1, "unicode-1-1"}
-};
-
-const Syntax::accepted_languages_entry_t Syntax::languages_tab[] =
-{
-	{FR, "fr"},
-	{FR_BE, "fr-BE"},
-	{FR_CA, "fr-CA"},
-	{FR_CH, "fr-CH"},
-	{FR_FR, "fr-FR"},
-	{FR_LU, "fr-LU"},
-	{EN, "en"},
-	{EN_CA, "en-CA"},
-	{EN_GB, "en-GB"},
-	{EN_US, "en-US"}
-};

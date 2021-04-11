@@ -88,4 +88,5 @@ void
 Response::StatusLine::render(void) const {
 	std::cout << "HTTP VERSION : " << get_http_version() << "$" << std::endl;
 	std::cout << "STATUS CODE : " << _status_code << "$" << std::endl;
+	std::cout << "REASON PHRASE : " << Syntax::status_codes_tab[_status_code].reason_phrase << "$" << std::endl;
 }

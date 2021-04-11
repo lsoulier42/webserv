@@ -76,14 +76,26 @@ class Client {
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
 
-		const Config* _extract_virtual_server(const exchange_t& exchange) const;
+		void _extract_virtual_server(exchange_t& exchange);
+
 		/* Headers handlers
 		 *
 		 *
 		 */
-		int _accept_charset_handler(const AHTTPMessage::Headers::header_t& header);
-		int _accept_language_handler(const AHTTPMessage::Headers::header_t& header);
+		int _headers_handler(exchange_t& exchange);
+		int _accept_charset_handler(exchange_t& exchange, const std::list<std::string>& charsets_list);
+		int _accept_language_handler(exchange_t& exchange, const std::list<std::string>& languages_list);
+		int _allow_handler(exchange_t& exchange, const std::list<std::string>& methods_list);
+		int _authorization_handler(exchange_t& exchange, const std::list<std::string>& credentials_list);
+		int _content_length_handler(exchange_t& exchange, const std::list<std::string>& content_length_list);
 
+		/* Handler helpers
+		 *
+		 *
+		 */
+		static bool _is_allowed_method(std::list<std::string> allowed_methods, const std::string& method);
+		static bool _check_credentials(const std::string& credential);
+		static bool _transfer_encoding_is_set(const exchange_t& exchange);
 };
 
 #endif

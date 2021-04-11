@@ -92,7 +92,7 @@ int parse_error_page(const std::vector<std::string>& tokens, Config& config) {
 }
 
 int parse_client_max_body_size(const std::vector<std::string>& tokens, Config& config) {
-	int client_max_body_size;
+	unsigned long client_max_body_size;
 	std::string usage("Usage: 'client_max_body_size <positive, non null, numerical value>;'");
 
 	if (tokens.size() != 2)
