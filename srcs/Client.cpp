@@ -251,6 +251,7 @@ Client::_open_file_to_read(void) {
 	return (SUCCESS);
 }
 
+
 //fonction appelee lorsque select nous autorise a read le fd
 //on lit le fichier et lorsqu'on l'a termine
 //on peut passer a la suite du process de la requete
@@ -287,4 +288,38 @@ int
 Client::_process(exchange_t &exchange) {
 	exchange.first.set_status(Request::REQUEST_PROCESSED);
 	return (_fill_response(exchange));
+}
+/* This function get the right configuration of virtual host
+ * based on header host and server_name
+ * http://nginx.org/en/docs/http/request_processing.html
+ *
+ */
+
+const Config*
+Client::extractVirtualServer() const {
+	std::string host_requested;
+	std::vector<std::string> host_elements;
+	std::string effective_host;
+	std::list<std::string> server_names;
+	const Config* virtual_server_found = NULL;
+
+	if (_request.get_headers().key_exists("Host")) {
+		host_requested = _request.get_headers().get_value("Host");
+		host_elements = split(host_requested, ":");
+		effective_host = host_elements[0];
+	}
+	for(std::list<const Config*>::const_iterator it = _configs.begin();
+		it != _configs.end(); it++) {
+		server_names = (*it)->getServerNames();
+		for (std::list<std::string>::const_iterator cit = server_names.begin();
+			cit != server_names.end(); it++) {
+			if (*cit == effective_host) {
+				virtual_server_found = *it;
+				break;
+			}
+		}
+		if (virtual_server_found)
+			break;
+	}
+	return virtual_server_found ? virtual_server_found : _configs.front();
 }

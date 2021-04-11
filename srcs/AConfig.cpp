@@ -12,8 +12,9 @@
 
 #include "AConfig.hpp"
 
-AConfig::AConfig() : _autoindex(false) {
-
+AConfig::AConfig() : _autoindex(DEFAULT_AUTOINDEX) {
+	_index.push_back(DEFAULT_INDEX);
+	_methods.push_back(DEFAULT_ALLOWED_METHOD);
 }
 
 AConfig::~AConfig() {
@@ -41,6 +42,8 @@ std::list<std::string> AConfig::getIndex() const {
 }
 
 void AConfig::setIndex(const std::list<std::string> &index) {
+	if (!_index.empty())
+		_index.clear();
 	_index = index;
 }
 
@@ -49,6 +52,8 @@ std::list<std::string> AConfig::getMethods() const {
 }
 
 void AConfig::setMethods(const std::list<std::string> &methods) {
+	if (!_methods.empty())
+		_methods.clear();
 	_methods = methods;
 }
 

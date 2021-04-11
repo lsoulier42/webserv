@@ -39,8 +39,10 @@ class Client {
 		Client &operator=(const Client &x);
 
 		int get_sd(void) const;
-
+  
 		int read_socket(void);
+  
+		const Config* extractVirtualServer() const;
 
 	private:
 
