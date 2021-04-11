@@ -19,7 +19,7 @@
 # include <cstdlib>
 # include <cstring>
 # include <fstream>
-# include <errno.h>
+# include <cerrno>
 
 # include "Config.hpp"
 # include "Syntax.hpp"
@@ -38,14 +38,6 @@ int 						check_main_bloc(std::ifstream& config_file, std::vector<Config>& confi
 int							check_server_bloc(std::ifstream& config_file, std::vector<Config>& configs);
 int							check_location_bloc(std::ifstream& config_file,
 								const std::vector<std::string>& tokens, Config& config);
-
-std::string					trim_comments(const std::string &line_buffer);
-bool						is_num(const char* str);
-int							check_ip_format(const std::string& ip);
-std::string					trim_whitespaces(const std::string& line_buffer);
-std::vector<std::string>	split_whitespaces(const std::string& line_buffer);
-std::vector<std::string> 	split(const std::string& line_buffer, const std::string& charset);
-int 						trim_semicolon(std::vector<std::string>& tokens);
 
 int 						parse_listen(const std::vector<std::string>&, Config&);
 int 						parse_server_name(const std::vector<std::string>&, Config&);

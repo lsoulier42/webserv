@@ -21,6 +21,7 @@
 # include <sys/socket.h>
 # include "Request.hpp"
 # include "Response.hpp"
+# include "Syntax.hpp"
 
 # define SUCCESS 0
 # define FAILURE -1
@@ -41,8 +42,6 @@ class Client {
 		int get_sd(void) const;
   
 		int read_socket(void);
-  
-		const Config* extractVirtualServer() const;
 
 	private:
 
@@ -76,6 +75,14 @@ class Client {
 		int _read_file(void);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
+
+		const Config* _extract_virtual_server(const exchange_t& exchange) const;
+		/* Headers handlers
+		 *
+		 *
+		 */
+		int _accept_charset_handler(const AHTTPMessage::Headers::header_t& header);
+		int _accept_language_handler(const AHTTPMessage::Headers::header_t& header);
 
 };
 

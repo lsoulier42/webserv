@@ -296,16 +296,16 @@ Client::_process(exchange_t &exchange) {
  */
 
 const Config*
-Client::extractVirtualServer() const {
+Client::_extract_virtual_server(const exchange_t& exchange) const {
 	std::string host_requested;
 	std::vector<std::string> host_elements;
 	std::string effective_host;
 	std::list<std::string> server_names;
 	const Config* virtual_server_found = NULL;
 
-	if (_request.get_headers().key_exists("Host")) {
-		host_requested = _request.get_headers().get_value("Host");
-		host_elements = split(host_requested, ":");
+	if (exchange.first.get_headers().key_exists("Host")) {
+		host_requested = exchange.first.get_headers().get_value("Host");
+		host_elements = Syntax::split(host_requested, ":");
 		effective_host = host_elements[0];
 	}
 	for(std::list<const Config*>::const_iterator it = _configs.begin();
@@ -322,4 +322,34 @@ Client::extractVirtualServer() const {
 			break;
 	}
 	return virtual_server_found ? virtual_server_found : _configs.front();
+}
+
+int Client::_accept_language_handler(const AHTTPMessage::Headers::header_t& header) {
+	std::list<std::string> languages = Syntax::parse_header_value(header);
+
+	for(std::list<std::string>::const_iterator it = languages.begin(); it != languages.end(); it++) {
+		//Parsing checker : si le language n'est pas gere par le server : erreur 406
+		if (!Syntax::is_accepted_value<Syntax::accepted_languages_entry_t>(*it,
+				Syntax::languages_tab, TOTAL_ACCEPTED_CHARSETS)) {
+			std::cerr << Syntax::status_codes_tab[NOT_ACCEPTABLE].reason_phrase << std::endl;
+			return 0;
+		}
+		//TODO: handler
+	}
+	return 1;
+}
+
+int Client::_accept_charset_handler(const AHTTPMessage::Headers::header_t& header) {
+	std::list<std::string> charsets = Syntax::parse_header_value(header);
+
+	for(std::list<std::string>::const_iterator it = charsets.begin(); it != charsets.end(); it++) {
+		//Parsing checker : si le charset n'est pas gere par le server : erreur 406
+		if (!Syntax::is_accepted_value<Syntax::accepted_charsets_entry_t>(*it,
+				Syntax::charsets_tab, TOTAL_ACCEPTED_CHARSETS)) {
+			std::cerr << Syntax::status_codes_tab[NOT_ACCEPTABLE].reason_phrase << std::endl;
+			return 0;
+		}
+		//TODO: handler
+	}
+	return 1;
 }
