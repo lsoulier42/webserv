@@ -6,13 +6,13 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/11 04:03:12 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/11 04:27:46 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-const size_t	Client::_buffer_size(3);
+const size_t	Client::_buffer_size(900);
 
 Client::Client(void) :
 	_sd(),
@@ -114,6 +114,7 @@ Client::_trailer_received(const Request &current_request) const {
 			&& std::string::npos != _input_str.find("\r\n"));
 }
 
+//TODO:: pas du tout comme ca qu'on repere la fin des trailers, provisoire, pour test
 bool
 Client::_trailers_received(const Request &current_request) const {
 	return (current_request.get_status() == Request::BODY_RECEIVED
@@ -168,16 +169,17 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 		_closing = true;
 		return (FAILURE);
 	}
-	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
 	exchange.first.get_request_line().set_method(_input_str.substr(0, first_sp));
 	exchange.first.get_request_line().set_request_target(_input_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
 	exchange.first.get_request_line().set_http_version(_input_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
 	_input_str.erase(0, end_rl + 2);
 	if (DEFAULT_METHOD == exchange.first.get_request_line().get_method()) {
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 		exchange.second.get_status_line().set_status_code(NOT_IMPLEMENTED);
 		_closing = true;
 		return (FAILURE);
 	}
+	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
 	return (SUCCESS);
 }
 
@@ -196,25 +198,22 @@ Client::_collect_header(exchange_t &exchange) {
 
 int
 Client::_check_headers(exchange_t &exchange) {
-	if (_body_expected(exchange.first))
-		exchange.first.set_status(Request::HEADERS_RECEIVED);
-	else
-		exchange.first.set_status(Request::REQUEST_RECEIVED);
 	_input_str.erase(0, _input_str.find("\r\n") + 2);
 	if (!exchange.first.get_headers().key_exists("Host")) {
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 		exchange.second.get_status_line().set_status_code(BAD_REQUEST);
 		_closing = true;
 		return (FAILURE);
 	}
+	if (_body_expected(exchange.first))
+		exchange.first.set_status(Request::HEADERS_RECEIVED);
+	else
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 	return (SUCCESS);
 }
 
 int
 Client::_collect_body(exchange_t &exchange) {
-	if (_trailer_expected(exchange.first))
-		exchange.first.set_status(Request::BODY_RECEIVED);
-	else
-		exchange.first.set_status(Request::REQUEST_RECEIVED);
 	size_t	body_length(0);
 	if (exchange.first.get_headers().key_exists("Transfer-Encoding")
 			&& exchange.first.get_headers().get_value("Transfer-Encoding").find("chunked") != std::string::npos) {
@@ -223,6 +222,10 @@ Client::_collect_body(exchange_t &exchange) {
 		body_length = static_cast<unsigned long>(std::atol(exchange.first.get_headers().get_value("Content-Length").c_str()));
 	exchange.first.set_body(_input_str.substr(0, body_length));
 	_input_str.erase(0, body_length);
+	if (_trailer_expected(exchange.first))
+		exchange.first.set_status(Request::BODY_RECEIVED);
+	else
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 	return (SUCCESS);
 }
 
