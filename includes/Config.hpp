@@ -31,8 +31,8 @@ class Config : public AConfig {
 		void setIpAddr(const std::string& ipAddr);
 		int getPort() const;
 		void setPort(int port);
-		int getClientMaxBodySize() const;
-		void setClientMaxBodySize(int clientMaxBodySize);
+		unsigned long getClientMaxBodySize() const;
+		void setClientMaxBodySize(unsigned long clientMaxBodySize);
 		std::string getUploadDir() const;
 		void setUploadDir(const std::string &uploadDir);
 		std::list<int> getErrorPageCodes() const;
@@ -50,7 +50,7 @@ class Config : public AConfig {
 		std::list<std::string> _server_names;
 		std::string _ip_addr;
 		int _port;
-		int _client_max_body_size;
+		unsigned long _client_max_body_size;
 		std::string _upload_dir;
 		std::list<int> _error_page_codes;
 		std::string _error_page_path;

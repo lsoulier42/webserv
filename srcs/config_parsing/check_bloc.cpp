@@ -43,7 +43,7 @@ int check_main_bloc(std::ifstream& config_file, std::vector<Config>& configs) {
 		std::getline(config_file, line_buffer);
 		line_buffer = Syntax::trim_comments(line_buffer);
 		line_buffer = Syntax::trim_whitespaces(line_buffer);
-		tokens = Syntax::split_whitespaces(line_buffer);
+		tokens = Syntax::split(line_buffer, WHITESPACES);
 		if (line_buffer.empty() || tokens.empty())
 			continue;
 		if (tokens[0] != "server")
@@ -78,7 +78,7 @@ int check_server_bloc(std::ifstream& config_file, std::vector<Config>& configs) 
 		std::getline(config_file, line_buffer);
 		line_buffer = Syntax::trim_comments(line_buffer);
 		line_buffer = Syntax::trim_whitespaces(line_buffer);
-		tokens = Syntax::split_whitespaces(line_buffer);
+		tokens = Syntax::split(line_buffer, WHITESPACES);
 		if (line_buffer.empty() || tokens.empty())
 			continue;
 		if (tokens[0] == "}") {
@@ -137,7 +137,7 @@ int check_location_bloc(std::ifstream& config_file, const std::vector<std::strin
 		std::getline(config_file, line_buffer);
 		line_buffer = Syntax::trim_comments(line_buffer);
 		line_buffer = Syntax::trim_whitespaces(line_buffer);
-		location_tokens = Syntax::split_whitespaces(line_buffer);
+		location_tokens = Syntax::split(line_buffer, WHITESPACES);
 		if (line_buffer.empty() || location_tokens.empty())
 			continue;
 		if (location_tokens[0] == "}") {

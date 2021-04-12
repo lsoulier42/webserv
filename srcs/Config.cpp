@@ -67,11 +67,11 @@ void Config::setPort(int port) {
 	_port = port;
 }
 
-int Config::getClientMaxBodySize() const {
+unsigned long Config::getClientMaxBodySize() const {
 	return _client_max_body_size;
 }
 
-void Config::setClientMaxBodySize(int clientMaxBodySize) {
+void Config::setClientMaxBodySize(unsigned long clientMaxBodySize) {
 	_client_max_body_size = clientMaxBodySize;
 }
 

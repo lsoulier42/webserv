@@ -52,7 +52,11 @@ class AHTTPMessage {
 
 			public:
 
-				typedef std::pair<std::string, std::string>	header_t;
+				struct header_t {
+					std::string name;
+					std::string unparsed_value;
+					std::list<std::string> value;
+				};
 
 				Headers(void);
 				Headers(const Headers &x);
@@ -61,8 +65,9 @@ class AHTTPMessage {
 
 				void insert(const header_t &header);
 				bool key_exists(const std::string &key) const;
-				std::string &get_value(const std::string &key) throw (std::invalid_argument);
-				const std::string &get_value(const std::string &key) const throw (std::invalid_argument);
+				const std::list<std::string>& get_value(const std::string &key) const throw (std::invalid_argument);
+				void set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument);
+				const std::string &get_unparsed_value(const std::string &key) const throw (std::invalid_argument);
 				void reset(void);
 				void render(void) const;
 

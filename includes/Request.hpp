@@ -63,12 +63,12 @@ class Request : public AHTTPMessage {
 		Request &operator=(const Request &x);
 
 		request_status_t get_status(void) const;
-		size_t get_limit_body_size(void) const;
 		RequestLine &get_request_line(void);
 		const RequestLine &get_request_line(void) const;
+		const Config* get_virtual_server() const;
+		void set_virtual_server(const Config* virtual_server);
 
 		void set_status(request_status_t status);
-		void set_limit_body_size(size_t limit_body_size);
 
 		void reset(void);
 		void render(void) const;
@@ -76,9 +76,8 @@ class Request : public AHTTPMessage {
 	private:
 
 		request_status_t _status;
-		size_t _limit_body_size;
 		RequestLine _request_line;
-
+		const Config* _virtual_server;
 };
 
 #endif

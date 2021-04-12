@@ -17,7 +17,8 @@
 # include <vector>
 # include <map>
 # include <cstdlib>
-# include "AHTTPMessage.hpp"
+
+# define WHITESPACES " \n\r\t\f\v"
 
 enum method_t {
 	GET,
@@ -117,21 +118,24 @@ enum accepted_charsets_t {
 	UTF_8,
 	ISO_8859_1,
 	UNICODE_1_1,
+	US_ASCII,
 	TOTAL_ACCEPTED_CHARSETS
 };
 
-enum accepted_language_t {
-	FR,
-	FR_BE,
-	FR_CA,
-	FR_FR,
-	FR_LU,
-	FR_CH,
-	EN,
-	EN_CA,
-	EN_GB,
-	EN_US,
-	TOTAL_ACCEPTED_LANGUAGES
+enum mime_type_t {
+	TEXT_PLAIN,
+	TEXT_HTML,
+	TEXT_CSS,
+	TEXT_CSV,
+	IMAGE_BMP,
+	IMAGE_GIF,
+	IMAGE_JPEG,
+	IMAGE_PNG,
+	APPLICATION_OCTET_STREAM,
+	APPLICATION_JAVASCRIPT,
+	APPLICATION_PDF,
+	APPLICATION_XML,
+	TOTAL_MIME_TYPES
 };
 
 class Syntax {
@@ -163,9 +167,9 @@ class Syntax {
 			std::string			name;
 		};
 
-		struct accepted_languages_entry_t {
-			accepted_language_t language_index;
-			std::string			name;
+		struct mime_type_entry_t {
+			mime_type_t mime_type_index;
+			std::string	name;
 		};
 
 		static const method_tab_entry_t	method_tab[];
@@ -174,7 +178,7 @@ class Syntax {
 		static const status_code_tab_entry_t status_codes_tab[];
 		static const header_tab_entry_t headers_tab[];
 		static const accepted_charsets_entry_t charsets_tab[];
-		static const accepted_languages_entry_t languages_tab[];
+		static const mime_type_entry_t mime_types_tab[];
 
 		static bool is_informational_code(int code);
 		static bool is_successful_code(int code);
@@ -186,17 +190,16 @@ class Syntax {
 		static int fetch_method_index(const std::string& method);
 
 		static std::string	trim_comments(const std::string &line_buffer);
-		static bool is_num(const char* str);
+		static bool str_is_num(const std::string& str);
+		static bool str_is_alpha(const std::string& str);
+		static bool str_is_alnum(const std::string& str);
 		static int check_ip_format(const std::string& ip);
 		static std::string trim_whitespaces(const std::string& line_buffer);
-		static std::vector<std::string> split_whitespaces(const std::string& line_buffer);
 		static std::vector<std::string> split(const std::string& line_buffer, const std::string& charset);
 		static int trim_semicolon(std::vector<std::string>& tokens);
 
 		static bool is_implemented_header(const std::string& header_name);
-		static std::list<std::string> parse_header_value(const AHTTPMessage::Headers::header_t& header);
-		static std::multimap<float, std::string> split_weight(const std::vector<std::string>& elements_split);
-		
+
 		template<typename T>
 		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {
 			if (value == "*")

@@ -115,6 +115,30 @@ const Syntax::header_tab_entry_t Syntax::headers_tab[] =
 	{WWW_AUTHENTICATE, "WWW-Authenticate"}
 };
 
+const Syntax::accepted_charsets_entry_t Syntax::charsets_tab[] =
+{
+	{UTF_8, "utf-8"},
+	{ISO_8859_1, "iso-8859-1"},
+	{UNICODE_1_1, "unicode-1-1"},
+	{US_ASCII, "US-ASCII"}
+};
+
+const Syntax::mime_type_entry_t Syntax::mime_types_tab[] =
+{
+	{TEXT_PLAIN, "text/plain"},
+	{TEXT_HTML, "text/html"},
+	{TEXT_CSS, "text/css"},
+	{TEXT_CSV, "text/csv"},
+	{IMAGE_BMP, "image/bmp"},
+	{IMAGE_GIF, "image/gif"},
+	{IMAGE_JPEG, "image/jpeg"},
+	{IMAGE_PNG, "image/png"},
+	{APPLICATION_OCTET_STREAM, "application/octet-stream"},
+	{APPLICATION_JAVASCRIPT, "application/javascript"},
+	{APPLICATION_PDF, "application/pdf"},
+	{APPLICATION_XML, "application/xml"}
+};
+
 bool Syntax::is_informational_code(int code) {
 	return code == 100 || code == 101;
 }
@@ -171,7 +195,7 @@ std::string Syntax::trim_whitespaces(const std::string& line_buffer) {
 	std::string new_line;
 	size_t start, end;
 
-	whitespaces = " \n\r\t\f\v";
+	whitespaces = WHITESPACES;
 	new_line = line_buffer;
 	start = new_line.find_first_not_of(whitespaces);
 	if (start != std::string::npos)
@@ -180,10 +204,6 @@ std::string Syntax::trim_whitespaces(const std::string& line_buffer) {
 	if (end != std::string::npos)
 		new_line = new_line.substr(0, end + 1);
 	return new_line;
-}
-
-std::vector<std::string> Syntax::split_whitespaces(const std::string& line_buffer) {
-	return Syntax::split(line_buffer, " \n\r\t\f\v");
 }
 
 std::vector<std::string> Syntax::split(const std::string& line_buffer, const std::string& charset) {
@@ -221,9 +241,25 @@ int Syntax::trim_semicolon(std::vector<std::string>& tokens) {
 	return 1;
 }
 
-bool Syntax::is_num(const char* str) {
-	for(int i = 0; str[i]; i++) {
+bool Syntax::str_is_num(const std::string& str) {
+	for(size_t i = 0; str[i]; i++) {
 		if (!std::isdigit(str[i]))
+			return false;
+	}
+	return true;
+}
+
+bool Syntax::str_is_alpha(const std::string& str) {
+	for(size_t i = 0; str[i]; i++) {
+		if (!std::isalpha(str[i]))
+			return false;
+	}
+	return true;
+}
+
+bool Syntax::str_is_alnum(const std::string& str) {
+	for(size_t i = 0; str[i]; i++) {
+		if (!std::isalpha(str[i]) && !std::isdigit(str[i]))
 			return false;
 	}
 	return true;
@@ -236,7 +272,7 @@ int Syntax::check_ip_format(const std::string& ip) {
 	if (nums.size() != 4)
 		return 0;
 	for(int i = 0; i < 4; i++) {
-		if (!is_num(nums[i].c_str()))
+		if (!str_is_num(nums[i]))
 			return 0;
 		num = std::strtol(nums[i].c_str(), NULL, 10);
 		if (num < 0 || num > 255)
@@ -244,76 +280,3 @@ int Syntax::check_ip_format(const std::string& ip) {
 	}
 	return 1;
 }
-
-std::multimap<float, std::string> Syntax::split_weight(const std::vector<std::string>& elements_split) {
-	std::multimap<float, std::string> value_weight;
-	std::vector<std::string> weight_split;
-	std::string effective_value;
-	std::string q_weight;
-	float effective_weight;
-
-	for(std::vector<std::string>::const_iterator it = elements_split.begin();
-		it != elements_split.end(); it++) {
-		weight_split = Syntax::split(*it, ";");
-		if (weight_split.size() > 2) {
-			std::cerr << status_codes_tab[BAD_REQUEST].reason_phrase << std::endl;
-			value_weight.clear();
-			return value_weight;
-		}
-		if (!weight_split.empty() && weight_split.size() != 1) {
-			effective_value = weight_split[0];
-			q_weight = weight_split[1];
-			if (q_weight.compare(0, 2, "q=") != 0)	{
-				std::cerr << status_codes_tab[BAD_REQUEST].reason_phrase << std::endl;
-				value_weight.clear();
-				return value_weight;
-			}
-			effective_weight = std::strtol(q_weight.substr(2).c_str(), NULL, 10);
-		}
-		else {
-			effective_value = *it;
-			effective_weight = 1;
-		}
-		value_weight.insert(std::make_pair(effective_weight, effective_value));
-	}
-	return value_weight;
-}
-
-std::list<std::string> Syntax::parse_header_value(const AHTTPMessage::Headers::header_t& header) {
-	std::list<std::string> new_list;
-	std::multimap<float, std::string> value_weight;
-	std::vector<std::string> elements_split;
-
-	elements_split = Syntax::split(header.second, ", ");
-	if (!elements_split.empty()) {
-		value_weight = split_weight(elements_split);
-		if (value_weight.empty()) {
-			return new_list;
-		}
-	}
-	for(std::multimap<float, std::string>::const_reverse_iterator rit = value_weight.rbegin();
-		rit != value_weight.rend(); rit++)
-		new_list.push_back(rit->second);
-	return new_list;
-}
-
-const Syntax::accepted_charsets_entry_t Syntax::charsets_tab[] =
-{
-	{UTF_8, "utf-8"},
-	{ISO_8859_1, "iso-8859-1"},
-	{UNICODE_1_1, "unicode-1-1"}
-};
-
-const Syntax::accepted_languages_entry_t Syntax::languages_tab[] =
-{
-	{FR, "fr"},
-	{FR_BE, "fr-BE"},
-	{FR_CA, "fr-CA"},
-	{FR_CH, "fr-CH"},
-	{FR_FR, "fr-FR"},
-	{FR_LU, "fr-LU"},
-	{EN, "en"},
-	{EN_CA, "en-CA"},
-	{EN_GB, "en-GB"},
-	{EN_US, "en-US"}
-};
