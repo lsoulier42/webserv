@@ -139,6 +139,15 @@ const Syntax::mime_type_entry_t Syntax::mime_types_tab[] =
 	{APPLICATION_XML, "application/xml"}
 };
 
+const Syntax::encoding_type_entry_t Syntax::encoding_types_tab[] =
+{
+	{CHUNKED, "chunked"},
+	{COMPRESS, "compress"},
+	{DEFLATE, "deflate"},
+	{GZIP, "gzip"},
+	{IDENTITY, "identity"}
+};
+
 bool Syntax::is_informational_code(int code) {
 	return code == 100 || code == 101;
 }
@@ -179,24 +188,24 @@ bool Syntax::is_implemented_header(const std::string &header_name) {
 	return false;
 }
 
-std::string Syntax::trim_comments(const std::string &line_buffer) {
+std::string Syntax::trim_comments(const std::string &str) {
 	std::string new_line;
 	size_t hash_char_pos;
 
-	new_line = line_buffer;
+	new_line = str;
 	hash_char_pos = new_line.find('#');
 	if (hash_char_pos == std::string::npos)
 		return new_line;
 	return new_line.substr(0, hash_char_pos);
 }
 
-std::string Syntax::trim_whitespaces(const std::string& line_buffer) {
+std::string Syntax::trim_whitespaces(const std::string& str) {
 	std::string whitespaces;
 	std::string new_line;
 	size_t start, end;
 
 	whitespaces = WHITESPACES;
-	new_line = line_buffer;
+	new_line = str;
 	start = new_line.find_first_not_of(whitespaces);
 	if (start != std::string::npos)
 		new_line = new_line.substr(start);
@@ -206,38 +215,38 @@ std::string Syntax::trim_whitespaces(const std::string& line_buffer) {
 	return new_line;
 }
 
-std::vector<std::string> Syntax::split(const std::string& line_buffer, const std::string& charset) {
+std::vector<std::string> Syntax::split(const std::string& str, const std::string& charset) {
 	std::vector<std::string> result;
 	std::string token;
 	size_t ws_pos, progress_pos = 0, wd_len;;
 
-	while(progress_pos < line_buffer.size()) {
-		ws_pos = line_buffer.find_first_of(charset, progress_pos);
+	while(progress_pos < str.size()) {
+		ws_pos = str.find_first_of(charset, progress_pos);
 		if (ws_pos == std::string::npos)
 			break;
 		wd_len = ws_pos - progress_pos;
-		token = line_buffer.substr(progress_pos, wd_len);
+		token = str.substr(progress_pos, wd_len);
 		progress_pos += wd_len + 1;
 		if(!token.empty())
 			result.push_back(token);
 	}
-	if (progress_pos < line_buffer.size())
-		result.push_back(line_buffer.substr(progress_pos));
+	if (progress_pos < str.size())
+		result.push_back(str.substr(progress_pos));
 	return result;
 }
 
-int Syntax::trim_semicolon(std::vector<std::string>& tokens) {
-	std::string last_token = tokens.back();
-	std::string::iterator ite = tokens.back().end();
+int Syntax::trim_semicolon(std::vector<std::string>& str) {
+	std::string last_token = str.back();
+	std::string::iterator ite = str.back().end();
 	char last_char = *(--ite);
 
 	if (last_token == ";") {
-		tokens.pop_back();
+		str.pop_back();
 		return 1;
 	}
 	if (last_char != ';')
 		return 0;
-	tokens.back().erase(ite);
+	str.back().erase(ite);
 	return 1;
 }
 
@@ -279,4 +288,17 @@ int Syntax::check_ip_format(const std::string& ip) {
 			return 0;
 	}
 	return 1;
+}
+
+URI_form_t Syntax::get_URI_form(const std::string& uri_str) {
+	if (uri_str.find_first_of(WHITESPACES) != std::string::npos)
+		return INVALID_URI_FORM;
+	if (uri_str == "*")
+		return ASTERISK_FORM;
+	if (uri_str.find_first_of("@") != std::string::npos)
+		return AUTHORITY_FORM;
+	if (uri_str.find("http://") != std::string::npos
+		|| uri_str.find("https://") != std::string::npos)
+		return ABSOLUTE_URI;
+	return PARTIAL_URI;
 }

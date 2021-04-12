@@ -110,11 +110,10 @@ class Client {
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static std::multimap<float, std::string> _split_header_weight(const std::vector<std::string>& elements_split);
 		static bool _is_valid_language_tag(const std::string& language_tag);
-		static bool _is_allowed_method(std::list<std::string> allowed_methods, const std::string& method);
-		static bool _check_credentials(const std::string& credential);
 		static std::list<std::string> _parse_content_type_header_value(const std::string& unparsed_value);
 		static std::string _build_effective_request_URI(const Request::RequestLine& requestLine, const std::string& header_host_value);
 		void _extract_virtual_server(Request &current_request, const std::string& host_value);
+
 };
 
 #endif

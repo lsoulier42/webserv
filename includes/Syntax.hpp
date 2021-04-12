@@ -138,6 +138,23 @@ enum mime_type_t {
 	TOTAL_MIME_TYPES
 };
 
+enum URI_form_t {
+	ABSOLUTE_URI,
+	PARTIAL_URI,
+	ASTERISK_FORM,
+	AUTHORITY_FORM,
+	INVALID_URI_FORM
+};
+
+enum encoding_type_t {
+	CHUNKED,
+	COMPRESS,
+	DEFLATE,
+	GZIP,
+	IDENTITY,
+	TOTAL_ENCODING_TYPES
+};
+
 class Syntax {
 	public:
 		Syntax();
@@ -168,8 +185,13 @@ class Syntax {
 		};
 
 		struct mime_type_entry_t {
-			mime_type_t mime_type_index;
+			mime_type_t	mime_type_index;
 			std::string	name;
+		};
+
+		struct encoding_type_entry_t {
+			encoding_type_t encoding_type_t;
+			std::string 	name;
 		};
 
 		static const method_tab_entry_t	method_tab[];
@@ -179,6 +201,7 @@ class Syntax {
 		static const header_tab_entry_t headers_tab[];
 		static const accepted_charsets_entry_t charsets_tab[];
 		static const mime_type_entry_t mime_types_tab[];
+		static const encoding_type_entry_t encoding_types_tab[];
 
 		static bool is_informational_code(int code);
 		static bool is_successful_code(int code);
@@ -189,16 +212,18 @@ class Syntax {
 
 		static int fetch_method_index(const std::string& method);
 
-		static std::string	trim_comments(const std::string &line_buffer);
+
 		static bool str_is_num(const std::string& str);
 		static bool str_is_alpha(const std::string& str);
 		static bool str_is_alnum(const std::string& str);
 		static int check_ip_format(const std::string& ip);
-		static std::string trim_whitespaces(const std::string& line_buffer);
-		static std::vector<std::string> split(const std::string& line_buffer, const std::string& charset);
-		static int trim_semicolon(std::vector<std::string>& tokens);
+		static int trim_semicolon(std::vector<std::string>& str);
+		static std::string	trim_comments(const std::string &str);
+		static std::string trim_whitespaces(const std::string& str);
+		static std::vector<std::string> split(const std::string& str, const std::string& charset);
 
 		static bool is_implemented_header(const std::string& header_name);
+		static URI_form_t get_URI_form(const std::string& uri_str);
 
 		template<typename T>
 		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {
