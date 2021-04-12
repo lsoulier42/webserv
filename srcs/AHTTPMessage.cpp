@@ -128,9 +128,9 @@ AHTTPMessage::Headers::render(void) const {
 		if (_tab[i]) {
 			for (std::list<header_t>::iterator it(_tab[i]->begin()) ; it != _tab[i]->end() ; it++) {
 				std::cout << "*" << std::endl;
-				std::cout << "KEY : " << it->first << "$" << std::endl;
-				std::cout << "HASH : " << _hash(it->first.c_str()) << "$" << std::endl;
-				std::cout << "VALUE : " << it->second << "$" << std::endl;
+				std::cout << "KEY : " << it->name << "$" << std::endl;
+				std::cout << "HASH : " << _hash(it->name.c_str()) << "$" << std::endl;
+				std::cout << "VALUE : " << it->unparsed_value << "$" << std::endl;
 				std::cout << "*" << std::endl;
 			}
 		}
@@ -139,7 +139,7 @@ AHTTPMessage::Headers::render(void) const {
 
 void
 AHTTPMessage::Headers::insert(const header_t &header) {
-	unsigned long	index(_hash(header.first.c_str()));
+	unsigned long	index(_hash(header.name.c_str()));
 	if (!_tab[index])
 		_tab[index] = new std::list<header_t>;
 	(_tab[index])->push_front(header);
@@ -151,29 +151,41 @@ AHTTPMessage::Headers::key_exists(const std::string &key) const {
 	if (!entry_list)
 		return (false);
 	for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-		if (it->first == key)
+		if (it->name == key)
 			return (true);
 	return (false);
 }
 
-std::string
-&AHTTPMessage::Headers::get_value(const std::string &key) throw(std::invalid_argument) {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
-	if (entry_list) {
-		for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-			if (it->first == key)
-				return (it->second);
-	}
-	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
-}
-
 const std::string
-&AHTTPMessage::Headers::get_value(const std::string &key) const throw(std::invalid_argument) {
+&AHTTPMessage::Headers::get_unparsed_value(const std::string &key) const throw(std::invalid_argument) {
 	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
 		for (std::list<header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
-			if (it->first == key)
-				return (it->second);
+			if (it->name == key)
+				return (it->unparsed_value);
+	}
+	throw (std::invalid_argument("Request::Headers::get_unparsed_value : invalid argument"));
+}
+
+void
+AHTTPMessage::Headers::set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument) {
+	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
+	if (entry_list) {
+		for (std::list<header_t>::iterator it(entry_list->begin()); it != entry_list->end(); it++)
+			if (it->name == key) {
+				it->value = parsed_value;
+			}
+	}
+	throw (std::invalid_argument("Request::Headers::set_value : invalid argument"));
+}
+
+const std::list<std::string>&
+AHTTPMessage::Headers::get_value(const std::string &key) const throw (std::invalid_argument) {
+	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
+	if (entry_list) {
+		for (std::list<header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+			if (it->name == key)
+				return (it->value);
 	}
 	throw (std::invalid_argument("Request::Headers::get_value : invalid argument"));
 }

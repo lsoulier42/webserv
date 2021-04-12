@@ -100,11 +100,10 @@ Client::_headers_received(const Request &current_request) const {
 bool
 Client::_body_received(const Request &current_request) const {
 	return (current_request.get_status() == Request::HEADERS_RECEIVED
-			&& ((current_request.get_headers().key_exists("Transfer-Encoding")
-						&& current_request.get_headers().get_value("Transfer-Encoding").find("chunked") != std::string::npos
-						&& _input_str.find("0\r\n\r\n") != std::string::npos)
+			&& ((_transfer_encoding_chunked(current_request)
+					&& _input_str.find("0\r\n\r\n") != std::string::npos)
 				|| (current_request.get_headers().key_exists("Content-Length")
-						&& _input_str.size() >= static_cast<unsigned long>(std::atol(current_request.get_headers().get_value("Content-Length").c_str())))));
+					&& _input_str.size() >= static_cast<unsigned long>(std::atol(current_request.get_headers().get_value("Content-Length").front().c_str())))));
 }
 
 bool
@@ -122,10 +121,22 @@ Client::_trailers_received(const Request &current_request) const {
 }
 
 bool
+Client::_transfer_encoding_chunked(const Request &current_request) {
+	std::list<std::string> transfer_encoding_values;
+
+	if (current_request.get_headers().key_exists("Transfer-Encoding")) {
+		transfer_encoding_values = current_request.get_headers().get_value("Transfer-Encoding");
+		if (std::find(transfer_encoding_values.begin(), transfer_encoding_values.end(), "chunked") !=
+			transfer_encoding_values.end())
+			return true;
+	}
+	return false;
+}
+
+bool
 Client::_body_expected(const Request &current_request) const {
-	return ((current_request.get_headers().key_exists("Transfer-Encoding")
-				&& (current_request.get_headers().get_value("Transfer-Encoding")).find("chunked") != std::string::npos)
-			|| current_request.get_headers().key_exists("Content-Length"));
+	return (_transfer_encoding_chunked(current_request)
+		|| current_request.get_headers().key_exists("Content-Length"));
 }
 
 bool
@@ -161,8 +172,8 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 	size_t		first_sp(0);
 	size_t		scnd_sp(0);
 	size_t		end_rl(_input_str.find("\r\n"));
-	if (std::string::npos == (first_sp = _input_str.find_first_of(" "))
-			|| std::string::npos == (scnd_sp = _input_str.find_first_of(" ", first_sp + 1))) {
+	if (std::string::npos == (first_sp = _input_str.find_first_of(' '))
+			|| std::string::npos == (scnd_sp = _input_str.find_first_of(' ', first_sp + 1))) {
 		_input_str.erase(0, end_rl + 2);
 		exchange.first.set_status(Request::REQUEST_RECEIVED);
 		exchange.second.get_status_line().set_status_code(BAD_REQUEST);
@@ -185,12 +196,14 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 
 int
 Client::_collect_header(exchange_t &exchange) {
-	size_t		col(0);
-	size_t		end_header(_input_str.find("\r\n"));
-	if (std::string::npos != (col = _input_str.find_first_of(":"))) {
-		std::string	header_name(_input_str.substr(0, col));
-		std::string	header_value(_input_str.substr(col + 1, (end_header - col - 1)));
-		exchange.first.get_headers().insert(std::make_pair(header_name, header_value));
+	size_t							col(0);
+	size_t							end_header(_input_str.find("\r\n"));
+	AHTTPMessage::Headers::header_t	current_header;
+
+	if (std::string::npos != (col = _input_str.find_first_of(':'))) {
+		current_header.name = _input_str.substr(0, col);
+		current_header.unparsed_value = _input_str.substr(col + 1, (end_header - col - 1));
+		exchange.first.get_headers().insert(current_header);
 	}
 	_input_str.erase(0, end_header + 2);
 	return (SUCCESS);
@@ -199,10 +212,9 @@ Client::_collect_header(exchange_t &exchange) {
 int
 Client::_check_headers(exchange_t &exchange) {
 	_input_str.erase(0, _input_str.find("\r\n") + 2);
-	if (!exchange.first.get_headers().key_exists("Host")) {
-		exchange.first.set_status(Request::REQUEST_RECEIVED);
-		exchange.second.get_status_line().set_status_code(BAD_REQUEST);
+	if (!_headers_handlers(exchange)) {
 		_closing = true;
+		exchange.first.set_status(Request::REQUEST_RECEIVED);
 		return (FAILURE);
 	}
 	if (_body_expected(exchange.first))
@@ -215,17 +227,18 @@ Client::_check_headers(exchange_t &exchange) {
 int
 Client::_collect_body(exchange_t &exchange) {
 	size_t	body_length(0);
-	if (exchange.first.get_headers().key_exists("Transfer-Encoding")
-			&& exchange.first.get_headers().get_value("Transfer-Encoding").find("chunked") != std::string::npos) {
+	Request& current_request = exchange.first;
+
+	if (_transfer_encoding_chunked(current_request))
 		body_length = _input_str.find("0\r\n\r\n") + 5;
-	} else if (exchange.first.get_headers().key_exists("Content-Length"))
-		body_length = static_cast<unsigned long>(std::atol(exchange.first.get_headers().get_value("Content-Length").c_str()));
-	exchange.first.set_body(_input_str.substr(0, body_length));
+	else if (current_request.get_headers().key_exists("Content-Length"))
+		body_length = static_cast<unsigned long>(std::atol(current_request.get_headers().get_value("Content-Length").front().c_str()));
+	current_request.set_body(_input_str.substr(0, body_length));
 	_input_str.erase(0, body_length);
-	if (_trailer_expected(exchange.first))
-		exchange.first.set_status(Request::BODY_RECEIVED);
+	if (_trailer_expected(current_request))
+		current_request.set_status(Request::BODY_RECEIVED);
 	else
-		exchange.first.set_status(Request::REQUEST_RECEIVED);
+		current_request.set_status(Request::REQUEST_RECEIVED);
 	return (SUCCESS);
 }
 
@@ -233,10 +246,16 @@ Client::_collect_body(exchange_t &exchange) {
 int
 Client::_fill_response(exchange_t &exchange) {
 	bool	need_syscall_read(false);
+	AHTTPMessage::Headers::header_t fake_response;
+
+	fake_response.name = "Truc";
+	fake_response.unparsed_value = "Bidule chose chouette";
+	fake_response.value = std::list<std::string>(1, "bidule");
+
 	exchange.first.render();
 	exchange.second.get_status_line().set_status_code(OK);
 	exchange.second.get_status_line().set_http_version("HTTP/1.1");
-	exchange.second.get_headers().insert(std::make_pair("Truc", "Bidule chose chouette"));
+	exchange.second.get_headers().insert(fake_response);
 	exchange.second.set_body("Bip bop boup\r\n");
 	if (need_syscall_read)
 		return (_open_file_to_read());
@@ -289,44 +308,80 @@ Client::_process(exchange_t &exchange) {
 	exchange.first.set_status(Request::REQUEST_PROCESSED);
 	return (_fill_response(exchange));
 }
-/* This function get the right configuration of virtual host
+/* _extract_virtual_server :
+ * get the right configuration of virtual host
  * based on header host and server_name
- * http://nginx.org/en/docs/http/request_processing.html
  *
  */
 
 void
-Client::_extract_virtual_server(exchange_t& exchange) {
+Client::_extract_virtual_server(Request &current_request, const std::string& host_value) {
 	std::string host_requested;
 	std::vector<std::string> host_elements;
-	std::string effective_host;
 	std::list<std::string> server_names;
 	const Config* virtual_server = NULL;
 
-	if (exchange.first.get_headers().key_exists("Host")) {
-		host_requested = exchange.first.get_headers().get_value("Host");
-		host_elements = Syntax::split(host_requested, ":");
-		effective_host = host_elements[0];
-	}
 	for(std::list<const Config*>::const_iterator it = _configs.begin();
-		it != _configs.end(); it++) {
+		it != _configs.end() && !virtual_server; it++) {
 		server_names = (*it)->getServerNames();
 		for (std::list<std::string>::const_iterator cit = server_names.begin();
 			cit != server_names.end(); it++) {
-			if (*cit == effective_host) {
+			if (*cit == host_value) {
 				virtual_server = *it;
 				break;
 			}
 		}
-		if (virtual_server)
-			break;
 	}
 	virtual_server = virtual_server ? virtual_server : _configs.front();
-	exchange.first.set_virtual_server(virtual_server);
+	current_request.set_virtual_server(virtual_server);
 }
 
-int Client::_accept_charset_handler(exchange_t& exchange, const std::list<std::string>& charsets_list) {
+std::list<std::string>
+Client::_parse_coma_q_factor(const std::string& unparsed_value) {
+	std::list<std::string> new_list;
+	std::multimap<float, std::string> value_weight;
+	std::vector<std::string> elements_split;
+
+	elements_split = Syntax::split(unparsed_value, ", ");
+	value_weight = _split_header_weight(elements_split);
+	for(std::multimap<float, std::string>::const_reverse_iterator rit = value_weight.rbegin();
+		rit != value_weight.rend(); rit++)
+		new_list.push_back(rit->second);
+	return new_list;
+}
+
+std::multimap<float, std::string>
+Client::_split_header_weight(const std::vector<std::string>& elements_split) {
+	std::multimap<float, std::string> value_weight;
+	std::vector<std::string> weight_split;
+	std::string effective_value;
+	std::string q_weight;
+	float effective_weight;
+
+	for(std::vector<std::string>::const_iterator it = elements_split.begin();
+		it != elements_split.end(); it++) {
+		weight_split = Syntax::split(*it, ";");
+		effective_value = !weight_split.empty() && weight_split.size() != 1 ?
+				weight_split[0] : *it;
+		effective_weight = !weight_split.empty() && weight_split.size() != 1 ?
+				std::strtol(q_weight.substr(2).c_str(), NULL, 10) : 1;
+		value_weight.insert(std::make_pair(effective_weight, effective_value));
+	}
+	return value_weight;
+}
+
+/* _header_accept_charset_handler:
+ * 4 most common accepted : utf-8, iso-8859-1, unicode-1-1, US-ASCII
+ * asterisk form accepted
+ * case sensitive
+ * make a list of accepted charsets
+ *
+ */
+
+int
+Client::_header_accept_charset_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
 	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::list<std::string> charsets_list = _parse_coma_q_factor(unparsed_header_value);
 
 	for(std::list<std::string>::const_iterator it = charsets_list.begin(); it != charsets_list.end(); it++) {
 		if (!Syntax::is_accepted_value<Syntax::accepted_charsets_entry_t>(*it,
@@ -334,26 +389,75 @@ int Client::_accept_charset_handler(exchange_t& exchange, const std::list<std::s
 			status_line.set_status_code(NOT_ACCEPTABLE);
 			return 0;
 		}
-		//TODO: handler
 	}
+	exchange.first.get_headers().set_value(Syntax::headers_tab[ACCEPT_CHARSETS].name, charsets_list);
 	return 1;
 }
 
-int Client::_accept_language_handler(exchange_t& exchange, const std::list<std::string>& languages_list) {
+/* basic language tag check :
+ * regular examples : fr, en-gb, en-US, fr-Latin-FR, cel-gaulish
+ * accepted formats, parsed on '-' delimiter :
+ * - language : 2 or 3 alpha char
+ * - region (if exist) : >= 2 alpha-num char (both upper and lower case accepted)
+ * - script (if exist) : >= 2 alpha-num char
+ * - more than 3 compounds are accepted without format checking
+ * - asterisk form '*'
+ * case insensitive
+ *
+ */
+
+bool
+Client::_is_valid_language_tag(const std::string& language_tag) {
+	std::vector<std::string> compounds = Syntax::split(language_tag, "-");
+	std::string language, script, region;
+
+	if (language_tag == "*")
+		return true;
+	language = compounds[0];
+	if (!Syntax::str_is_alpha(language)
+		&& (language.size() < 2 || language.size() > 3))
+		return false;
+	if (compounds.size() > 2) {
+		script = compounds[1];
+		region = compounds[2];
+		if (!Syntax::str_is_alnum(script) || !Syntax::str_is_alnum(region))
+			return false;
+		if (script.size() < 2 || region.size() < 2)
+			return false;
+	}
+	if (compounds.size() == 1) {
+		region = compounds[2];
+		if (!Syntax::str_is_alnum(region) || region.size() < 2)
+			return false;
+	}
+	return true;
+}
+
+/* _header_accept_language_handler:
+ * only check if language tag is legit
+ * need to check the accepted languages of the representation, else error 406 - NOT ACCEPTABLE
+ * make a list of strings of accepted languages
+ *
+ */
+
+int
+Client::_header_accept_language_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
 	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::list<std::string> languages_list = _parse_coma_q_factor(unparsed_header_value);
 
 	for(std::list<std::string>::const_iterator it = languages_list.begin(); it != languages_list.end(); it++) {
-		if (!Syntax::is_accepted_value<Syntax::accepted_languages_entry_t>(*it,
-				Syntax::languages_tab, TOTAL_ACCEPTED_CHARSETS)) {
-			status_line.set_status_code(NOT_ACCEPTABLE);
+		if (!_is_valid_language_tag(*it)) {
+			status_line.set_status_code(BAD_REQUEST);
 			return 0;
 		}
-		//TODO: handler
 	}
+	//TODO: check if language is accepted by the representation
+	exchange.first.get_headers().set_value(Syntax::headers_tab[ACCEPT_LANGUAGE].name, languages_list);
 	return 1;
 }
 
-bool Client::_is_allowed_method(std::list<std::string> allowed_methods, const std::string& method) {
+bool
+Client::_is_allowed_method(std::list<std::string> allowed_methods, const std::string& method) {
 	for (std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
 		if (*it == method)
 			return true;
@@ -361,8 +465,19 @@ bool Client::_is_allowed_method(std::list<std::string> allowed_methods, const st
 	return false;
 }
 
-int Client::_allow_handler(exchange_t& exchange, const std::list<std::string>& methods_list) {
+/* _header_allow_handler:
+ * 2 checks :
+ * - if method exist (asterisk form '*' accepted)
+ * - if method is allowed (based on virtual server configuration)
+ * case sensitive
+ * make list of accepted methods
+ *
+ */
+
+int
+Client::_header_allow_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
 	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::list<std::string> methods_list = _parse_coma_q_factor(unparsed_header_value);
 	std::list<std::string> allowed_methods;
 
 	for(std::list<std::string>::const_iterator it = methods_list.begin(); it != methods_list.end(); it++) {
@@ -376,55 +491,69 @@ int Client::_allow_handler(exchange_t& exchange, const std::list<std::string>& m
 			status_line.set_status_code(METHOD_NOT_ALLOWED);
 			return 0;
 		}
-		//TODO: handler
 	}
+	exchange.first.get_headers().set_value(Syntax::headers_tab[ALLOW].name, methods_list);
 	return 1;
 }
 
-bool Client::_check_credentials(const std::string& credential) {
+bool
+Client::_check_credentials(const std::string& credential) {
 	(void)credential;
 	//TODO: find out how authorization fields are made
 	return true;
 }
 
-int Client::_authorization_handler(exchange_t& exchange, const std::list<std::string>& credentials_list) {
-	std::string credential;
-	Response::StatusLine status_line = exchange.second.get_status_line();
+/* _header_authorization_handler:
+ * 2 checks :
+ * - only one token, no whitespace
+ * - if credential is accepted (need to find out how)
+ * case sensitive
+ * make a list of one string element : accepted credential value
+ *
+ */
 
-	if (credentials_list.size() != 1) {
+int
+Client::_header_authorization_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::list<std::string> definitive_value;
+
+	if (unparsed_header_value.find_first_of(WHITESPACES)){
 		status_line.set_status_code(BAD_REQUEST);
 		return 0;
 	}
-	credential = credentials_list.front();
-	if (!_check_credentials(credential)) {
+	if (!_check_credentials(unparsed_header_value)) {
 		status_line.set_status_code(UNAUTHORIZED);
 		return 0;
 	}
-	//TODO: handler
+	definitive_value.push_back(unparsed_header_value);
+	exchange.first.get_headers().set_value(Syntax::headers_tab[AUTHORIZATION].name, definitive_value);
 	return 1;
 }
 
-bool Client::_transfer_encoding_is_set(const exchange_t& exchange) {
-	const AHTTPMessage::Headers& headers = exchange.first.get_headers();
+/* _header_content_length_handler:
+ * checks :
+ * - error if transfer encoding header is already present
+ * - error if not numerical :
+ * -- error if multiple values because of whitespaces
+ * -- error if negative value because of negative sign
+ * - error if length > max_client_body_size from virtual server config
+ * - doesn't check if length is required, may need to implement later
+ * make a list of string of one element : content_length value
+ *
+ */
 
-	return headers.key_exists(Syntax::headers_tab[TRANSFER_ENCODING].name);
-}
-
-int Client::_content_length_handler(exchange_t& exchange, const std::list<std::string>& content_length_list) {
-	std::string content_length_str;
+int
+Client::_header_content_length_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	std::string content_length_str = unparsed_header_value;
 	unsigned long content_length;
 	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::list<std::string> definitive_value;
 
-	if(_transfer_encoding_is_set(exchange)) {
+	if(exchange.first.get_headers().key_exists(Syntax::headers_tab[TRANSFER_ENCODING].name)){
 		status_line.set_status_code(BAD_REQUEST);
 		return 0;
 	}
-	if (content_length_list.size() != 1) {
-		status_line.set_status_code(BAD_REQUEST);
-		return 0;
-	}
-	content_length_str = content_length_list.front();
-	if (!Syntax::is_num(content_length_str.c_str())) {
+	if (!Syntax::str_is_num(content_length_str)) {
 		status_line.set_status_code(BAD_REQUEST);
 		return 0;
 	}
@@ -433,37 +562,267 @@ int Client::_content_length_handler(exchange_t& exchange, const std::list<std::s
 		status_line.set_status_code(PAYLOAD_TOO_LARGE);
 		return (0);
 	}
-	//TODO: handler
+	//Check if length needed to throw a 411 error - Length Required
+	definitive_value.push_back(unparsed_header_value);
+	exchange.first.get_headers().set_value(Syntax::headers_tab[CONTENT_LENGTH].name, definitive_value);
 	return (1);
 }
 
-int Client::_headers_handler(exchange_t& exchange) {
-	const AHTTPMessage::Headers& headers = exchange.first.get_headers();
-	std::list<std::string> value_list;
+/* _header_content_language_handler :
+ * only check if language tag is legit
+ *
+ *
+ */
+
+int
+Client::_header_content_language_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
 	Response::StatusLine status_line = exchange.second.get_status_line();
-	bool header_complete[TOTAL_HEADER_NAMES] = {false};
-	int (Client::*handler_functions[])(exchange_t&, const std::list<std::string>&) = {&Client::_accept_charset_handler,
-		&Client::_accept_language_handler, &Client::_allow_handler, &Client::_authorization_handler, &Client::_content_length_handler};
-	/* TODO::
-	 * check champs multiples++++++++++++++++++
-	 *
-	 */
+	std::list<std::string> languages_list = _parse_coma_q_factor(unparsed_header_value);
+
+	for(std::list<std::string>::const_iterator it = languages_list.begin(); it != languages_list.end(); it++) {
+		if (!_is_valid_language_tag(*it)) {
+			status_line.set_status_code(BAD_REQUEST);
+			return 0;
+		}
+	}
+	exchange.first.get_headers().set_value(Syntax::headers_tab[CONTENT_LANGUAGE].name, languages_list);
+	return 1;
+}
+
+std::string
+Client::_build_effective_request_URI(const Request::RequestLine& requestLine,
+	const std::string& header_host_value) {
+	std::string http("http://");
+	std::string port;
+	size_t colon_pos;
+	method_t method = requestLine.get_method();
+	std::string target = requestLine.get_request_target();
+
+	colon_pos = header_host_value.find(':');
+	if (colon_pos != std::string::npos)
+		port = header_host_value.substr(colon_pos + 1);
+	if (port == "443")
+		http = "https://";
+	if (header_host_value.find(http) != std::string::npos)
+		http.clear();
+	if (method == CONNECT || method == OPTIONS || target.find(header_host_value) != std::string::npos)
+		return http + target;
+	if (target == "*")
+		target.clear();
+	return http + header_host_value + target;
+}
+
+/* _header_content_location_handler:
+ * 1 check : only one element
+ * (doesn't throw error if effective URI doesn't match)
+ * make a list of 2 elements : value + "true" if match URI, "false" if not
+ *
+ */
+
+int
+Client::_header_content_location_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	std::string content_location = unparsed_header_value;
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	bool match_effective_URI;
+	std::list<std::string> definitive_value;
+
+	if (unparsed_header_value.find_first_of(WHITESPACES) != std::string::npos) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	match_effective_URI = content_location == _build_effective_request_URI(exchange.first.get_request_line(),
+		exchange.first.get_headers().get_unparsed_value(Syntax::headers_tab[HOST].name));
+	definitive_value.push_back(unparsed_header_value);
+	definitive_value.push_back(match_effective_URI ? "true" : "false");
+	exchange.first.get_headers().set_value(Syntax::headers_tab[CONTENT_LOCATION].name, definitive_value);
+	return 1;
+}
+
+std::list<std::string>
+Client::_parse_content_type_header_value(const std::string& unparsed_value) {
+	std::string mime_type;
+	std::string parameter;
+	size_t semicolon_pos;
+	std::list<std::string> value_list;
+
+	semicolon_pos = unparsed_value.find_first_of(';');
+	mime_type = unparsed_value.substr(0, semicolon_pos);
+	value_list.push_back(mime_type);
+	if (semicolon_pos != std::string::npos) {
+		parameter = unparsed_value.substr(semicolon_pos + 1);
+		value_list.push_back(parameter);
+	}
+	return value_list;
+}
+
+/* _content_type_handler:
+ * supported media types : text/plain, text/html, text/css, text/csv, image/bmp
+ * image/gif, image/jpeg, image/png, application/octet-stream (default), application/javascript,
+ * application/pdf, application/xml
+ *
+ */
+
+int
+Client::_header_content_type_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::list<std::string> content_type_list = _parse_content_type_header_value(unparsed_header_value);
+	std::string mime_type = content_type_list.front();
+
+	if (!Syntax::is_accepted_value<Syntax::mime_type_entry_t>(mime_type,
+		Syntax::mime_types_tab, TOTAL_MIME_TYPES)) {
+		status_line.set_status_code(UNSUPPORTED_MEDIA_TYPE);
+		return 0;
+	}
+	exchange.first.get_headers().set_value(Syntax::headers_tab[CONTENT_TYPE].name, content_type_list);
+	return 1;
+}
+
+/* _date_handler:
+ * accept the three HTTP dates formats, in order in the std::string array :
+ * - real example : Sun, 06 Nov 1994 08:49:37 GMT
+ * - obsolete 1 (RFC 850) example : Sunday, 06-Nov-94 08:49:37 GMT
+ * - obsolete 2 (ANSI C) example : Sun Nov  6 08:49:37 1994
+ * make list of 2 strings elements :
+ * - unparsed date
+ * - format to use for strptime
+ */
+
+int
+Client::_header_date_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	char* strptime_ret;
+	size_t i = 0;
+	std::string HTTP_date_fmt[3] = {"%a, %d %b %Y %T GMT", "%A, %d-%b-%y %T GMT", "%a %b  %d %T %Y"};
+	struct tm timeval;
+	std::list<std::string> definitive_value;
+
+	while(i < 3) {
+		strptime_ret = strptime(unparsed_header_value.c_str(), HTTP_date_fmt[i].c_str(), &timeval);
+		if (!strptime_ret)
+			break;
+		i++;
+	}
+	if (strptime_ret != NULL) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	definitive_value.push_back(unparsed_header_value);
+	definitive_value.push_back(HTTP_date_fmt[i]);
+	exchange.first.get_headers().set_value(Syntax::headers_tab[DATE].name, definitive_value);
+	return 1;
+}
+
+/* _header_host_handler:
+ * 2 checks :
+ * - invalid if whitespaces
+ * - invalid if multiple semicolon in format
+ * make list of 1 or 2 strings elements :
+ * - host name
+ * - port number (if exist)
+ * use _extract_virtual_server to choose the right configuration for the request
+ */
+
+int
+Client::_header_host_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	std::vector<std::string> compounds = Syntax::split(unparsed_header_value, ":");
+	std::list<std::string> definitive_value;
+
+	if (unparsed_header_value.find_first_of(WHITESPACES) != std::string::npos) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	if (compounds.size() > 2) {
+		status_line.set_status_code(BAD_REQUEST);
+		return 0;
+	}
+	definitive_value.push_back(compounds[0]);
+	this->_extract_virtual_server(exchange.first, compounds[0]);
+	if (compounds.size() == 2)
+		definitive_value.push_back(compounds[1]);
+	exchange.first.get_headers().set_value(Syntax::headers_tab[HOST].name, definitive_value);
+	return 1;
+}
+
+int
+Client::_header_last_modified_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_header_location_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_header_referer_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_header_retry_after_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_header_server_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_header_transfer_encoding_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_header_user_agent_handler(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_header_www_authenticate(exchange_t& exchange, const std::string &unparsed_header_value) {
+	(void)exchange;
+	(void)unparsed_header_value;
+	return 1;
+}
+
+int
+Client::_headers_handlers(exchange_t& exchange) {
+	const AHTTPMessage::Headers& headers = exchange.first.get_headers();
+	Response::StatusLine status_line = exchange.second.get_status_line();
+	int (Client::*handler_functions[])(exchange_t&, const std::string&) = {&Client::_header_accept_charset_handler,
+		&Client::_header_accept_language_handler, &Client::_header_allow_handler, &Client::_header_authorization_handler,
+		&Client::_header_content_length_handler, &Client::_header_content_language_handler, &Client::_header_content_location_handler,
+		&Client::_header_content_type_handler, &Client::_header_date_handler, NULL, &Client::_header_last_modified_handler,
+		&Client::_header_location_handler, &Client::_header_referer_handler, &Client::_header_retry_after_handler,
+		&Client::_header_server_handler, &Client::_header_transfer_encoding_handler, &Client::_header_user_agent_handler,
+		&Client::_header_www_authenticate};
+
+	if (!exchange.first.get_headers().key_exists(Syntax::headers_tab[HOST].name))
+		return 0;
+	if (!_header_host_handler(exchange, headers.get_unparsed_value(Syntax::headers_tab[HOST].name)))
+		return 0;
 	for(size_t i = 0; i < TOTAL_HEADER_NAMES; i++) {
-		if (headers.key_exists(Syntax::headers_tab[i].name)) {
-			value_list = Syntax::parse_header_value(headers.get_value(Syntax::headers_tab[i].name));
-			if (value_list.empty()) {
-				status_line.set_status_code(BAD_REQUEST);
-				_closing = true;
-				exchange.first.set_status(Request::REQUEST_RECEIVED);
+		if (i != HOST && headers.key_exists(Syntax::headers_tab[i].name)) {
+			if (!(this->*handler_functions[i])(exchange, headers.get_unparsed_value(Syntax::headers_tab[i].name)))
 				return 0;
-			}
-			if (!(this->*handler_functions[i])(exchange, value_list)) {
-				_closing = true;
-				exchange.first.set_status(Request::REQUEST_RECEIVED);
-				return 0;
-			}
-			header_complete[i] = true;
 		}
 	}
 	return 1;
 }
+
+//TODO : function to set default value of absent headers
