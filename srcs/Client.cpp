@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/11 04:27:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/13 17:04:02 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@ const size_t	Client::_buffer_size(900);
 
 Client::Client(void) :
 	_sd(),
+	_fd(),
 	_addr(),
 	_socket_len(),
 	_configs(),
@@ -26,6 +27,7 @@ Client::Client(void) :
 
 Client::Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::list<const Config*> &configs) :
 	_sd(sd),
+	_fd(0),
 	_addr(addr),
 	_socket_len(socket_len),
 	_configs(configs),
@@ -36,6 +38,7 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::li
 
 Client::Client(const Client &x) :
 	_sd(x._sd),
+	_fd(x._fd),
 	_addr(x._addr),
 	_socket_len(x._socket_len),
 	_configs(x._configs),
@@ -48,6 +51,7 @@ Client::~Client(void) {}
 
 Client
 &Client::operator=(const Client &x) {
+	_fd = x._fd;
 	_exchanges = x._exchanges;
 	_input_str = x._input_str;
 	_output_str = x._output_str;
@@ -61,14 +65,20 @@ Client::get_sd(void) const {
 }
 
 int
+Client::get_fd(void) const {
+	return (_fd);
+}
+
+int
 Client::read_socket(void) {
 	char	buffer[_buffer_size + 1];
 	int		ret;
+	std::cout << "WE ARE ABOUT TO READ THE SOCKET " << _sd << std::endl;
 	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
 		if (0 == ret)
 			std::cout << "the client closed the connection." << std::endl;
 		else
-			std::cout << "error during reading." << std::endl;
+			std::cout << "error during reading the socket." << std::endl;
 		return (FAILURE);
 	}
 	buffer[ret] = '\0';
@@ -76,6 +86,9 @@ Client::read_socket(void) {
 	_input_str_parsing();
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
+	// a retirer
+	else if (_closing)
+		std::cout << "CLOSING" << std::endl;
 	return (SUCCESS);
 }
 
@@ -242,6 +255,41 @@ Client::_collect_body(exchange_t &exchange) {
 	return (SUCCESS);
 }
 
+void
+Client::_pick_location(Request &request) {
+	(void)request;
+	/*
+	std::list<Location>	locations(request.get_virtual_server()->getLocations());
+	for (std::list<Location>::iterator it(locations.begin()) ; it != locations.end() ; it++)
+		std::cout << it->getPath() << " - " << it->getRoot() << std::endl;
+		*/
+}
+
+int
+Client::_fill_response_GET(exchange_t &exchange) {
+	exchange.first.render();
+	_pick_location(exchange.first);
+	std::string	location_path("/bidule/");
+	std::string	location_root("/home/user42/myServer/test");
+	std::string	target_path(exchange.first.get_request_line().get_request_target());
+	target_path.erase(0, location_path.size());
+	location_root += "/";
+	target_path.insert(0, location_root);
+
+	exchange.second.get_status_line().set_http_version("HTTP/1.1");
+	if (exchange.second.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
+		return (_build_output_str(exchange));
+	struct stat	buf;
+	if (-1 == stat(target_path.c_str(), &buf)) {
+		exchange.second.get_status_line().set_status_code(NOT_FOUND);
+		return (_build_output_str(exchange));
+	}
+	std::cout << "TARGET PATH : " << target_path << "$" << std::endl;
+	_fd = open(target_path.c_str(), O_RDONLY);
+	std::cout << "FD IS " << _fd << std::endl;
+	return (SUCCESS);
+}
+
 //TODO:: remplir l'objet Response. return SUCESS si on reussit a aller jusqu'au bout, PENDING si on est bloque par la lecture d'un fichier
 int
 Client::_fill_response(exchange_t &exchange) {
@@ -275,11 +323,19 @@ Client::_open_file_to_read(void) {
 //on lit le fichier et lorsqu'on l'a termine
 //on peut passer a la suite du process de la requete
 int
-Client::_read_file(void) {
-	bool	end_file(true);
+Client::read_file(void) {
 	exchange_t	&exchange(_exchanges.front());
-	if (end_file)
+	char	buffer[_buffer_size + 1];
+	int		ret;
+	ret = read(_fd, buffer, _buffer_size);
+	if (ret == 0) {
+		close(_fd);
+		_fd = 0;
+		exchange.second.get_status_line().set_status_code(OK);
 		return (_build_output_str(exchange));
+	}
+	buffer[ret] = '\0';
+	exchange.second.set_body(exchange.second.get_body() + std::string(buffer));
 	return (SUCCESS);
 }
 
@@ -287,6 +343,12 @@ Client::_read_file(void) {
 int
 Client::_build_output_str(exchange_t &exchange) {
 	_output_str.clear();
+	_output_str += exchange.second.get_status_line().get_http_version();
+	_output_str += " ";
+	_output_str += Syntax::status_codes_tab[exchange.second.get_status_line().get_status_code()].code_str;
+	_output_str += " ";
+	_output_str += Syntax::status_codes_tab[exchange.second.get_status_line().get_status_code()].reason_phrase;
+	_output_str += "\r\n";
 	_output_str += exchange.second.get_body();
 	return (_write_socket(exchange));
 }
@@ -298,6 +360,7 @@ Client::_write_socket(exchange_t &exchange) {
 	write(_sd, _output_str.c_str(), _output_str.size());
 	//ici, return FAILURE si besoin
 	_exchanges.pop_front();
+	std::cout << "REQUEST DISCARD" << std::endl;
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
 	return (SUCCESS);
@@ -306,6 +369,8 @@ Client::_write_socket(exchange_t &exchange) {
 int
 Client::_process(exchange_t &exchange) {
 	exchange.first.set_status(Request::REQUEST_PROCESSED);
+	if (exchange.first.get_request_line().get_method() == GET)
+		return (_fill_response_GET(exchange));
 	return (_fill_response(exchange));
 }
 /* _extract_virtual_server :
@@ -830,3 +895,5 @@ Client::_headers_handlers(exchange_t& exchange) {
 	}
 	return 1;
 }
+
+//TODO : function to set default value of absent headers

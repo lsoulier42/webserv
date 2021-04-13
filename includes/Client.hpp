@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/11 03:59:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/13 15:08:00 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,10 +20,14 @@
 # include <cstdlib>
 # include <ctime>
 # include <sys/socket.h>
+# include <sys/stat.h>
+# include <sys/types.h>
 # include <algorithm>
+# include <fcntl.h>
 # include "Request.hpp"
 # include "Response.hpp"
 # include "Syntax.hpp"
+# include "errno.h"
 
 # define SUCCESS 0
 # define FAILURE -1
@@ -42,14 +46,17 @@ class Client {
 		Client &operator=(const Client &x);
 
 		int get_sd(void) const;
+		int get_fd(void) const;
   
 		int read_socket(void);
+		int read_file(void);
 
 	private:
 
 		static const size_t _buffer_size;
 
 		const int _sd;
+		int _fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const Config*> _configs;
@@ -72,11 +79,12 @@ class Client {
 		int _check_headers(exchange_t &exchange);
 		int _collect_body(exchange_t &exchange);
 		int _process(exchange_t &exchange);
+		int _fill_response_GET(exchange_t &exchange);
 		int _fill_response(exchange_t &exchange);
 		int _open_file_to_read(void);
-		int _read_file(void);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
+		void _pick_location(Request &request);
 
 		/* Headers handlers
 		 *
