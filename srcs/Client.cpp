@@ -102,8 +102,8 @@ Client::_body_received(const Request &current_request) const {
 	return (current_request.get_status() == Request::HEADERS_RECEIVED
 			&& ((_transfer_encoding_chunked(current_request)
 					&& _input_str.find("0\r\n\r\n") != std::string::npos)
-				|| (current_request.get_headers().key_exists("Content-Length")
-					&& _input_str.size() >= static_cast<unsigned long>(std::atol(current_request.get_headers().get_value("Content-Length").front().c_str())))));
+				|| (current_request.get_headers().key_exists(Syntax::method_tab[CONTENT_LENGTH].name)
+					&& _input_str.size() >= static_cast<unsigned long>(std::atol(current_request.get_headers().get_value(Syntax::method_tab[CONTENT_LENGTH].name).front().c_str())))));
 }
 
 bool
@@ -124,10 +124,10 @@ bool
 Client::_transfer_encoding_chunked(const Request &current_request) {
 	std::list<std::string> transfer_encoding_values;
 
-	if (current_request.get_headers().key_exists("Transfer-Encoding")) {
-		transfer_encoding_values = current_request.get_headers().get_value("Transfer-Encoding");
-		if (std::find(transfer_encoding_values.begin(), transfer_encoding_values.end(), "chunked") !=
-			transfer_encoding_values.end())
+	if (current_request.get_headers().key_exists(Syntax::method_tab[TRANSFER_ENCODING].name)) {
+		transfer_encoding_values = current_request.get_headers().get_value(Syntax::method_tab[TRANSFER_ENCODING].name);
+		if (std::find(transfer_encoding_values.begin(), transfer_encoding_values.end(),
+			Syntax::encoding_types_tab[CHUNKED].name) != transfer_encoding_values.end())
 			return true;
 	}
 	return false;
@@ -136,7 +136,7 @@ Client::_transfer_encoding_chunked(const Request &current_request) {
 bool
 Client::_body_expected(const Request &current_request) const {
 	return (_transfer_encoding_chunked(current_request)
-		|| current_request.get_headers().key_exists("Content-Length"));
+		|| current_request.get_headers().key_exists(Syntax::method_tab[CONTENT_LENGTH].name));
 }
 
 bool
