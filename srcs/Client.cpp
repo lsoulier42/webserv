@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/13 17:03:27 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/13 17:04:02 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -225,13 +225,11 @@ Client::_collect_header(exchange_t &exchange) {
 int
 Client::_check_headers(exchange_t &exchange) {
 	_input_str.erase(0, _input_str.find("\r\n") + 2);
-	/*
 	if (!_headers_handlers(exchange)) {
 		_closing = true;
 		exchange.first.set_status(Request::REQUEST_RECEIVED);
 		return (FAILURE);
 	}
-	*/
 	if (_body_expected(exchange.first))
 		exchange.first.set_status(Request::HEADERS_RECEIVED);
 	else
