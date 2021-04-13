@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/11 03:59:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/13 01:44:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # include <iostream>
 # include <unistd.h>
 # include <string>
+# include <sstream>
 # include <list>
 # include <cstdlib>
 # include <ctime>
@@ -72,6 +73,7 @@ class Client {
 		int _check_headers(exchange_t &exchange);
 		int _collect_body(exchange_t &exchange);
 		int _process(exchange_t &exchange);
+		int _fill_response_GET(exchange_t &exchange);
 		int _fill_response(exchange_t &exchange);
 		int _open_file_to_read(void);
 		int _read_file(void);

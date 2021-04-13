@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/11 04:27:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/13 17:02:32 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -76,6 +76,9 @@ Client::read_socket(void) {
 	_input_str_parsing();
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
+	// a retirer
+	else if (_closing)
+		std::cout << "CLOSING" << std::endl;
 	return (SUCCESS);
 }
 
@@ -212,11 +215,13 @@ Client::_collect_header(exchange_t &exchange) {
 int
 Client::_check_headers(exchange_t &exchange) {
 	_input_str.erase(0, _input_str.find("\r\n") + 2);
+	/*
 	if (!_headers_handlers(exchange)) {
 		_closing = true;
 		exchange.first.set_status(Request::REQUEST_RECEIVED);
 		return (FAILURE);
 	}
+	*/
 	if (_body_expected(exchange.first))
 		exchange.first.set_status(Request::HEADERS_RECEIVED);
 	else
@@ -240,6 +245,16 @@ Client::_collect_body(exchange_t &exchange) {
 	else
 		current_request.set_status(Request::REQUEST_RECEIVED);
 	return (SUCCESS);
+}
+
+int
+Client::_fill_response_GET(exchange_t &exchange) {
+	exchange.first.render();
+	if (exchange.second.get_status_line().get_status_code() == TOTAL_STATUS_CODE)
+		exchange.second.get_status_line().set_status_code(OK);
+	exchange.second.get_status_line().set_http_version("HTTP/1.1");
+	exchange.second.set_body("Bip bop boup\r\n");
+	return (_build_output_str(exchange));
 }
 
 //TODO:: remplir l'objet Response. return SUCESS si on reussit a aller jusqu'au bout, PENDING si on est bloque par la lecture d'un fichier
@@ -287,6 +302,12 @@ Client::_read_file(void) {
 int
 Client::_build_output_str(exchange_t &exchange) {
 	_output_str.clear();
+	_output_str += exchange.second.get_status_line().get_http_version();
+	_output_str += " ";
+	_output_str += Syntax::status_codes_tab[exchange.second.get_status_line().get_status_code()].code_str;
+	_output_str += " ";
+	_output_str += Syntax::status_codes_tab[exchange.second.get_status_line().get_status_code()].reason_phrase;
+	_output_str += "\r\n";
 	_output_str += exchange.second.get_body();
 	return (_write_socket(exchange));
 }
@@ -298,6 +319,7 @@ Client::_write_socket(exchange_t &exchange) {
 	write(_sd, _output_str.c_str(), _output_str.size());
 	//ici, return FAILURE si besoin
 	_exchanges.pop_front();
+	std::cout << "SUPRESS" << std::endl;
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
 	return (SUCCESS);
@@ -306,6 +328,8 @@ Client::_write_socket(exchange_t &exchange) {
 int
 Client::_process(exchange_t &exchange) {
 	exchange.first.set_status(Request::REQUEST_PROCESSED);
+	if (exchange.first.get_request_line().get_method() == GET)
+		return (_fill_response_GET(exchange));
 	return (_fill_response(exchange));
 }
 /* _extract_virtual_server :
@@ -830,3 +854,5 @@ Client::_headers_handlers(exchange_t& exchange) {
 	}
 	return 1;
 }
+
+//TODO : function to set default value of absent headers
