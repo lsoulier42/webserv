@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:42 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/09 21:57:43 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/13 03:13:03 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -226,6 +226,7 @@ class Syntax {
 		struct status_code_tab_entry_t {
 			status_code_t	code_index;
 			size_t 			code;
+			std::string		code_str;
 			std::string		reason_phrase;
 		};
 
