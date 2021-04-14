@@ -6,13 +6,13 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 08:46:27 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 19:57:26 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-const size_t	Client::_buffer_size(900);
+const size_t	Client::_buffer_size(1);
 
 Client::Client(void) :
 	_sd(),
@@ -617,6 +617,7 @@ Client::_process_GET(exchange_t &exchange) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_open_file_to_read(request.get_virtual_server()->getErrorPagePath()));
 	}
+	response.get_status_line().set_status_code(OK);
 	return (_open_file_to_read(path));
 }
 
@@ -643,7 +644,10 @@ Client::_build_path_ressource(Request &request) {
 
 int
 Client::_open_file_to_read(const std::string &path) {
-	_fd = open(path.c_str(), O_RDONLY);
+	if (0 > (_fd = open(path.c_str(), O_RDONLY))) {
+		std::cout << "error during opening a file." << std::endl;
+		return (FAILURE);
+	}
 	return (SUCCESS);
 }
 
@@ -658,7 +662,6 @@ Client::read_file(void) {
 	if (ret == 0) {
 		close(_fd);
 		_fd = 0;
-		response.get_status_line().set_status_code(OK);
 		return (_build_output_str(exchange));
 	}
 	buffer[ret] = '\0';

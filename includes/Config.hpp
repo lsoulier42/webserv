@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 17:04:14 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/06 17:04:15 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/14 19:36:18 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,7 @@ class Config : public AConfig {
 		void setUploadDir(const std::string &uploadDir);
 		std::list<int> getErrorPageCodes() const;
 		void setErrorPageCodes(const std::list<int>& errorPageCodes);
-		std::string getErrorPagePath() const;
+		const std::string &getErrorPagePath() const;
 		void setErrorPagePath(const std::string& errorPagePath);
 		std::list<Location> getLocations() const;
 		void addLocation(const Location& location);
