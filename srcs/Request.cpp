@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/10 22:58:31 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 05:25:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,12 +15,14 @@
 Request::Request(void) :
 	AHTTPMessage(),
 	_status(START),
-	_request_line() {}
+	_request_line(),
+	_compromising(false) {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
 	_status(x._status),
-	_request_line(x._request_line) {}
+	_request_line(x._request_line),
+	_compromising(x._compromising) {}
 
 Request::~Request(void) {}
 
@@ -29,6 +31,7 @@ Request
 	AHTTPMessage::operator=(x);
 	_status = x._status;
 	_request_line = x._request_line;
+	_compromising = x._compromising;
 	return (*this);
 }
 
@@ -47,9 +50,27 @@ const Request::RequestLine
 	return (_request_line);
 }
 
+bool
+Request::get_compromising(void) const {
+	return (_compromising);
+}
+
+const Config* Request::get_virtual_server() const {
+	return _virtual_server;
+}
+
 void
 Request::set_status(request_status_t status) {
 	_status = status;
+}
+
+void
+Request::set_compromising(bool compromising) {
+	_compromising = compromising;
+}
+
+void Request::set_virtual_server(const Config* virtual_server) {
+	_virtual_server = virtual_server;
 }
 
 void
@@ -136,12 +157,4 @@ Request::RequestLine::render(void) const {
 	}
 	std::cout << "REQUEST TARGET : " << _request_target << "$" << std::endl;
 	std::cout << "HTTP VERSION : " << get_http_version() << "$" << std::endl;
-}
-
-const Config* Request::get_virtual_server() const {
-	return _virtual_server;
-}
-
-void Request::set_virtual_server(const Config* virtual_server) {
-	_virtual_server = virtual_server;
 }

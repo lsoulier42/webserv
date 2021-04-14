@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/11 02:23:25 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 05:26:00 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,10 +65,12 @@ class Request : public AHTTPMessage {
 		request_status_t get_status(void) const;
 		RequestLine &get_request_line(void);
 		const RequestLine &get_request_line(void) const;
+		bool get_compromising(void) const;
 		const Config* get_virtual_server() const;
-		void set_virtual_server(const Config* virtual_server);
 
 		void set_status(request_status_t status);
+		void set_compromising(bool compromising);
+		void set_virtual_server(const Config* virtual_server);
 
 		void reset(void);
 		void render(void) const;
@@ -77,6 +79,7 @@ class Request : public AHTTPMessage {
 
 		request_status_t _status;
 		RequestLine _request_line;
+		bool _compromising;
 		const Config* _virtual_server;
 };
 
