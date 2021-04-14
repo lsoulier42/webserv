@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 08:03:41 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 20:34:49 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,6 +70,7 @@ class Client {
 		 *
 		 */
 		void _failure(exchange_t &exchange, status_code_t status_code);
+		bool _request_started(const Request &request) const;
 		bool _request_line_received(const Request &request) const;
 		bool _header_received(const Request &request) const;
 		bool _headers_received(const Request &request) const;
@@ -84,6 +85,7 @@ class Client {
 		int _check_headers(exchange_t &exchange);
 		int _check_trailer(exchange_t &exchange);
 		int _collect_body(exchange_t &exchange);
+		void _pick_virtual_server(Request &request);
 
 		/* Headers handlers
 		 *
@@ -110,7 +112,6 @@ class Client {
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
 		static bool _is_valid_language_tag(const std::string& language_tag);
 		static std::string _build_effective_request_URI(const Request::RequestLine& requestLine, const std::string& header_host_value);
-		void _extract_virtual_server(Request &current_request, const std::string& host_value);
 
 		/* debug function
 		 *

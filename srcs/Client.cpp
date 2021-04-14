@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 19:57:26 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 20:42:46 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -104,6 +104,12 @@ Client::_failure(exchange_t &exchange, status_code_t status_code ) {
 }
 
 bool
+Client::_request_started(const Request &request) const {
+	return (request.get_status() == Request::START
+			&& !request.get_virtual_server());
+}
+
+bool
 Client::_request_line_received(const Request &request) const {
 	return (request.get_status() == Request::START && std::string::npos != _input_str.find("\r\n"));
 }
@@ -170,9 +176,13 @@ Client::_trailer_expected(const Request &request) const {
 void
 Client::_input_str_parsing(void) {
 	while (!_closing && !_input_str.empty()) {
+
 		if (_exchanges.empty() || _exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
 			_exchanges.push_back(std::make_pair(Request(), Response()));
 		exchange_t	&current_exchange(_exchanges.back());
+
+		if (_request_started(current_exchange.first))
+			_pick_virtual_server(current_exchange.first);
 		if (_request_line_received(current_exchange.first) && SUCCESS != _collect_request_line_elements(current_exchange))
 			return ;
 		while (_header_received(current_exchange.first))
@@ -187,6 +197,7 @@ Client::_input_str_parsing(void) {
 			return ;
 		if (current_exchange.first.get_status() != Request::REQUEST_RECEIVED)
 			return ;
+
 	}
 }
 
@@ -276,32 +287,31 @@ Client::_collect_body(exchange_t &exchange) {
  */
 
 
-/* _extract_virtual_server :
+/* _pick_virtual_server :
  * get the right configuration of virtual host
  * based on header host and server_name
  *
  */
 
 void
-Client::_extract_virtual_server(Request &current_request, const std::string& host_value) {
-	std::string host_requested;
+Client::_pick_virtual_server(Request &request) {
 	std::vector<std::string> host_elements;
 	std::list<std::string> server_names;
-	const Config* virtual_server = NULL;
 
+	request.set_virtual_server(_configs.front());
+	if (!request.get_headers().key_exists("Host"))
+		return ;
 	for(std::list<const Config*>::const_iterator it = _configs.begin();
-		it != _configs.end() && !virtual_server; it++) {
+		it != _configs.end() ; it++) {
 		server_names = (*it)->getServerNames();
 		for (std::list<std::string>::const_iterator cit = server_names.begin();
 			cit != server_names.end(); cit++) {
-			if (*cit == host_value) {
-				virtual_server = *it;
-				break;
+			if (*cit == request.get_headers().get_unparsed_value("Host")) {
+				request.set_virtual_server(*it);
+				return ;
 			}
 		}
 	}
-	virtual_server = virtual_server ? virtual_server : _configs.front();
-	current_request.set_virtual_server(virtual_server);
 }
 
 bool Client::_comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b) {
@@ -518,7 +528,6 @@ Client::_header_host_parser(Request &request) {
 	if (compounds.size() == 2)
 		definitive_value.push_back(compounds[1]); //port
 	request.get_headers().set_value(Syntax::headers_tab[HOST].name, definitive_value);
-	this->_extract_virtual_server(request, compounds[0]);
 	return (SUCCESS);
 }
 

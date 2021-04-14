@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 05:25:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 20:40:26 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,15 @@ Request::Request(void) :
 	AHTTPMessage(),
 	_status(START),
 	_request_line(),
-	_compromising(false) {}
+	_compromising(false),
+	_virtual_server() {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
 	_status(x._status),
 	_request_line(x._request_line),
-	_compromising(x._compromising) {}
+	_compromising(x._compromising),
+	_virtual_server() {}
 
 Request::~Request(void) {}
 
@@ -32,6 +34,7 @@ Request
 	_status = x._status;
 	_request_line = x._request_line;
 	_compromising = x._compromising;
+	_virtual_server = x._virtual_server;
 	return (*this);
 }
 
