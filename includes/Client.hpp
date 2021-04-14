@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 21:30:56 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 23:12:32 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,7 +70,6 @@ class Client {
 		 *
 		 */
 		void _failure(exchange_t &exchange, status_code_t status_code);
-		bool _request_started(const Request &request) const;
 		bool _request_line_received(const Request &request) const;
 		bool _header_received(const Request &request) const;
 		bool _headers_received(const Request &request) const;

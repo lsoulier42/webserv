@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 05:26:00 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 23:09:52 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,7 @@ class Request : public AHTTPMessage {
 		};
 
 		Request(void);
+		Request(const Config *virtual_server);
 		Request(const Request &x);
 		~Request(void);
 		Request &operator=(const Request &x);

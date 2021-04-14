@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 22:56:54 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 23:13:28 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,12 +105,6 @@ Client::_failure(exchange_t &exchange, status_code_t status_code ) {
 }
 
 bool
-Client::_request_started(const Request &request) const {
-	return (request.get_status() == Request::START
-			&& !request.get_virtual_server());
-}
-
-bool
 Client::_request_line_received(const Request &request) const {
 	return (request.get_status() == Request::START && std::string::npos != _input_str.find("\r\n"));
 }
@@ -179,12 +173,10 @@ Client::_input_str_parsing(void) {
 	while (!_closing && !_input_str.empty()) {
 
 		if (_exchanges.empty() || _exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
-			_exchanges.push_back(std::make_pair(Request(), Response()));
+			_exchanges.push_back(std::make_pair(Request(_configs.front()), Response()));
 		exchange_t	&current_exchange(_exchanges.back());
 		Request		&request(current_exchange.first);
 
-		if (_request_started(request))
-			request.set_virtual_server(_configs.front());
 		if (_request_line_received(request) && SUCCESS != _collect_request_line_elements(current_exchange))
 			return ;
 		while (_header_received(request))

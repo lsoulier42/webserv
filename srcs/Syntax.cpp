@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:25 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/14 21:38:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 23:23:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,7 +113,8 @@ const Syntax::header_tab_entry_t Syntax::headers_tab[] =
 	{SERVER, "Server"},
 	{TRANSFER_ENCODING, "Transfer-Encoding"},
 	{USER_AGENT, "User-Agent"},
-	{WWW_AUTHENTICATE, "WWW-Authenticate"}
+	{WWW_AUTHENTICATE, "WWW-Authenticate"},
+	{TRAILER, "Trailer"}
 };
 
 const Syntax::header_tab_entry_t Syntax::request_headers_tab[] =
