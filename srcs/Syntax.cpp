@@ -115,6 +115,37 @@ const Syntax::header_tab_entry_t Syntax::headers_tab[] =
 	{WWW_AUTHENTICATE, "WWW-Authenticate"}
 };
 
+const Syntax::header_tab_entry_t Syntax::request_headers_tab[] =
+{
+	headers_tab[ACCEPT_CHARSETS],
+	headers_tab[ACCEPT_LANGUAGE],
+	headers_tab[AUTHORIZATION],
+	headers_tab[CONTENT_LENGTH],
+	headers_tab[CONTENT_LANGUAGE],
+	headers_tab[DATE],
+	headers_tab[HOST],
+	headers_tab[REFERER],
+	headers_tab[TRANSFER_ENCODING],
+	headers_tab[USER_AGENT]
+};
+
+const Syntax::header_tab_entry_t Syntax::response_headers_tab[] =
+{
+		headers_tab[ALLOW],
+		headers_tab[CONTENT_LANGUAGE],
+		headers_tab[CONTENT_LENGTH],
+		headers_tab[CONTENT_LOCATION],
+		headers_tab[CONTENT_TYPE],
+		headers_tab[DATE],
+		headers_tab[LAST_MODIFIED],
+		headers_tab[LOCATION],
+		headers_tab[RETRY_AFTER],
+		headers_tab[SERVER],
+		headers_tab[TRANSFER_ENCODING],
+		headers_tab[WWW_AUTHENTICATE]
+};
+
+
 const Syntax::accepted_charsets_entry_t Syntax::charsets_tab[] =
 {
 	{UTF_8, "utf-8"},

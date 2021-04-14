@@ -24,10 +24,10 @@
 # include <sys/types.h>
 # include <algorithm>
 # include <fcntl.h>
+# include <cerrno>
 # include "Request.hpp"
 # include "Response.hpp"
 # include "Syntax.hpp"
-# include "errno.h"
 
 # define SUCCESS 0
 # define FAILURE -1
@@ -90,37 +90,34 @@ class Client {
 		 *
 		 *
 		 */
-		int _headers_handlers(exchange_t& exchange);
-		int _header_accept_charset_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_accept_language_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_allow_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_authorization_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_content_length_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_content_language_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_content_location_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_content_type_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_date_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_host_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_last_modified_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_location_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_referer_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_retry_after_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_server_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_transfer_encoding_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_user_agent_handler(exchange_t& exchange, const std::string &unparsed_header_value);
-		int _header_www_authenticate(exchange_t& exchange, const std::string &unparsed_header_value);
+		int _headers_parsers(Request &request);
+		int _header_accept_charset_parser(Request &request);
+		int _header_accept_language_parser(Request &request);
+		int _header_authorization_parser(Request &request);
+		int _header_content_length_parser(Request &request);
+		int _header_content_type_parser(Request &request);
+		int _header_date_parser(Request &request);
+		int _header_host_parser(Request &request);
+		int _header_referer_parser(Request &request);
+		int _header_transfer_encoding_parser(Request &request);
+		int _header_user_agent_parser(Request &request);
 
 		/* Header handlers helpers
 		 *
 		 *
 		 */
-		static bool _transfer_encoding_chunked(const Request &current_request);
+		static bool _transfer_encoding_chunked(const Request &request);
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
-		static std::multimap<float, std::string> _split_header_weight(const std::vector<std::string>& elements_split);
+		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
 		static bool _is_valid_language_tag(const std::string& language_tag);
-		static std::list<std::string> _parse_content_type_header_value(const std::string& unparsed_value);
 		static std::string _build_effective_request_URI(const Request::RequestLine& requestLine, const std::string& header_host_value);
 		void _extract_virtual_server(Request &current_request, const std::string& host_value);
+
+		/* debug function
+		 *
+		 *
+		 */
+		void _send_debug_str(const std::string& str) const;
 
 };
 

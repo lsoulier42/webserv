@@ -174,6 +174,7 @@ AHTTPMessage::Headers::set_value(const std::string &key, const std::list<std::st
 		for (std::list<header_t>::iterator it(entry_list->begin()); it != entry_list->end(); it++)
 			if (it->name == key) {
 				it->value = parsed_value;
+				return ;
 			}
 	}
 	throw (std::invalid_argument("Request::Headers::set_value : invalid argument"));
@@ -195,6 +196,7 @@ AHTTPMessage::Headers::_hash(const char *buffer) const {
 	unsigned long	hash(5381);
 	char			c;
 	size_t			i(0);
+
 	while ((c = buffer[i++]))
 		hash = ((hash << 5) + hash) + c;
 	return (hash % _tab_size);

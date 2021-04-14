@@ -19,6 +19,8 @@
 # include <cstdlib>
 
 # define WHITESPACES " \n\r\t\f\v"
+# define TOTAL_REQUEST_HEADERS 10
+# define TOTAL_RESPONSE_HEADERS 12
 
 enum method_t {
 	GET,
@@ -256,6 +258,8 @@ class Syntax {
 		static const instruction_tab_entry_t location_instructions_tab[];
 		static const status_code_tab_entry_t status_codes_tab[];
 		static const header_tab_entry_t headers_tab[];
+		static const header_tab_entry_t request_headers_tab[];
+		static const header_tab_entry_t response_headers_tab[];
 		static const accepted_charsets_entry_t charsets_tab[];
 		static const mime_type_entry_t mime_types_tab[];
 		static const encoding_type_entry_t encoding_types_tab[];
@@ -268,7 +272,6 @@ class Syntax {
 		static bool is_error_code(int code);
 
 		static int fetch_method_index(const std::string& method);
-
 
 		static bool str_is_num(const std::string& str);
 		static bool str_is_alpha(const std::string& str);
