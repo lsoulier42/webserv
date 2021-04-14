@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:42 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/13 03:13:03 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 23:00:28 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,7 +94,7 @@ enum status_code_t {
 	TOTAL_STATUS_CODE
 };
 
-enum header_names_t {
+enum header_name_t {
 	ACCEPT_CHARSETS,
 	ACCEPT_LANGUAGE,
 	ALLOW,
@@ -113,6 +113,7 @@ enum header_names_t {
 	TRANSFER_ENCODING,
 	USER_AGENT,
 	WWW_AUTHENTICATE,
+	TRAILER,
 	TOTAL_HEADER_NAMES
 };
 
@@ -221,19 +222,21 @@ class Syntax {
 			method_t		method_index;
 			std::string		name;
 		};
+
 		struct instruction_tab_entry_t {
 			instruction_t	instruction_index;
 			std::string 	name;
 		};
+
 		struct status_code_tab_entry_t {
 			status_code_t	code_index;
-			size_t 			code;
+			int				code_int;
 			std::string		code_str;
 			std::string		reason_phrase;
 		};
 
 		struct header_tab_entry_t {
-			header_names_t	header_index;
+			header_name_t	header_index;
 			std::string		name;
 		};
 
