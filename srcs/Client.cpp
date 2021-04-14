@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 08:01:23 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 08:46:27 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -673,9 +673,9 @@ Client::_build_output_str(exchange_t &exchange) {
 	_output_str.clear();
 	_output_str += response.get_status_line().get_http_version();
 	_output_str += " ";
-	_output_str += Syntax::status_codes_tab[exchange.second.get_status_line().get_status_code()].code_str;
+	_output_str += Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str;
 	_output_str += " ";
-	_output_str += Syntax::status_codes_tab[exchange.second.get_status_line().get_status_code()].reason_phrase;
+	_output_str += Syntax::status_codes_tab[response.get_status_line().get_status_code()].reason_phrase;
 	_output_str += "\r\n";
 	_output_str += response.get_body();
 	return (_write_socket(exchange));
