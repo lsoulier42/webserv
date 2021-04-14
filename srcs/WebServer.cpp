@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/13 15:53:35 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 07:40:03 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,7 +153,6 @@ void WebServer::read_socks() {
 	for (std::vector<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
 		if (FD_ISSET(it->get_sd(), &_sockets_list) && SUCCESS != it->read_socket()) {
 			close(it->get_sd());
-			std::cout << "CLIENT DISCARD" << std::endl;
 			it = _clients.erase(it);
 		}
 		else

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 05:42:43 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 08:03:41 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,11 @@ class Client {
 		std::list<exchange_t> _exchanges;
 		bool _closing;
 
+		/* Request reception
+		 *
+		 *
+		 */
+		void _failure(exchange_t &exchange, status_code_t status_code);
 		bool _request_line_received(const Request &request) const;
 		bool _header_received(const Request &request) const;
 		bool _headers_received(const Request &request) const;
@@ -77,14 +82,8 @@ class Client {
 		int _collect_request_line_elements(exchange_t &exchange);
 		int _collect_header(exchange_t &exchange);
 		int _check_headers(exchange_t &exchange);
+		int _check_trailer(exchange_t &exchange);
 		int _collect_body(exchange_t &exchange);
-		int _process(exchange_t &exchange);
-		int _fill_response_GET(exchange_t &exchange);
-		int _fill_response(exchange_t &exchange);
-		int _open_file_to_read(void);
-		int _build_output_str(exchange_t &exchange);
-		int _write_socket(exchange_t &exchange);
-		std::string _build_path_ressource(Request &request);
 
 		/* Headers handlers
 		 *
@@ -118,6 +117,17 @@ class Client {
 		 *
 		 */
 		void _send_debug_str(const std::string& str) const;
+
+		/* Response sending
+		 *
+		 *
+		 */
+		int _process(exchange_t &exchange);
+		int _process_GET(exchange_t &exchange);
+		std::string _build_path_ressource(Request &request);
+		int _open_file_to_read(const std::string &path);
+		int _build_output_str(exchange_t &exchange);
+		int _write_socket(exchange_t &exchange);
 
 };
 
