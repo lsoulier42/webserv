@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 17:04:05 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/14 19:44:45 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 21:23:08 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,11 +85,11 @@ void Config::setUploadDir(const std::string &uploadDir) {
 	_upload_dir = uploadDir;
 }
 
-std::list<int> Config::getErrorPageCodes() const {
+std::list<status_code_t> Config::getErrorPageCodes() const {
 	return _error_page_codes;
 }
 
-void Config::setErrorPageCodes(const std::list<int>& errorPageCodes) {
+void Config::setErrorPageCodes(const std::list<status_code_t>& errorPageCodes) {
 	_error_page_codes = errorPageCodes;
 }
 const std::string &Config::getErrorPagePath() const {

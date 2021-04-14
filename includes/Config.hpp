@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 17:04:14 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/14 19:36:18 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 21:24:10 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 # include <vector>
 # include "AConfig.hpp"
 # include "Location.hpp"
+# include "Syntax.hpp"
 
 # define DEFAULT_MAX_BODY_SIZE 8192
 
@@ -35,8 +36,8 @@ class Config : public AConfig {
 		void setClientMaxBodySize(unsigned long clientMaxBodySize);
 		std::string getUploadDir() const;
 		void setUploadDir(const std::string &uploadDir);
-		std::list<int> getErrorPageCodes() const;
-		void setErrorPageCodes(const std::list<int>& errorPageCodes);
+		std::list<status_code_t> getErrorPageCodes() const;
+		void setErrorPageCodes(const std::list<status_code_t>& errorPageCodes);
 		const std::string &getErrorPagePath() const;
 		void setErrorPagePath(const std::string& errorPagePath);
 		std::list<Location> getLocations() const;
@@ -52,7 +53,7 @@ class Config : public AConfig {
 		int _port;
 		unsigned long _client_max_body_size;
 		std::string _upload_dir;
-		std::list<int> _error_page_codes;
+		std::list<status_code_t> _error_page_codes;
 		std::string _error_page_path;
 		std::list<Location> _locations;
 };

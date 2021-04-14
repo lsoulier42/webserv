@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 20:42:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 21:31:39 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -282,11 +282,6 @@ Client::_collect_body(exchange_t &exchange) {
 	return (SUCCESS);
 }
 
-/*
- * Headers parsers
- */
-
-
 /* _pick_virtual_server :
  * get the right configuration of virtual host
  * based on header host and server_name
@@ -313,6 +308,10 @@ Client::_pick_virtual_server(Request &request) {
 		}
 	}
 }
+
+/*
+ * Headers parsers
+ */
 
 bool Client::_comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b) {
 	return a.second > b.second;
@@ -528,6 +527,7 @@ Client::_header_host_parser(Request &request) {
 	if (compounds.size() == 2)
 		definitive_value.push_back(compounds[1]); //port
 	request.get_headers().set_value(Syntax::headers_tab[HOST].name, definitive_value);
+	_pick_virtual_server(request);
 	return (SUCCESS);
 }
 
@@ -609,7 +609,7 @@ Client::_process(exchange_t &exchange) {
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version("HTTP/1.1");
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
-		return (_open_file_to_read(request.get_virtual_server()->getErrorPagePath()));
+		return (_process_error(exchange));
 	if (request.get_request_line().get_method() == GET)
 		return (_process_GET(exchange));
 	return (FAILURE);
@@ -624,10 +624,24 @@ Client::_process_GET(exchange_t &exchange) {
 	struct stat	buf;
 	if (-1 == stat(path.c_str(), &buf)) {
 		response.get_status_line().set_status_code(NOT_FOUND);
-		return (_open_file_to_read(request.get_virtual_server()->getErrorPagePath()));
+		return (_process_error(exchange));
 	}
 	response.get_status_line().set_status_code(OK);
 	return (_open_file_to_read(path));
+}
+
+int
+Client::_process_error(exchange_t &exchange) {
+	Request		&request(exchange.first);
+	Response	&response(exchange.second);
+	std::list<status_code_t>	error_codes(request.get_virtual_server()->getErrorPageCodes());
+
+	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
+		if (response.get_status_line().get_status_code() == *it)
+			return (_open_file_to_read(request.get_virtual_server()->getErrorPagePath()));
+	}
+	response.set_body("no error page to render\r\n");
+	return (_build_output_str(exchange));
 }
 
 std::string

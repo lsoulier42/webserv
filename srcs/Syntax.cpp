@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:25 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/13 03:17:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 21:38:30 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,8 @@ const Syntax::status_code_tab_entry_t Syntax::status_codes_tab[] =
 	{BAD_GATEWAY, 502, "502", "Bad Gateway"},
 	{SERVICE_UNAVAILABLE, 503, "503", "Service Unavailable"},
 	{GATEWAY_TIMEOUT, 504, "504", "Gateway Timeout"},
-	{HTTP_VERSION_NOT_SUPPORTED, 505, "505", "HTTP Version Not Supported"}
+	{HTTP_VERSION_NOT_SUPPORTED, 505, "505", "HTTP Version Not Supported"},
+	{TOTAL_STATUS_CODE, 0, "0", ""}
 };
 
 const Syntax::instruction_tab_entry_t Syntax::server_instructions_tab[] =

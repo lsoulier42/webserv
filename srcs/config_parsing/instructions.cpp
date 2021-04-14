@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/08 13:09:12 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/14 19:15:04 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 21:38:20 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,9 +61,9 @@ int parse_server_name(const std::vector<std::string>& tokens, Config& config) {
 }
 
 int parse_error_page(const std::vector<std::string>& tokens, Config& config) {
-	std::list<int> error_codes;
+	std::list<status_code_t> error_codes;
 	std::string error_path;
-	int error_code;
+	int error_code_int;
 	std::string usage("Usage: 'error_page <400 401 504....> [/absolute/path];'");
 
 	if (tokens.size() < 3)
@@ -72,13 +72,16 @@ int parse_error_page(const std::vector<std::string>& tokens, Config& config) {
 		if (*it != tokens.back()) {
 			if (!Syntax::str_is_num(*it))
 				return (argument_not_numerical(*it, tokens[0], usage));
-			error_code = std::strtol(it->c_str(), NULL, 10);
-			if (!Syntax::is_error_code(error_code)) {
+			error_code_int = std::strtol(it->c_str(), NULL, 10);
+			if (!Syntax::is_error_code(error_code_int)) {
 				std::cerr << "Argument `" << *it << "' is not a valid error code." <<std::endl;
 				std::cerr << usage << std::endl;
 				return 0;
 			}
-			error_codes.push_back(error_code);
+			size_t	i(0);
+			while (Syntax::status_codes_tab[i].code_index != TOTAL_STATUS_CODE && Syntax::status_codes_tab[i].code_int != error_code_int)
+				i++;
+			error_codes.push_back(Syntax::status_codes_tab[i].code_index);
 		}
 		else {
 			if (!check_path(*it, tokens[0], usage))

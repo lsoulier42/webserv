@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 20:34:49 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 21:30:56 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,6 +124,7 @@ class Client {
 		 *
 		 */
 		int _process(exchange_t &exchange);
+		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
 		std::string _build_path_ressource(Request &request);
 		int _open_file_to_read(const std::string &path);
