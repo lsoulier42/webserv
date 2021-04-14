@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/07 16:55:40 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/07 16:55:41 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/14 05:34:25 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ class AConfig {
 		AConfig();
 		virtual ~AConfig();
 
-		std::string getRoot() const;
+		const std::string &getRoot() const;
 		void setRoot(const std::string &root);
 		bool isAutoindex() const;
 		void setAutoindex(bool autoindex);

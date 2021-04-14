@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/13 15:08:00 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 05:42:43 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,7 +84,7 @@ class Client {
 		int _open_file_to_read(void);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
-		void _pick_location(Request &request);
+		std::string _build_path_ressource(Request &request);
 
 		/* Headers handlers
 		 *

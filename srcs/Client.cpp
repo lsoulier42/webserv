@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/13 17:04:02 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 05:45:41 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,7 +73,6 @@ int
 Client::read_socket(void) {
 	char	buffer[_buffer_size + 1];
 	int		ret;
-	std::cout << "WE ARE ABOUT TO READ THE SOCKET " << _sd << std::endl;
 	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
 		if (0 == ret)
 			std::cout << "the client closed the connection." << std::endl;
@@ -86,9 +85,6 @@ Client::read_socket(void) {
 	_input_str_parsing();
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
-	// a retirer
-	else if (_closing)
-		std::cout << "CLOSING" << std::endl;
 	return (SUCCESS);
 }
 
@@ -202,6 +198,7 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 		_closing = true;
 		return (FAILURE);
 	}
+	std::cout << "REQUEST LINE RECEIVED" << std::endl;
 	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
 	return (SUCCESS);
 }
@@ -228,9 +225,9 @@ Client::_check_headers(exchange_t &exchange) {
 
 	_input_str.erase(0, _input_str.find("\r\n") + 2);
 	if (_headers_parsers(exchange.first) == FAILURE) {
-		//request.set_compromising(true);
-		response.get_status_line().set_status_code(BAD_REQUEST);
+		request.set_compromising(true);
 		_closing = true;
+		response.get_status_line().set_status_code(BAD_REQUEST);
 		request.set_status(Request::REQUEST_RECEIVED);
 		return (FAILURE);
 	}
@@ -259,37 +256,42 @@ Client::_collect_body(exchange_t &exchange) {
 	return (SUCCESS);
 }
 
-void
-Client::_pick_location(Request &request) {
-	(void)request;
-	/*
+std::string
+Client::_build_path_ressource(Request &request) {
+	std::string			request_target(request.get_request_line().get_request_target());
+	std::string			absolute_path(request_target.substr(0, request_target.find("?")));
 	std::list<Location>	locations(request.get_virtual_server()->getLocations());
-	for (std::list<Location>::iterator it(locations.begin()) ; it != locations.end() ; it++)
-		std::cout << it->getPath() << " - " << it->getRoot() << std::endl;
-		*/
+	std::string			location_root(request.get_virtual_server()->getRoot());
+	std::string			location_path("/");
+
+	for (std::list<Location>::iterator it(locations.begin()) ; it != locations.end() ; it++) {
+		if (!absolute_path.compare(0, (it->getPath()).size(), it->getPath())) {
+			location_root = it->getRoot();
+			location_path = it->getPath();
+			break ;
+		}
+	}
+	absolute_path.erase(0, location_path.size());
+	location_root += "/";
+	absolute_path.insert(0, location_root);
+	return (absolute_path);
 }
 
 int
 Client::_fill_response_GET(exchange_t &exchange) {
 	exchange.first.render();
-	_pick_location(exchange.first);
-	//std::string	location_path("/bidule/");
-	std::string	location_root("/");
-	std::string	target_path(exchange.first.get_request_line().get_request_target());
-	//target_path.erase(0, location_path.size());
-	//location_root += "/";
-	target_path.insert(0, location_root);
+	std::string	path(_build_path_ressource(exchange.first));
 
 	exchange.second.get_status_line().set_http_version("HTTP/1.1");
+	std::cout << "TARGET PATH : " << path << "$" << std::endl;
 	if (exchange.second.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
 		return (_build_output_str(exchange));
 	struct stat	buf;
-	if (-1 == stat(target_path.c_str(), &buf)) {
+	if (-1 == stat(path.c_str(), &buf)) {
 		exchange.second.get_status_line().set_status_code(NOT_FOUND);
 		return (_build_output_str(exchange));
 	}
-	std::cout << "TARGET PATH : " << target_path << "$" << std::endl;
-	_fd = open(target_path.c_str(), O_RDONLY);
+	_fd = open(path.c_str(), O_RDONLY);
 	std::cout << "FD IS " << _fd << std::endl;
 	return (SUCCESS);
 }
@@ -394,7 +396,8 @@ Client::_extract_virtual_server(Request &current_request, const std::string& hos
 		it != _configs.end() && !virtual_server; it++) {
 		server_names = (*it)->getServerNames();
 		for (std::list<std::string>::const_iterator cit = server_names.begin();
-			cit != server_names.end(); it++) {
+			cit != server_names.end(); cit++) {
+			std::cout << *cit << std::endl;
 			if (*cit == host_value) {
 				virtual_server = *it;
 				break;
@@ -609,18 +612,18 @@ Client::_header_host_parser(Request &request) {
 	std::vector<std::string> compounds;
 	std::list<std::string> definitive_value;
 
-	if (Syntax::get_URI_form(unparsed_header_value) == INVALID_URI_FORM)
+	if (unparsed_header_value.find_first_of(WHITESPACES) != std::string::npos)
 		return FAILURE;
 	compounds = Syntax::split(unparsed_header_value, ":");
 	if (compounds.size() > 2)
 		return FAILURE;
 
 	definitive_value.push_back(compounds[0]);// host name
-	this->_extract_virtual_server(request, compounds[0]);
 	if (compounds.size() == 2)
 		definitive_value.push_back(compounds[1]); //port
 	request.get_headers().set_value(Syntax::headers_tab[HOST].name, definitive_value);
-	return 1;
+	this->_extract_virtual_server(request, compounds[0]);
+	return (SUCCESS);
 }
 
 int
@@ -669,6 +672,7 @@ void Client::_send_debug_str(const std::string& str) const {
 
 int
 Client::_headers_parsers(Request &request) {
+	/*
 	const AHTTPMessage::Headers& headers = request.get_headers();
 
 	int (Client::*handler_functions[])(Request &request) = {&Client::_header_accept_charset_parser,
@@ -676,10 +680,11 @@ Client::_headers_parsers(Request &request) {
 		&Client::_header_content_length_parser, &Client::_header_content_type_parser, &Client::_header_date_parser, NULL,
 		&Client::_header_referer_parser, &Client::_header_transfer_encoding_parser, &Client::_header_user_agent_parser,
 	};
-	if (!request.get_headers().key_exists(Syntax::headers_tab[HOST].name))
+	*/
+	if (!request.get_headers().key_exists(Syntax::headers_tab[HOST].name)
+			|| _header_host_parser(request) == FAILURE)
 		return FAILURE;
-	if (_header_host_parser(request) == FAILURE)
-		return FAILURE;
+	/*
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
 		if (Syntax::request_headers_tab[i].header_index != HOST
 			&& headers.key_exists(Syntax::request_headers_tab[i].name)) {
@@ -687,5 +692,6 @@ Client::_headers_parsers(Request &request) {
 				return FAILURE;
 		}
 	}
+	*/
 	return SUCCESS;
 }
