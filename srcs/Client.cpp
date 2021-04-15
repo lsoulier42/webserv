@@ -378,8 +378,8 @@ Client::_is_valid_language_tag(const std::string& language_tag) {
 		if (script.size() < 2 || region.size() < 2)
 			return false;
 	}
-	if (compounds.size() == 1) {
-		region = compounds[2];
+	if (compounds.size() == 2) {
+		region = compounds[1];
 		if (!Syntax::str_is_alnum(region) || region.size() < 2)
 			return false;
 	}
@@ -472,35 +472,38 @@ Client::_header_content_type_parser(Request &request) {
 	return SUCCESS;
 }
 
+bool
+Client::is_valid_http_date(const std::string& date_str) {
+	char* strptime_ret = (char*)"fake";
+	int i = -1;
+	std::string HTTP_date_fmt[3] = {"%a, %d %b %Y %T GMT", "%A, %d-%b-%y %T GMT", "%a %b  %d %T %Y"};
+	struct tm timeval;
+
+	while(++i < 3) {
+		strptime_ret = strptime(date_str.c_str(), HTTP_date_fmt[i].c_str(), &timeval);
+		if (strptime_ret && *strptime_ret == '\0')
+			return true;
+	}
+
+	return false;
+}
+
 /* _date_handler :
  * accept the three HTTP dates formats, in order in the std::string array :
  * - real example : Sun, 06 Nov 1994 08:49:37 GMT
  * - obsolete 1 (RFC 850) example : Sunday, 06-Nov-94 08:49:37 GMT
  * - obsolete 2 (ANSI C) example : Sun Nov  6 08:49:37 1994
- * make list of 2 strings elements :
- * - unparsed date
- * - format to use for strptime
+ *
  */
 
 int
 Client::_header_date_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(DATE);
-	char* strptime_ret;
-	size_t i = 0;
-	std::string HTTP_date_fmt[3] = {"%a, %d %b %Y %T GMT", "%A, %d-%b-%y %T GMT", "%a %b  %d %T %Y"};
-	struct tm timeval;
 	std::list<std::string> definitive_value;
 
-	while(i < 3) {
-		strptime_ret = strptime(unparsed_header_value.c_str(), HTTP_date_fmt[i].c_str(), &timeval);
-		if (!strptime_ret)
-			break;
-		i++;
-	}
-	if (strptime_ret != NULL)
+	if (!is_valid_http_date(unparsed_header_value))
 		return FAILURE;
 	definitive_value.push_back(unparsed_header_value);
-	definitive_value.push_back(HTTP_date_fmt[i]);
 	request.get_headers().set_value(DATE, definitive_value);
 	return SUCCESS;
 }

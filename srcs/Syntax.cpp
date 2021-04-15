@@ -170,6 +170,7 @@ const Syntax::mime_type_entry_t Syntax::mime_types_tab[] =
 	{APPLICATION_X_CSH, ".csh", "application/x-csh"},
 	{TEXT_CSS, ".css", "text/css"},
 	{TEXT_CSV, ".csv", "text/csv"},
+	{TEXT_PLAIN, ".txt", "text/plain"},
 	{APPLICATION_MSWORD, ".doc", "application/msword"},
 	{APPLICATION_VND_OPENXMLFORMATS_OFFICEDOCUMENT_WORDPROCESSINGML_DOCUMENT, ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
 	{APPLICATION_VND_MS_FONTOBJECT, ".eot", "application/vnd.ms-fontobject"},
@@ -389,4 +390,10 @@ URI_form_t Syntax::get_URI_form(const std::string& uri_str) {
 		|| uri_str.find("https://") != std::string::npos)
 		return ABSOLUTE_URI;
 	return PARTIAL_URI;
+}
+
+bool Syntax::is_valid_path(const std::string &path) {
+	struct stat	buf;
+
+	return stat(path.c_str(), &buf) != -1;
 }
