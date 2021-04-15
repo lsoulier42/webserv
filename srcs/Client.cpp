@@ -743,11 +743,44 @@ Client::_process_response_headers(exchange_t &exchange) {
 	return SUCCESS;
 }
 
+bool
+Client::_is_allowed_method(const std::list<std::string>& allowed_methods, method_t method) {
+	for(std::list<std::string>::const_iterator it = allowed_methods.begin();
+		it != allowed_methods.end(); it++) {
+		if (*it == Syntax::method_tab[method].name)
+			return true;
+	}
+	return false;
+}
+
 int
 Client::_response_allow_handler(exchange_t &exchange) {
-	(void)exchange;
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	std::string method_output;
+	std::list<std::string> allowed_methods = request.get_location()->get_methods();
+	AHTTPMessage::Headers::header_t allow_header;
 
-	return 1;
+	if (allowed_methods.empty()) {
+		for(size_t i = 0; i < DEFAULT_METHOD; i++) {
+			method_output += Syntax::method_tab[i].name;
+			if (i != DEFAULT_METHOD - 1)
+				method_output += ", ";
+		}
+	} else {
+		if (!_is_allowed_method(allowed_methods, request.get_request_line().get_method())) {
+			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
+			return FAILURE;
+		}
+		for(std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
+			method_output += *it + ", ";
+		}
+		method_output = method_output.substr(0, method_output.size() - 2);
+	}
+	allow_header.name = Syntax::headers_tab[ALLOW].name;
+	allow_header.unparsed_value = method_output;
+	response.get_headers().insert(allow_header);
+	return SUCCESS;
 }
 
 std::string
