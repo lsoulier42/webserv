@@ -111,6 +111,7 @@ class Client {
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
 		static bool _is_valid_language_tag(const std::string& language_tag);
 		static std::string _build_effective_request_URI(const Request::RequestLine& requestLine, const std::string& header_host_value);
+		static bool is_valid_http_date(const std::string& date_str);
 		void _extract_virtual_server(Request &current_request, const std::string& host_value);
 
 		/* debug function
