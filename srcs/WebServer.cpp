@@ -12,41 +12,46 @@
 
 #include "WebServer.hpp"
 
-bool WebServer::verbose = false;
+bool
+WebServer::verbose = false;
 
 WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
 	_highest_socket(0), _exit(false) {
 
 }
 
-WebServer::~WebServer() {}
+WebServer::~WebServer() {
 
-void WebServer::setup_servers() {
-	std::set<std::pair<std::string, int> > default_servers;
+}
+
+void
+WebServer::setup_servers() {
+	std::set<std::pair<std::string, int> > unique_pairs;
 	std::pair<std::string, int> ip_port;
 	Server new_server;
 
-	for(std::vector<Config>::iterator it = _configs.begin(); it != _configs.end(); it++) {
-		ip_port = std::make_pair(it->getIpAddr(), it->getPort());
-		if (default_servers.find(ip_port) == default_servers.end()) {
-			default_servers.insert(ip_port);
-			new_server.setConfig(&(*it));
+	for(std::list<VirtualServer>::iterator it = _virtual_servers.begin(); it != _virtual_servers.end(); it++) {
+		ip_port = std::make_pair(it->get_ip_addr(), it->get_port());
+		if (unique_pairs.find(ip_port) == unique_pairs.end()) {
+			unique_pairs.insert(ip_port);
+			new_server.set_virtual_server(&(*it));
 			_servers.push_back(new_server);
 		}
 	}
-	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
+	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
 		it->setup_default_server();
-		set_non_blocking(it->getServerSd());
-		_highest_socket = it->getServerSd();
+		set_non_blocking(it->get_server_sd());
+		_highest_socket = it->get_server_sd();
 	}
 }
 
-void WebServer::accept_connection(const Server& server) {
+void
+WebServer::accept_connection(const Server& server) {
 	int connection;
-	struct sockaddr client_addr = *server.getSockAddr();
-	socklen_t client_socket_len = *server.getAddrLen();
+	struct sockaddr client_addr = *server.get_sock_addr();
+	socklen_t client_socket_len = *server.get_addr_len();
 
-	connection = accept(server.getServerSd(),
+	connection = accept(server.get_server_sd(),
 		&client_addr, &client_socket_len);
 	if (connection < 0) {
 		std::cerr << "Failed to grab connection : ";
@@ -64,24 +69,22 @@ void WebServer::accept_connection(const Server& server) {
 			close(connection);
 	} else {
 		std::cout << "Connection accepted: FD=" << connection << std::endl;
-		_clients.push_back(Client(connection, client_addr, client_socket_len, Config::buildConfigsList(_configs, server.getConfig())));
-		/*
-		_clients.back().set_addr(client_addr);
-		_clients.back().set_socket_len(client_socket_len);
-		_clients.back().set_configs(Config::buildConfigsList(_configs, server.getConfig()));
-		*/
+		_clients.push_back(Client(connection, client_addr, client_socket_len,
+			VirtualServer::build_virtual_server_list(_virtual_servers, server.get_virtual_server())));
 	}
 }
 
-void WebServer::close_sockets() {
-	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		close(it->getServerSd());
+void
+WebServer::close_sockets() {
+	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
+		close(it->get_server_sd());
 	}
-	for(std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); it++)
+	for(std::list<Client>::iterator it = _clients.begin(); it != _clients.end(); it++)
 		close(it->get_sd());
 }
 
-void WebServer::routine(void) {
+void
+WebServer::routine(void) {
 	struct timeval timeout;
 	int nb_sockets;
 
@@ -111,7 +114,8 @@ void WebServer::routine(void) {
 	this->close_sockets();
 }
 
-void WebServer::set_non_blocking(int socket_fd) {
+void
+WebServer::set_non_blocking(int socket_fd) {
 	int opts;
 
 	opts = fcntl(socket_fd, F_GETFD);
@@ -128,12 +132,13 @@ void WebServer::set_non_blocking(int socket_fd) {
 	}
 }
 
-void WebServer::build_select_list() {
+void
+WebServer::build_select_list() {
 	FD_ZERO(&_sockets_list);
-	for(std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		FD_SET(it->getServerSd(), &_sockets_list);
+	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
+		FD_SET(it->get_server_sd(), &_sockets_list);
 	}
-	for(std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+	for(std::list<Client>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 		FD_SET(it->get_sd(), &_sockets_list);
 		if (it->get_sd() > _highest_socket)
 			_highest_socket = it->get_sd();
@@ -145,12 +150,13 @@ void WebServer::build_select_list() {
   }
 }
 
-void WebServer::read_socks() {
-	for(size_t i = 0; i < _servers.size(); i++) {
-		if (FD_ISSET(_servers[i].getServerSd(), &_sockets_list))
-			this->accept_connection(_servers[i]);
+void
+WebServer::read_socks() {
+	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
+		if (FD_ISSET(it->get_server_sd(), &_sockets_list))
+			this->accept_connection(*it);
 	}
-	for (std::vector<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
+	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
 		if (FD_ISSET(it->get_sd(), &_sockets_list) && SUCCESS != it->read_socket()) {
 			close(it->get_sd());
 			it = _clients.erase(it);
@@ -158,15 +164,16 @@ void WebServer::read_socks() {
 		else
 			it++;
 	}
-	for (std::vector<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
+	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
 		if (FD_ISSET(it->get_fd(), &_sockets_list))
 			it->read_file();
 }
 
-int WebServer::parsing(const std::string &filepath) {
-	if (!check_config_file(filepath, _config_file))
+int
+WebServer::parsing(const std::string &filepath) {
+	if (!ConfigParsing::check_config_file(filepath, _config_file))
 		return 0;
-	if (!check_main_bloc(_config_file, _configs)) {
+	if (!ConfigParsing::check_main_bloc(_config_file, _virtual_servers)) {
 		std::cerr << "Error during config file parsing." << std::endl;
 		_config_file.close();
 		return 0;

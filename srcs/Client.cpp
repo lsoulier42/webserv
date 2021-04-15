@@ -19,18 +19,19 @@ Client::Client(void) :
 	_fd(),
 	_addr(),
 	_socket_len(),
-	_configs(),
+	_virtual_servers(),
 	_input_str(),
 	_output_str(),
 	_exchanges(),
 	_closing(false) {}
 
-Client::Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::list<const Config*> &configs) :
+Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
+	const std::list<const VirtualServer*> &virtual_servers) :
 	_sd(sd),
 	_fd(0),
 	_addr(addr),
 	_socket_len(socket_len),
-	_configs(configs),
+	_virtual_servers(virtual_servers),
 	_input_str(),
 	_output_str(),
 	_exchanges(),
@@ -41,7 +42,7 @@ Client::Client(const Client &x) :
 	_fd(x._fd),
 	_addr(x._addr),
 	_socket_len(x._socket_len),
-	_configs(x._configs),
+	_virtual_servers(x._virtual_servers),
 	_input_str(x._input_str),
 	_output_str(x._output_str),
 	_exchanges(x._exchanges),
@@ -173,7 +174,7 @@ Client::_input_str_parsing(void) {
 	while (!_closing && !_input_str.empty()) {
 
 		if (_exchanges.empty() || _exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
-			_exchanges.push_back(std::make_pair(Request(_configs.front()), Response()));
+			_exchanges.push_back(std::make_pair(Request(_virtual_servers.front()), Response()));
 		exchange_t	&current_exchange(_exchanges.back());
 		Request		&request(current_exchange.first);
 
@@ -287,12 +288,12 @@ Client::_pick_virtual_server(Request &request) {
 	std::vector<std::string> host_elements;
 	std::list<std::string> server_names;
 
-	request.set_virtual_server(_configs.front());
+	request.set_virtual_server(_virtual_servers.front());
 	if (!request.get_headers().key_exists(HOST))
 		return ;
-	for(std::list<const Config*>::const_iterator it = _configs.begin();
-		it != _configs.end() ; it++) {
-		server_names = (*it)->getServerNames();
+	for(std::list<const VirtualServer*>::const_iterator it = _virtual_servers.begin();
+		it != _virtual_servers.end() ; it++) {
+		server_names = (*it)->get_server_names();
 		for (std::list<std::string>::const_iterator cit = server_names.begin();
 			cit != server_names.end(); cit++) {
 			if (*cit == request.get_headers().get_unparsed_value(HOST)) {
@@ -616,14 +617,15 @@ int
 Client::_process_GET(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-
 	std::string	path(_build_path_ressource(request));
-	struct stat	buf;
-	if (-1 == stat(path.c_str(), &buf)) {
+
+	if (!Syntax::is_valid_path(path)) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
 	response.get_status_line().set_status_code(OK);
+	if (_process_response_headers(exchange) == FAILURE)
+		return (_process_error(exchange));
 	return (_open_file_to_read(path));
 }
 
@@ -631,11 +633,11 @@ int
 Client::_process_error(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-	std::list<status_code_t>	error_codes(request.get_virtual_server()->getErrorPageCodes());
+	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
 		if (response.get_status_line().get_status_code() == *it)
-			return (_open_file_to_read(request.get_virtual_server()->getErrorPagePath()));
+			return (_open_file_to_read(request.get_virtual_server()->get_error_page_path()));
 	}
 	response.set_body("no error page to render\r\n");
 	return (_build_output_str(exchange));
@@ -643,16 +645,18 @@ Client::_process_error(exchange_t &exchange) {
 
 std::string
 Client::_build_path_ressource(Request &request) {
-	std::string			request_target(request.get_request_line().get_request_target());
-	std::string			absolute_path(request_target.substr(0, request_target.find("?")));
-	std::list<Location>	locations(request.get_virtual_server()->getLocations());
-	std::string			location_root(request.get_virtual_server()->getRoot());
-	std::string			location_path("/");
+	std::string					request_target(request.get_request_line().get_request_target());
+	std::string					absolute_path(request_target.substr(0, request_target.find('?')));
+	const std::list<Location>&	locations = request.get_virtual_server()->get_locations();
+	Location					default_location = request.get_virtual_server()->get_locations().back();
+	std::string					location_root(default_location.get_root());
+	std::string					location_path("/");
 
-	for (std::list<Location>::iterator it(locations.begin()) ; it != locations.end() ; it++) {
-		if (!absolute_path.compare(0, (it->getPath()).size(), it->getPath())) {
-			location_root = it->getRoot();
-			location_path = it->getPath();
+	for (std::list<Location>::const_iterator it(locations.begin()) ; it != locations.end() ; it++) {
+		if (!absolute_path.compare(0, (it->get_path()).size(), it->get_path())) {
+			location_root = it->get_root();
+			location_path = it->get_path();
+			request.set_location(&(*it));
 			break ;
 		}
 	}
@@ -692,6 +696,7 @@ Client::read_file(void) {
 int
 Client::_build_output_str(exchange_t &exchange) {
 	Response	&response(exchange.second);
+	AHTTPMessage::Headers& headers = response.get_headers();
 
 	_output_str.clear();
 	_output_str += response.get_status_line().get_http_version();
@@ -699,6 +704,14 @@ Client::_build_output_str(exchange_t &exchange) {
 	_output_str += Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str;
 	_output_str += " ";
 	_output_str += Syntax::status_codes_tab[response.get_status_line().get_status_code()].reason_phrase;
+	_output_str += "\r\n";
+	for(size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
+		if (headers.key_exists(Syntax::response_headers_tab[i].header_index)) {
+			_output_str += Syntax::response_headers_tab[i].name + ": ";
+			_output_str += headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index);
+			_output_str += "\r\n";
+		}
+	}
 	_output_str += "\r\n";
 	_output_str += response.get_body();
 	return (_write_socket(exchange));
@@ -715,4 +728,47 @@ Client::_write_socket(exchange_t &exchange) {
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
 	return (SUCCESS);
+}
+
+int
+Client::_process_response_headers(exchange_t &exchange) {
+	int (Client::*response_handlers[])(exchange_t &) = {&Client::_response_allow_handler,
+		&Client::_response_date_handler};
+	int nb = 2;//not to keep
+
+	for (int i = 0; i < nb; i++) {
+		if (!(this->*response_handlers[i])(exchange))
+			return FAILURE;
+	}
+	return SUCCESS;
+}
+
+int
+Client::_response_allow_handler(exchange_t &exchange) {
+	(void)exchange;
+
+	return 1;
+}
+
+std::string
+Client::get_current_HTTP_date(void) {
+	struct tm *date = NULL;
+	char buff[64];
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+	date = localtime(&(tv.tv_sec));
+	strftime(buff, sizeof(buff), "%a, %d %b %Y %T GMT+2", date);
+	return std::string(buff);
+}
+
+int
+Client::_response_date_handler(exchange_t &exchange) {
+	Response& response = exchange.second;
+	AHTTPMessage::Headers::header_t date_header;
+
+	date_header.name = Syntax::headers_tab[DATE].name;
+	date_header.unparsed_value = get_current_HTTP_date();
+	response.get_headers().insert(date_header);
+	return 1;
 }

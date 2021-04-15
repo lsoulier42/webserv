@@ -1,9 +1,8 @@
 NAME = webserv
 
-SRCS_FILES = main.cpp Server.cpp WebServer.cpp AConfig.cpp Config.cpp Location.cpp AHTTPMessage.cpp \
-	config_parsing/check_bloc.cpp config_parsing/errors.cpp config_parsing/instructions.cpp \
+SRCS_FILES = main.cpp Server.cpp WebServer.cpp ConfigParsing.cpp VirtualServer.cpp Location.cpp AHTTPMessage.cpp \
 	Client.cpp Request.cpp Response.cpp Syntax.cpp
-HEADER_FILES = Server.hpp WebServer.hpp AConfig.hpp  Config.hpp  Location.hpp AHTTPMessage.hpp  parsing.hpp  \
+HEADER_FILES = Server.hpp WebServer.hpp ConfigParsing.hpp VirtualServer.hpp Location.hpp AHTTPMessage.hpp  \
 	   Client.hpp Request.hpp Response.hpp Syntax.hpp
 
 SRCS_DIR = ./srcs/

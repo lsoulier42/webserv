@@ -23,9 +23,9 @@
 # include <cstdlib>
 # include <unistd.h>
 # include "WebServer.hpp"
-# include "Config.hpp"
+# include "VirtualServer.hpp"
 
-# define DEFAULT_BACKLOG 5 //TODO: figure out what backlog means
+# define DEFAULT_BACKLOG 5
 
 class WebServer;
 
@@ -37,11 +37,11 @@ class Server {
 		~Server();
 
 		void setup_default_server();
-		int getServerSd() const;
-		struct sockaddr* getSockAddr() const;
-		socklen_t* getAddrLen() const;
-		const Config* getConfig() const;
-		void setConfig(Config* config);
+		int get_server_sd() const;
+		struct sockaddr* get_sock_addr() const;
+		socklen_t* get_addr_len() const;
+		const VirtualServer* get_virtual_server() const;
+		void set_virtual_server(VirtualServer* virtual_server);
 
 	private:
 		void _create_socket_descriptor();
@@ -49,7 +49,7 @@ class Server {
 		void _bind_socket();
 		void _set_listen_mode() const;
 
-		Config* _config;
+		VirtualServer *_virtual_server;
 		int _server_sd;
 		struct sockaddr_in _sock_addr;
 		int _reuse_addr;

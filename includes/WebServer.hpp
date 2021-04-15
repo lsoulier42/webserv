@@ -22,7 +22,6 @@
 # include <cstring>
 # include <cerrno>
 # include <string>
-# include <vector>
 # include <map>
 # include <sstream>
 # include <fstream>
@@ -31,11 +30,10 @@
 
 # include "Server.hpp"
 # include "Client.hpp"
-# include "Config.hpp"
-# include "parsing.hpp"
+# include "VirtualServer.hpp"
+# include "ConfigParsing.hpp"
 
 # define DEFAULT_MAX_CONNECTION 5
-# define DEFAULT_BUFFER_SIZE 1025
 
 class Server;
 
@@ -54,11 +52,6 @@ class WebServer {
 		WebServer(const WebServer& src);
 		WebServer& operator=(const WebServer& rhs);
 
-		/* Network functions
-		 *
-		 *
-		 *
-		 */
 		void accept_connection(const Server& server);
 		static void set_non_blocking(int socket_fd);
 		void build_select_list();
@@ -66,10 +59,10 @@ class WebServer {
 		void close_sockets();
 
 		std::ifstream _config_file;
-		std::vector<Server> _servers;
-		std::vector<Config> _configs;
+		std::list<Server> _servers;
+		std::list<VirtualServer> _virtual_servers;
 		int _max_connection;
-		std::vector<Client> _clients;
+		std::list<Client> _clients;
 		fd_set _sockets_list;
 		int _highest_socket;
 		bool _exit;

@@ -13,16 +13,17 @@
 #include "Server.hpp"
 #include "Request.hpp"
 
-Server::Server() : _config(NULL), _server_sd(0), _reuse_addr(1),
+Server::Server() : _virtual_server(NULL), _server_sd(0), _reuse_addr(1),
 	_addr_len(sizeof(struct sockaddr_in)) {
 	memset((char*)&_sock_addr, 0, _addr_len);
 }
 
 Server::Server(const Server &src) { *this = src; }
 
-Server& Server::operator=(const Server &rhs) {
+Server&
+Server::operator=(const Server &rhs) {
 	if (this != &rhs) {
-		_config = rhs._config;
+		_virtual_server = rhs._virtual_server;
 		_server_sd = rhs._server_sd;
 		_addr_len = rhs._addr_len;
 		_reuse_addr = rhs._reuse_addr;
@@ -35,36 +36,41 @@ Server::~Server() {
 
 }
 
-int Server::getServerSd() const {
+int
+Server::get_server_sd() const {
 	return _server_sd;
 }
 
-struct sockaddr* Server::getSockAddr() const {
+struct sockaddr*
+Server::get_sock_addr() const {
 	return (struct sockaddr*)(&_sock_addr);
 }
 
-socklen_t* Server::getAddrLen() const {
+socklen_t*
+Server::get_addr_len() const {
 	return (socklen_t*)(&_addr_len);
 }
 
-const Config* Server::getConfig() const{
-	return this->_config;
+const VirtualServer*
+Server::get_virtual_server() const{
+	return this->_virtual_server;
 }
 
-void Server::setConfig(Config *config) {
-	_config = config;
+void
+Server::set_virtual_server(VirtualServer* virtual_server) {
+	_virtual_server = virtual_server;
 }
 
-void Server::setup_default_server() {
-	if (WebServer::verbose)
-		_config->showConfig();
+void
+Server::setup_default_server() {
 	this->_create_socket_descriptor();
 	this->_change_socket_options();
 	this->_bind_socket();
 	this->_set_listen_mode();
 }
 
-void Server::_create_socket_descriptor() {
+void
+Server::_create_socket_descriptor() {
 	_server_sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_sd == -1) {
 		std::cerr << "Failed to create socket : ";
@@ -76,7 +82,8 @@ void Server::_create_socket_descriptor() {
 	}
 }
 
-void Server::_change_socket_options() {
+void
+Server::_change_socket_options() {
 	if (setsockopt(_server_sd, SOL_SOCKET, SO_REUSEADDR,
 		&_reuse_addr, sizeof(_reuse_addr)) < 0) {
 		std::cerr << "Failed to change socket options : ";
@@ -89,11 +96,12 @@ void Server::_change_socket_options() {
 	}
 }
 
-void Server::_bind_socket() {
-	int port = _config->getPort();
+void
+Server::_bind_socket() {
+	int port = _virtual_server->get_port();
 
 	_sock_addr.sin_family = AF_INET;
-	_sock_addr.sin_addr.s_addr = inet_addr(_config->getIpAddr().c_str());
+	_sock_addr.sin_addr.s_addr = inet_addr(_virtual_server->get_ip_addr().c_str());
 	_sock_addr.sin_port = htons(port);
 
 	if (bind(_server_sd, (struct sockaddr*)&_sock_addr, _addr_len) < 0) {
@@ -108,7 +116,8 @@ void Server::_bind_socket() {
 	}
 }
 
-void Server::_set_listen_mode() const {
+void
+Server::_set_listen_mode() const {
 	if (listen(_server_sd, DEFAULT_BACKLOG) < 0) {
 		std::cerr << "Failed to listen on socket : ";
 		std::cerr << std::strerror(errno) << std::endl;

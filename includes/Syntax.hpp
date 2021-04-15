@@ -24,6 +24,8 @@
 # define WHITESPACES " \n\r\t\f\v"
 # define TOTAL_REQUEST_HEADERS 10
 # define TOTAL_RESPONSE_HEADERS 12
+# define SUCCESS 1
+# define FAILURE 0
 
 enum method_t {
 	GET,
@@ -37,19 +39,23 @@ enum method_t {
 	DEFAULT_METHOD
 };
 
-enum instruction_t {
+enum server_instruction_t {
 	LISTEN,
 	SERVER_NAME,
 	ERROR_PAGE,
 	CLIENT_MAX_BODY_SIZE,
-	LOCATION_INSTRUCTION,
-	METHODS,
-	ROOT,
-	AUTOINDEX,
-	INDEX,
 	UPLOAD_DIR,
-	CGI,
+	LOCATION_INSTRUCTION,
 	TOTAL_SERVER_INSTRUCTIONS
+};
+
+enum location_instruction_t {
+	ROOT,
+	METHODS,
+	INDEX,
+	CGI,
+	AUTOINDEX,
+	TOTAL_LOCATION_INSTRUCTIONS
 };
 
 enum status_code_t {
@@ -219,7 +225,6 @@ enum encoding_type_t {
 
 class Syntax {
 	public:
-		Syntax();
 		~Syntax();
 
 		struct method_tab_entry_t {
@@ -227,8 +232,13 @@ class Syntax {
 			std::string		name;
 		};
 
-		struct instruction_tab_entry_t {
-			instruction_t	instruction_index;
+		struct server_instruction_tab_entry_t {
+			server_instruction_t	instruction_index;
+			std::string 	name;
+		};
+
+		struct location_instruction_tab_entry_t {
+			location_instruction_t	instruction_index;
 			std::string 	name;
 		};
 
@@ -261,8 +271,8 @@ class Syntax {
 		};
 
 		static const method_tab_entry_t	method_tab[];
-		static const instruction_tab_entry_t server_instructions_tab[];
-		static const instruction_tab_entry_t location_instructions_tab[];
+		static const server_instruction_tab_entry_t server_instructions_tab[];
+		static const location_instruction_tab_entry_t location_instructions_tab[];
 		static const status_code_tab_entry_t status_codes_tab[];
 		static const header_tab_entry_t headers_tab[];
 		static const header_tab_entry_t request_headers_tab[];
@@ -305,6 +315,7 @@ class Syntax {
 		}
 
 	private:
+		Syntax();
 		Syntax(const Syntax& src);
 		Syntax& operator=(const Syntax& rhs);};
 

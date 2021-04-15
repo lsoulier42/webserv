@@ -17,21 +17,24 @@ Request::Request(void) :
 	_status(START),
 	_request_line(),
 	_compromising(false),
-	_virtual_server() {}
+	_virtual_server(),
+	_location() {}
 
-Request::Request(const Config *virtual_server) :
+Request::Request(const VirtualServer *virtual_server) :
 	AHTTPMessage(),
 	_status(START),
 	_request_line(),
 	_compromising(false),
-	_virtual_server(virtual_server) {}
+	_virtual_server(virtual_server),
+	_location() {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
 	_status(x._status),
 	_request_line(x._request_line),
 	_compromising(x._compromising),
-	_virtual_server(x._virtual_server) {}
+	_virtual_server(x._virtual_server),
+	_location(x._location) {}
 
 Request::~Request(void) {}
 
@@ -42,6 +45,7 @@ Request
 	_request_line = x._request_line;
 	_compromising = x._compromising;
 	_virtual_server = x._virtual_server;
+	_location = x._location;
 	return (*this);
 }
 
@@ -65,7 +69,7 @@ Request::get_compromising(void) const {
 	return (_compromising);
 }
 
-const Config* Request::get_virtual_server() const {
+const VirtualServer* Request::get_virtual_server() const {
 	return _virtual_server;
 }
 
@@ -79,7 +83,7 @@ Request::set_compromising(bool compromising) {
 	_compromising = compromising;
 }
 
-void Request::set_virtual_server(const Config* virtual_server) {
+void Request::set_virtual_server(const VirtualServer* virtual_server) {
 	_virtual_server = virtual_server;
 }
 
@@ -167,4 +171,14 @@ Request::RequestLine::render(void) const {
 	}
 	std::cout << "REQUEST TARGET : " << _request_target << "$" << std::endl;
 	std::cout << "HTTP VERSION : " << get_http_version() << "$" << std::endl;
+}
+
+const Location*
+Request::get_location() const {
+	return _location;
+}
+
+void
+Request::set_location(const Location* location) {
+	_location = location;
 }

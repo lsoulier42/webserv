@@ -14,7 +14,6 @@
 # define RESPONSE_HPP
 
 # include <iostream>
-# include "parsing.hpp"
 # include "AHTTPMessage.hpp"
 
 class Response : public AHTTPMessage {

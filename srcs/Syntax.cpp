@@ -12,8 +12,8 @@
 
 #include "Syntax.hpp"
 
-const Syntax::method_tab_entry_t Syntax::method_tab[] =
-{
+const Syntax::method_tab_entry_t
+Syntax::method_tab[] = {
 	{GET, "GET"},
 	{HEAD, "HEAD"},
 	{POST, "POST"},
@@ -24,8 +24,8 @@ const Syntax::method_tab_entry_t Syntax::method_tab[] =
 	{TRACE, "TRACE"},
 };
 
-const Syntax::status_code_tab_entry_t Syntax::status_codes_tab[] =
-{
+const Syntax::status_code_tab_entry_t
+Syntax::status_codes_tab[] = {
 	{CONTINUE, 100, "100", "Continue"},
 	{SWITCHING_PROTOCOLS, 101, "101", "Switching Protocols"},
 	{OK, 200, "200", "OK"},
@@ -70,32 +70,27 @@ const Syntax::status_code_tab_entry_t Syntax::status_codes_tab[] =
 	{TOTAL_STATUS_CODE, 0, "0", ""}
 };
 
-const Syntax::instruction_tab_entry_t Syntax::server_instructions_tab[] =
-{
+const Syntax::server_instruction_tab_entry_t
+Syntax::server_instructions_tab[] = {
 	{LISTEN, "listen"},
 	{SERVER_NAME, "server_name"},
 	{ERROR_PAGE, "error_page"},
 	{CLIENT_MAX_BODY_SIZE, "client_max_body_size"},
-	{LOCATION_INSTRUCTION, "location"},
-	{METHODS, "methods"},
-	{ROOT, "root"},
-	{AUTOINDEX, "autoindex"},
-	{INDEX, "index"},
 	{UPLOAD_DIR, "upload_dir"},
-	{CGI, "cgi"}
+	{LOCATION_INSTRUCTION, "location"}
 };
 
-const Syntax::instruction_tab_entry_t Syntax::location_instructions_tab[] =
-{
-	server_instructions_tab[METHODS],
-	server_instructions_tab[ROOT],
-	server_instructions_tab[AUTOINDEX],
-	server_instructions_tab[INDEX],
-	server_instructions_tab[CGI]
+const Syntax::location_instruction_tab_entry_t
+Syntax::location_instructions_tab[] = {
+	{ROOT, "root"},
+	{METHODS, "methods"},
+	{INDEX, "index"},
+	{CGI, "cgi"},
+	{AUTOINDEX, "autoindex"}
 };
 
-const Syntax::header_tab_entry_t Syntax::headers_tab[] =
-{
+const Syntax::header_tab_entry_t
+Syntax::headers_tab[] = {
 	{ACCEPT_CHARSETS, "Accept-Charsets"},
 	{ACCEPT_LANGUAGE, "Accept-Language"},
 	{ALLOW, "Allow"},
@@ -117,8 +112,8 @@ const Syntax::header_tab_entry_t Syntax::headers_tab[] =
 	{TRAILER, "Trailer"}
 };
 
-const Syntax::header_tab_entry_t Syntax::request_headers_tab[] =
-{
+const Syntax::header_tab_entry_t
+Syntax::request_headers_tab[] = {
 	headers_tab[ACCEPT_CHARSETS],
 	headers_tab[ACCEPT_LANGUAGE],
 	headers_tab[AUTHORIZATION],
@@ -131,8 +126,8 @@ const Syntax::header_tab_entry_t Syntax::request_headers_tab[] =
 	headers_tab[USER_AGENT]
 };
 
-const Syntax::header_tab_entry_t Syntax::response_headers_tab[] =
-{
+const Syntax::header_tab_entry_t
+Syntax::response_headers_tab[] = {
 		headers_tab[ALLOW],
 		headers_tab[CONTENT_LANGUAGE],
 		headers_tab[CONTENT_LENGTH],
@@ -148,16 +143,16 @@ const Syntax::header_tab_entry_t Syntax::response_headers_tab[] =
 };
 
 
-const Syntax::accepted_charsets_entry_t Syntax::charsets_tab[] =
-{
+const Syntax::accepted_charsets_entry_t
+Syntax::charsets_tab[] = {
 	{UTF_8, "utf-8"},
 	{ISO_8859_1, "iso-8859-1"},
 	{UNICODE_1_1, "unicode-1-1"},
 	{US_ASCII, "US-ASCII"}
 };
 
-const Syntax::mime_type_entry_t Syntax::mime_types_tab[] =
-{
+const Syntax::mime_type_entry_t
+Syntax::mime_types_tab[] = {
 	{AUDIO_AAC, ".aac", "audio/aac"},
 	{APPLICATION_X_ABIWORD, ".abw", "application/x-abiword"},
 	{APPLICATION_OCTET_STREAM_ARC, ".arc", "application/octet-stream"},
@@ -228,8 +223,8 @@ const Syntax::mime_type_entry_t Syntax::mime_types_tab[] =
 	{APPLICATION_X_7Z_COMPRESSED, ".7z", "application/x-7z-compressed"}
 };
 
-const Syntax::encoding_type_entry_t Syntax::encoding_types_tab[] =
-{
+const Syntax::encoding_type_entry_t
+Syntax::encoding_types_tab[] = {
 	{CHUNKED, "chunked"},
 	{COMPRESS, "compress"},
 	{DEFLATE, "deflate"},
@@ -237,31 +232,38 @@ const Syntax::encoding_type_entry_t Syntax::encoding_types_tab[] =
 	{IDENTITY, "identity"}
 };
 
-bool Syntax::is_informational_code(int code) {
+bool
+Syntax::is_informational_code(int code) {
 	return code == 100 || code == 101;
 }
 
-bool Syntax::is_successful_code(int code) {
+bool
+Syntax::is_successful_code(int code) {
 	return code >= 200 && code <= 206;
 }
 
-bool Syntax::is_redirection_code(int code) {
+bool
+Syntax::is_redirection_code(int code) {
 	return (code >= 300 && code <= 305) || code == 307;
 }
 
-bool Syntax::is_client_error_code(int code) {
+bool
+Syntax::is_client_error_code(int code) {
 	return (code >= 400 && code <= 417) || code == 426;
 }
 
-bool Syntax::is_server_error_code(int code) {
+bool
+Syntax::is_server_error_code(int code) {
 	return code >= 500 && code <= 505;
 }
 
-bool Syntax::is_error_code(int code) {
+bool
+Syntax::is_error_code(int code) {
 	return is_server_error_code(code) || is_client_error_code(code);
 }
 
-int Syntax::fetch_method_index(const std::string& method) {
+int
+Syntax::fetch_method_index(const std::string& method) {
 	for(int i = 0; i < DEFAULT_METHOD; i++) {
 		if (method == Syntax::method_tab[i].name)
 			return i;
@@ -269,7 +271,8 @@ int Syntax::fetch_method_index(const std::string& method) {
 	return -1;
 }
 
-bool Syntax::is_implemented_header(const std::string &header_name) {
+bool
+Syntax::is_implemented_header(const std::string &header_name) {
 	for(int i = 0; i < TOTAL_HEADER_NAMES; i++) {
 		if (header_name == Syntax::headers_tab[i].name)
 			return true;
@@ -277,7 +280,8 @@ bool Syntax::is_implemented_header(const std::string &header_name) {
 	return false;
 }
 
-std::string Syntax::trim_comments(const std::string &str) {
+std::string
+Syntax::trim_comments(const std::string &str) {
 	std::string new_line;
 	size_t hash_char_pos;
 
@@ -288,7 +292,8 @@ std::string Syntax::trim_comments(const std::string &str) {
 	return new_line.substr(0, hash_char_pos);
 }
 
-std::string Syntax::trim_whitespaces(const std::string& str) {
+std::string
+Syntax::trim_whitespaces(const std::string& str) {
 	std::string whitespaces;
 	std::string new_line;
 	size_t start, end;
@@ -304,7 +309,8 @@ std::string Syntax::trim_whitespaces(const std::string& str) {
 	return new_line;
 }
 
-std::vector<std::string> Syntax::split(const std::string& str, const std::string& charset) {
+std::vector<std::string>
+Syntax::split(const std::string& str, const std::string& charset) {
 	std::vector<std::string> result;
 	std::string token;
 	size_t ws_pos, progress_pos = 0, wd_len;;
@@ -324,7 +330,8 @@ std::vector<std::string> Syntax::split(const std::string& str, const std::string
 	return result;
 }
 
-int Syntax::trim_semicolon(std::vector<std::string>& str) {
+int
+Syntax::trim_semicolon(std::vector<std::string>& str) {
 	std::string last_token = str.back();
 	std::string::iterator ite = str.back().end();
 	char last_char = *(--ite);
@@ -339,7 +346,8 @@ int Syntax::trim_semicolon(std::vector<std::string>& str) {
 	return 1;
 }
 
-bool Syntax::str_is_num(const std::string& str) {
+bool
+Syntax::str_is_num(const std::string& str) {
 	for(size_t i = 0; str[i]; i++) {
 		if (!std::isdigit(str[i]))
 			return false;
@@ -347,7 +355,8 @@ bool Syntax::str_is_num(const std::string& str) {
 	return true;
 }
 
-bool Syntax::str_is_alpha(const std::string& str) {
+bool
+Syntax::str_is_alpha(const std::string& str) {
 	for(size_t i = 0; str[i]; i++) {
 		if (!std::isalpha(str[i]))
 			return false;
@@ -355,7 +364,8 @@ bool Syntax::str_is_alpha(const std::string& str) {
 	return true;
 }
 
-bool Syntax::str_is_alnum(const std::string& str) {
+bool
+Syntax::str_is_alnum(const std::string& str) {
 	for(size_t i = 0; str[i]; i++) {
 		if (!std::isalpha(str[i]) && !std::isdigit(str[i]))
 			return false;
@@ -363,7 +373,8 @@ bool Syntax::str_is_alnum(const std::string& str) {
 	return true;
 }
 
-int Syntax::check_ip_format(const std::string& ip) {
+int
+Syntax::check_ip_format(const std::string& ip) {
 	std::vector<std::string> nums = Syntax::split(ip, ".");
 	int num;
 
@@ -379,7 +390,8 @@ int Syntax::check_ip_format(const std::string& ip) {
 	return 1;
 }
 
-URI_form_t Syntax::get_URI_form(const std::string& uri_str) {
+URI_form_t
+Syntax::get_URI_form(const std::string& uri_str) {
 	if (uri_str.find_first_of(WHITESPACES) != std::string::npos)
 		return INVALID_URI_FORM;
 	if (uri_str == "*")
@@ -392,7 +404,8 @@ URI_form_t Syntax::get_URI_form(const std::string& uri_str) {
 	return PARTIAL_URI;
 }
 
-bool Syntax::is_valid_path(const std::string &path) {
+bool
+Syntax::is_valid_path(const std::string &path) {
 	struct stat	buf;
 
 	return stat(path.c_str(), &buf) != -1;

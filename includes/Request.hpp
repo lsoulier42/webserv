@@ -15,7 +15,7 @@
 
 # include <string>
 # include <iostream>
-# include "parsing.hpp"
+# include "VirtualServer.hpp"
 # include "Syntax.hpp"
 # include "AHTTPMessage.hpp"
 
@@ -58,7 +58,7 @@ class Request : public AHTTPMessage {
 		};
 
 		Request(void);
-		Request(const Config *virtual_server);
+		Request(const VirtualServer *virtual_server);
 		Request(const Request &x);
 		~Request(void);
 		Request &operator=(const Request &x);
@@ -67,11 +67,13 @@ class Request : public AHTTPMessage {
 		RequestLine &get_request_line(void);
 		const RequestLine &get_request_line(void) const;
 		bool get_compromising(void) const;
-		const Config* get_virtual_server() const;
+		const VirtualServer* get_virtual_server() const;
+		const Location* get_location() const;
+		void set_location(const Location* location);
 
 		void set_status(request_status_t status);
 		void set_compromising(bool compromising);
-		void set_virtual_server(const Config* virtual_server);
+		void set_virtual_server(const VirtualServer* virtual_server);
 
 		void reset(void);
 		void render(void) const;
@@ -81,7 +83,8 @@ class Request : public AHTTPMessage {
 		request_status_t _status;
 		RequestLine _request_line;
 		bool _compromising;
-		const Config* _virtual_server;
+		const VirtualServer* _virtual_server;
+		const Location*	_location;
 };
 
 #endif

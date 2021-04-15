@@ -19,6 +19,7 @@
 # include <list>
 # include <cstdlib>
 # include <ctime>
+# include <sys/time.h>
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <sys/types.h>
@@ -28,10 +29,7 @@
 # include "Request.hpp"
 # include "Response.hpp"
 # include "Syntax.hpp"
-
-# define SUCCESS 0
-# define FAILURE -1
-# define PENDING 1
+# include "VirtualServer.hpp"
 
 class Client {
 
@@ -40,7 +38,8 @@ class Client {
 		typedef std::pair<Request, Response> exchange_t;
 
 		Client(void);
-		explicit Client(int sd, struct sockaddr addr, socklen_t socket_len, const std::list<const Config*> &configs);
+		explicit Client(int sd, struct sockaddr addr, socklen_t socket_len,
+			const std::list<const VirtualServer*> &virtual_servers);
 		Client(const Client &x);
 		~Client(void);
 		Client &operator=(const Client &x);
@@ -59,7 +58,7 @@ class Client {
 		int _fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
-		const std::list<const Config*> _configs;
+		const std::list<const VirtualServer*> _virtual_servers;
 		std::string _input_str;
 		std::string _output_str;
 		std::list<exchange_t> _exchanges;
@@ -86,7 +85,7 @@ class Client {
 		int _collect_body(exchange_t &exchange);
 		void _pick_virtual_server(Request &request);
 
-		/* Headers handlers
+		/* Request headers parser
 		 *
 		 *
 		 */
@@ -102,7 +101,7 @@ class Client {
 		int _header_transfer_encoding_parser(Request &request);
 		int _header_user_agent_parser(Request &request);
 
-		/* Header handlers helpers
+		/* Request headers helpers
 		 *
 		 *
 		 */
@@ -112,8 +111,6 @@ class Client {
 		static bool _is_valid_language_tag(const std::string& language_tag);
 		static std::string _build_effective_request_URI(const Request::RequestLine& requestLine, const std::string& header_host_value);
 		static bool is_valid_http_date(const std::string& date_str);
-		void _extract_virtual_server(Request &current_request, const std::string& host_value);
-
 
 		/* debug function
 		 *
@@ -132,6 +129,16 @@ class Client {
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
+
+		/* Response headers handlers
+		 *
+		 *
+		 *
+		 */
+		int _process_response_headers(exchange_t &exchange);
+		int _response_allow_handler(exchange_t &exchange);
+		int _response_date_handler(exchange_t &exchange);
+		static std::string get_current_HTTP_date(void);
 
 };
 
