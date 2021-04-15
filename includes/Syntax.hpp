@@ -17,6 +17,9 @@
 # include <vector>
 # include <map>
 # include <cstdlib>
+# include <sys/types.h>
+# include <sys/stat.h>
+# include <unistd.h>
 
 # define WHITESPACES " \n\r\t\f\v"
 # define TOTAL_REQUEST_HEADERS 10
@@ -285,6 +288,7 @@ class Syntax {
 
 		static bool is_implemented_header(const std::string& header_name);
 		static URI_form_t get_URI_form(const std::string& uri_str);
+		static bool is_valid_path(const std::string &path);
 
 		template<typename T>
 		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {

@@ -60,16 +60,14 @@ int wrong_path_format(const std::string& instruction, const std::string& usage) 
 	return 0;
 }
 
-int check_path(const std::string &path, const std::string& instruction, const std::string& usage) {
-	std::ifstream test(path.c_str());
-	if (!test) {
+int check_instruction_path(const std::string &path, const std::string& instruction, const std::string& usage) {
+	if (!Syntax::is_valid_path(path)) {
 		std::cerr << "Error in instruction `" << instruction << "'" << std::endl;
 		std::cerr << "The path `" << path << "' can't be opened: ";
 		std::cerr << strerror(errno) << std::endl;
 		std::cerr << usage << std::endl;
 		return 0;
 	}
-	test.close();
 	return 1;
 }
 

@@ -389,3 +389,9 @@ URI_form_t Syntax::get_URI_form(const std::string& uri_str) {
 		return ABSOLUTE_URI;
 	return PARTIAL_URI;
 }
+
+bool Syntax::is_valid_path(const std::string &path) {
+	struct stat	buf;
+
+	return stat(path.c_str(), &buf) != -1;
+}

@@ -283,8 +283,7 @@ Client::_fill_response_GET(exchange_t &exchange) {
 	exchange.second.get_status_line().set_http_version("HTTP/1.1");
 	if (exchange.second.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
 		return (_build_output_str(exchange));
-	struct stat	buf;
-	if (-1 == stat(target_path.c_str(), &buf)) {
+	if (!Syntax::is_valid_path(target_path)) {
 		exchange.second.get_status_line().set_status_code(NOT_FOUND);
 		return (_build_output_str(exchange));
 	}

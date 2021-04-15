@@ -81,7 +81,7 @@ int parse_error_page(const std::vector<std::string>& tokens, Config& config) {
 			error_codes.push_back(error_code);
 		}
 		else {
-			if (!check_path(*it, tokens[0], usage))
+			if (!check_instruction_path(*it, tokens[0], usage))
 				return 0;
 			error_path = *it;
 		}
@@ -153,7 +153,7 @@ int parse_root(const std::vector<std::string>& tokens, AConfig& config) {
 	path = tokens[1];
 	if (path[0] != '/')
 		return wrong_path_format(tokens[0], usage);
-	if (!check_path(path, tokens[0], usage))
+	if (!check_instruction_path(path, tokens[0], usage))
 		return 0;
 	config.setRoot(path);
 	return 1;
@@ -220,14 +220,14 @@ int parse_upload_dir(const std::vector<std::string>& tokens, Config& config) {
 	if (tokens.size() != 2)
 		return (invalid_number_arguments(1, tokens.size() - 1, tokens[0], usage));
 	path = tokens[1];
-	if (!check_path(path, tokens[0], usage))
+	if (!check_instruction_path(path, tokens[0], usage))
 		return 0;
 	config.setUploadDir(path);
 	return 1;
 }
 
 int parse_cgi(const std::vector<std::string>& tokens, AConfig& config) {
-	std::string usage("Usage: 'cgi [*.<ext>] [/absolute/path];'");
+	std::string usage("Usage: 'cgi [*.<ext>] [/absolute/or/relative/path];'");
 	std::string cgi_file_ext, cgi_path;
 
 	if (tokens.size() != 3)
@@ -241,9 +241,7 @@ int parse_cgi(const std::vector<std::string>& tokens, AConfig& config) {
 		std::cerr << usage << std::endl;
 		return 0;
 	}
-	if (cgi_path[0] != '/')
-		return wrong_path_format(tokens[0], usage);
-	if (!check_path(cgi_path, tokens[0], usage))
+	if (!check_instruction_path(cgi_path, tokens[0], usage))
 		return 0;
 	config.setCgiExtension(cgi_file_ext.substr(2));
 	config.setCgiPath(cgi_path);

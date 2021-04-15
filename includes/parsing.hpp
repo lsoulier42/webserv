@@ -60,8 +60,8 @@ int							parse_cgi(const std::vector<std::string>&, AConfig&);
 int							parse_cgi_config(const std::vector<std::string>&, Config&);
 int							parse_cgi_location(const std::vector<std::string>&, Location&);
 
-int							check_path(const std::string &path, const std::string& instruction,
-										  const std::string& usage);
+int							check_instruction_path(const std::string &path, const std::string& instruction,
+								const std::string& usage);
 int 						bracket_not_found(const std::string& line_buffer, const std::string& context, int type);
 int							mandatory_instruction_not_found(const std::string& instruction);
 int							unknown_instruction(const std::string& token, const std::string& context);
