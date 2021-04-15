@@ -32,7 +32,7 @@ $(OBJS_SUB_DIR):
 	mkdir -p ${OBJS_SUB_DIR}
 
 clean:
-	rm -r $(OBJS_DIR)
+	rm -rf $(OBJS_DIR)
 
 fclean: clean
 	rm -f $(NAME)

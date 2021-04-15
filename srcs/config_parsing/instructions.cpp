@@ -64,7 +64,7 @@ int parse_error_page(const std::vector<std::string>& tokens, Config& config) {
 	std::list<int> error_codes;
 	std::string error_path;
 	int error_code;
-	std::string usage("Usage: 'error_page <400 401 504....> [/absolute/path];'");
+	std::string usage("Usage: 'error_page <400 401 504....> [/absolute/or/relative/path];'");
 
 	if (tokens.size() < 3)
 		return (instruction_need_at_least(2, tokens[0], usage));
@@ -214,14 +214,12 @@ int parse_index_location(const std::vector<std::string>& tokens, Location& locat
 }
 
 int parse_upload_dir(const std::vector<std::string>& tokens, Config& config) {
-	std::string usage("Usage: 'upload_dir [/absolute/path];'");
+	std::string usage("Usage: 'upload_dir [/absolute/or/relative/path];'");
 	std::string path;
 
 	if (tokens.size() != 2)
 		return (invalid_number_arguments(1, tokens.size() - 1, tokens[0], usage));
 	path = tokens[1];
-	if (path[0] != '/')
-		return wrong_path_format(tokens[0], usage);
 	if (!check_path(path, tokens[0], usage))
 		return 0;
 	config.setUploadDir(path);
