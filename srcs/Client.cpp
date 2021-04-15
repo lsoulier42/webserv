@@ -476,8 +476,8 @@ Client::_is_valid_language_tag(const std::string& language_tag) {
 		if (script.size() < 2 || region.size() < 2)
 			return false;
 	}
-	if (compounds.size() == 1) {
-		region = compounds[2];
+	if (compounds.size() == 2) {
+		region = compounds[1];
 		if (!Syntax::str_is_alnum(region) || region.size() < 2)
 			return false;
 	}
