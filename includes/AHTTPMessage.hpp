@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:08:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/11 01:58:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/14 23:02:46 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 # include <list>
 # include <iostream>
 # include <stdexcept>
+# include "Syntax.hpp"
 
 class AHTTPMessage {
 
@@ -64,10 +65,14 @@ class AHTTPMessage {
 				Headers &operator=(const Headers &x);
 
 				void insert(const header_t &header);
-				bool key_exists(const std::string &key) const;
-				const std::list<std::string>& get_value(const std::string &key) const throw (std::invalid_argument);
-				void set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument);
-				const std::string &get_unparsed_value(const std::string &key) const throw (std::invalid_argument);
+
+				bool key_exists(header_name_t key) const;
+
+				const std::list<std::string>& get_value(header_name_t key) const throw (std::invalid_argument);
+				const std::string &get_unparsed_value(header_name_t key) const throw (std::invalid_argument);
+
+				void set_value(header_name_t key, const std::list<std::string>& parsed_value) throw (std::invalid_argument);
+
 				void reset(void);
 				void render(void) const;
 

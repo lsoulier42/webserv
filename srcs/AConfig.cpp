@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/07 16:51:00 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/07 16:51:01 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/14 05:34:40 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ AConfig::~AConfig() {
 
 }
 
-std::string AConfig::getRoot() const {
+const std::string &AConfig::getRoot() const {
 	return _root;
 }
 
