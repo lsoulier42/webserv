@@ -242,7 +242,7 @@ Client::_check_headers(exchange_t &exchange) {
 	Request		&request(exchange.first);
 
 	_input_str.erase(0, _input_str.find("\r\n") + 2);
-	if (_headers_parsers(exchange.first) == FAILURE) {
+	if (_process_request_headers(exchange.first) == FAILURE) {
 		_failure(exchange, BAD_REQUEST);
 		return (FAILURE);
 	}
@@ -340,7 +340,7 @@ Client::_parse_coma_q_factor(const std::string& unparsed_value) {
 }
 
 int
-Client::_header_accept_charset_parser(Request &request) {
+Client::_request_accept_charset_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(ACCEPT_CHARSETS);
 	std::list<std::string> charsets_list = _parse_coma_q_factor(unparsed_header_value);
 
@@ -388,7 +388,7 @@ Client::_is_valid_language_tag(const std::string& language_tag) {
 }
 
 int
-Client::_header_accept_language_parser(Request &request) {
+Client::_request_accept_language_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(ACCEPT_LANGUAGE);
 	std::list<std::string> languages_list = _parse_coma_q_factor(unparsed_header_value);
 
@@ -401,7 +401,7 @@ Client::_header_accept_language_parser(Request &request) {
 }
 
 int
-Client::_header_authorization_parser(Request &request) {
+Client::_request_authorization_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(AUTHORIZATION);
 	std::vector<std::string> compounds = Syntax::split(unparsed_header_value, " ");
 	std::list<std::string> definitive_value;
@@ -415,7 +415,7 @@ Client::_header_authorization_parser(Request &request) {
 }
 
 int
-Client::_header_content_length_parser(Request &request) {
+Client::_request_content_length_parser(Request &request) {
 	std::string content_length_str = request.get_headers().get_unparsed_value(CONTENT_LENGTH);
 	std::list<std::string> definitive_value;
 
@@ -452,7 +452,7 @@ Client::_build_effective_request_URI(const Request::RequestLine& requestLine,
 }
 
 int
-Client::_header_content_type_parser(Request &request) {
+Client::_request_content_type_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(CONTENT_TYPE);
 	std::list<std::string> content_type_list;
 	std::string mime_type;
@@ -475,9 +475,9 @@ Client::_header_content_type_parser(Request &request) {
 
 bool
 Client::is_valid_http_date(const std::string& date_str) {
-	char* strptime_ret = (char*)"fake";
+	char* strptime_ret;
 	int i = -1;
-	std::string HTTP_date_fmt[3] = {"%a, %d %b %Y %T GMT", "%A, %d-%b-%y %T GMT", "%a %b  %d %T %Y"};
+	std::string HTTP_date_fmt[3] = {"%a, %d %b %Y %T %Z", "%A, %d-%b-%y %T %Z", "%a %b  %d %T %Y"};
 	struct tm timeval;
 
 	while(++i < 3) {
@@ -485,7 +485,6 @@ Client::is_valid_http_date(const std::string& date_str) {
 		if (strptime_ret && *strptime_ret == '\0')
 			return true;
 	}
-
 	return false;
 }
 
@@ -498,7 +497,7 @@ Client::is_valid_http_date(const std::string& date_str) {
  */
 
 int
-Client::_header_date_parser(Request &request) {
+Client::_request_date_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(DATE);
 	std::list<std::string> definitive_value;
 
@@ -510,7 +509,7 @@ Client::_header_date_parser(Request &request) {
 }
 
 int
-Client::_header_host_parser(Request &request) {
+Client::_request_host_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(HOST);
 	std::vector<std::string> compounds;
 	std::list<std::string> definitive_value;
@@ -530,7 +529,7 @@ Client::_header_host_parser(Request &request) {
 }
 
 int
-Client::_header_referer_parser(Request &request) {
+Client::_request_referer_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(REFERER);
 	URI_form_t uri_form = Syntax::get_URI_form(unparsed_header_value);
 
@@ -542,7 +541,7 @@ Client::_header_referer_parser(Request &request) {
 }
 
 int
-Client::_header_transfer_encoding_parser(Request &request) {
+Client::_request_transfer_encoding_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(TRANSFER_ENCODING);
 	std::list<std::string> encoding_types_list = _parse_coma_q_factor(unparsed_header_value);
 
@@ -555,7 +554,7 @@ Client::_header_transfer_encoding_parser(Request &request) {
 }
 
 int
-Client::_header_user_agent_parser(Request &request) {
+Client::_request_user_agent_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(USER_AGENT);
 	std::vector<std::string> compounds = Syntax::split(unparsed_header_value, " ");
 	std::list<std::string> definitive_value;
@@ -574,16 +573,16 @@ void Client::_send_debug_str(const std::string& str) const {
 }
 
 int
-Client::_headers_parsers(Request &request) {
+Client::_process_request_headers(Request &request) {
 	const AHTTPMessage::Headers& headers = request.get_headers();
 
-	int (Client::*handler_functions[])(Request &request) = {&Client::_header_accept_charset_parser,
-		&Client::_header_accept_language_parser, &Client::_header_authorization_parser,
-		&Client::_header_content_length_parser, &Client::_header_content_type_parser, &Client::_header_date_parser, NULL,
-		&Client::_header_referer_parser, &Client::_header_transfer_encoding_parser, &Client::_header_user_agent_parser,
+	int (Client::*handler_functions[])(Request &request) = {&Client::_request_accept_charset_parser,
+		&Client::_request_accept_language_parser, &Client::_request_authorization_parser,
+		&Client::_request_content_length_parser, &Client::_request_content_type_parser, &Client::_request_date_parser, NULL,
+		&Client::_request_referer_parser, &Client::_request_transfer_encoding_parser, &Client::_request_user_agent_parser,
 	};
 	if (!request.get_headers().key_exists(HOST)
-			|| _header_host_parser(request) == FAILURE)
+			|| _request_host_parser(request) == FAILURE)
 		return FAILURE;
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
 		if (Syntax::request_headers_tab[i].header_index != HOST
@@ -623,9 +622,8 @@ Client::_process_GET(exchange_t &exchange) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
+	response.set_target_path(path);
 	response.get_status_line().set_status_code(OK);
-	if (_process_response_headers(exchange) == FAILURE)
-		return (_process_error(exchange));
 	return (_open_file_to_read(path));
 }
 
@@ -686,6 +684,8 @@ Client::read_file(void) {
 	if (ret == 0) {
 		close(_fd);
 		_fd = 0;
+		if (_process_response_headers(exchange) == FAILURE)
+			return (_process_error(exchange));
 		return (_build_output_str(exchange));
 	}
 	buffer[ret] = '\0';
@@ -730,13 +730,39 @@ Client::_write_socket(exchange_t &exchange) {
 	return (SUCCESS);
 }
 
+void
+Client::_pick_content_type(exchange_t &exchange) {
+	Response& response = exchange.second;
+	const std::string& path = response.get_target_path();
+	std::string content_type = Syntax::mime_types_tab[APPLICATION_OCTET_STREAM].name;
+	std::string extension;
+	size_t extension_point_pos;
+
+	extension_point_pos = path.find_last_of('.');
+	if (extension_point_pos != std::string::npos) {
+		extension = path.substr(extension_point_pos + 1);
+		for(size_t i = 0; i < TOTAL_MIME_TYPES; i++) {
+			if (extension == Syntax::mime_types_tab[i].ext) {
+				content_type = Syntax::mime_types_tab[i].name;
+					break ;
+			}
+		}
+	}
+	response.set_content_type(content_type);
+}
+
 int
 Client::_process_response_headers(exchange_t &exchange) {
 	int (Client::*response_handlers[])(exchange_t &) = {&Client::_response_allow_handler,
-		&Client::_response_date_handler};
-	int nb = 2;//not to keep
+		&Client::_response_content_language_handler, &Client::_response_content_length_handler,
+		&Client::_response_content_location_handler, &Client::_response_content_type_handler,
+		&Client::_response_date_handler, &Client::_response_last_modified_handler,
+		&Client::_response_location_handler, &Client::_response_location_handler,
+		&Client::_response_retry_after_handler, &Client::_response_server_handler,
+		&Client::_response_transfer_encoding_handler, &Client::_response_www_authenticate_handler};
 
-	for (int i = 0; i < nb; i++) {
+	_pick_content_type(exchange);
+	for (size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (!(this->*response_handlers[i])(exchange))
 			return FAILURE;
 	}
@@ -784,6 +810,108 @@ Client::_response_allow_handler(exchange_t &exchange) {
 }
 
 std::string
+Client::_html_content_language_parser(const Response& response) {
+	std::string content_language_str, line_tag;
+	const std::string& body = response.get_body();
+	size_t html_tag_pos, end_html_tag_pos, lang_pos, end_lang_pos;
+
+	html_tag_pos = body.find("<html");
+	if (html_tag_pos != std::string::npos) {
+		line_tag = body.substr(html_tag_pos);
+		end_html_tag_pos = line_tag.find_first_of('>');
+		if (end_html_tag_pos != std::string::npos) {
+			line_tag = line_tag.substr(0, end_html_tag_pos);
+			lang_pos = line_tag.find("lang=\"");
+			if (lang_pos != std::string::npos) {
+				line_tag = line_tag.substr(lang_pos + 6);
+				end_lang_pos = line_tag.find_first_of('"');
+				if (end_lang_pos != std::string::npos) {
+					content_language_str = line_tag.substr(0, end_lang_pos);
+					if (!_is_valid_language_tag(content_language_str))
+						content_language_str.clear();
+				}
+			}
+		}
+	}
+	return content_language_str;
+}
+
+std::string
+Client::_xml_content_language_parser(const Response& response) {
+	std::string content_language_str, line_tag;
+	const std::string& body = response.get_body();
+	size_t lang_pos, end_lang_pos;
+
+	lang_pos = body.find("xml:lang=\"");
+	if (lang_pos != std::string::npos) {
+		line_tag = body.substr(lang_pos + 10);
+		end_lang_pos = line_tag.find_first_of('"');
+		if (end_lang_pos != std::string::npos) {
+			content_language_str = line_tag.substr(0, end_lang_pos);
+			if (!_is_valid_language_tag(content_language_str))
+				content_language_str.clear();
+		}
+	}
+	return content_language_str;
+}
+
+bool
+Client::_is_accepted_language(const std::string& language_found, const std::list<std::string>& allowed_languages) {
+	if (allowed_languages.empty())
+		return true;
+	for(std::list<std::string>::const_iterator it = allowed_languages.begin(); it != allowed_languages.end(); it++) {
+		if (*it == "*")
+			return true;
+		if (*it == language_found) //a voir avec un language_found.find(*it) ou ca
+			return true;
+	}
+	return false;
+}
+
+int
+Client::_response_content_language_handler(exchange_t &exchange) {
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	std::string language;
+	const std::string& content_type = response.get_content_type();
+	AHTTPMessage::Headers::header_t content_language_header;
+
+	if (content_type == Syntax::mime_types_tab[TEXT_HTML].name)
+		language = _html_content_language_parser(response);
+	else if (content_type == Syntax::mime_types_tab[APPLICATION_XML].name)
+		language = _xml_content_language_parser(response);
+	if (!language.empty()) {
+		if(request.get_headers().key_exists(ACCEPT_LANGUAGE) &&
+			!_is_accepted_language(language, request.get_headers().get_value(ACCEPT_LANGUAGE))) {
+			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
+			return FAILURE;
+		}
+		content_language_header.name = Syntax::headers_tab[CONTENT_LANGUAGE].name;
+		content_language_header.unparsed_value = language;
+		response.get_headers().insert(content_language_header);
+	}
+	return SUCCESS;
+}
+
+int
+Client::_response_content_length_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+int
+Client::_response_content_location_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+int
+Client::_response_content_type_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+std::string
 Client::get_current_HTTP_date(void) {
 	struct tm *date = NULL;
 	char buff[64];
@@ -791,7 +919,7 @@ Client::get_current_HTTP_date(void) {
 
 	gettimeofday(&tv, NULL);
 	date = localtime(&(tv.tv_sec));
-	strftime(buff, sizeof(buff), "%a, %d %b %Y %T GMT+2", date);
+	strftime(buff, sizeof(buff), "%a, %d %b %Y %T %Z", date);
 	return std::string(buff);
 }
 
@@ -804,4 +932,40 @@ Client::_response_date_handler(exchange_t &exchange) {
 	date_header.unparsed_value = get_current_HTTP_date();
 	response.get_headers().insert(date_header);
 	return 1;
+}
+
+int
+Client::_response_last_modified_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+int
+Client::_response_location_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+int
+Client::_response_retry_after_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+int
+Client::_response_server_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+int
+Client::_response_transfer_encoding_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
+}
+
+int
+Client::_response_www_authenticate_handler(exchange_t &exchange) {
+	(void)exchange;
+	return SUCCESS;
 }

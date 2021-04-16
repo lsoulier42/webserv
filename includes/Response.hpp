@@ -49,13 +49,18 @@ class Response : public AHTTPMessage {
 
 		StatusLine &get_status_line(void);
 		const StatusLine &get_status_line(void) const;
+		std::string get_target_path(void) const;
+		void set_target_path(const std::string& target_path);
+		std::string get_content_type(void) const;
+		void set_content_type(const std::string& content_type);
 
 		void reset(void);
 		void render(void) const;
 
 	private:
-
 		StatusLine _status_line;
+		std::string _target_path;
+		std::string _content_type;
 
 };
 

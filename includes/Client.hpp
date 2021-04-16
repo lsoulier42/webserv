@@ -89,17 +89,17 @@ class Client {
 		 *
 		 *
 		 */
-		int _headers_parsers(Request &request);
-		int _header_accept_charset_parser(Request &request);
-		int _header_accept_language_parser(Request &request);
-		int _header_authorization_parser(Request &request);
-		int _header_content_length_parser(Request &request);
-		int _header_content_type_parser(Request &request);
-		int _header_date_parser(Request &request);
-		int _header_host_parser(Request &request);
-		int _header_referer_parser(Request &request);
-		int _header_transfer_encoding_parser(Request &request);
-		int _header_user_agent_parser(Request &request);
+		int _process_request_headers(Request &request);
+		int _request_accept_charset_parser(Request &request);
+		int _request_accept_language_parser(Request &request);
+		int _request_authorization_parser(Request &request);
+		int _request_content_length_parser(Request &request);
+		int _request_content_type_parser(Request &request);
+		int _request_date_parser(Request &request);
+		int _request_host_parser(Request &request);
+		int _request_referer_parser(Request &request);
+		int _request_transfer_encoding_parser(Request &request);
+		int _request_user_agent_parser(Request &request);
 
 		/* Request headers helpers
 		 *
@@ -137,9 +137,29 @@ class Client {
 		 */
 		int _process_response_headers(exchange_t &exchange);
 		int _response_allow_handler(exchange_t &exchange);
+		int _response_content_language_handler(exchange_t &exchange);
+		int _response_content_length_handler(exchange_t &exchange);
+		int _response_content_location_handler(exchange_t &exchange);
+		int _response_content_type_handler(exchange_t &exchange);
 		int _response_date_handler(exchange_t &exchange);
+		int _response_last_modified_handler(exchange_t &exchange);
+		int _response_location_handler(exchange_t &exchange);
+		int _response_retry_after_handler(exchange_t &exchange);
+		int _response_server_handler(exchange_t &exchange);
+		int _response_transfer_encoding_handler(exchange_t &exchange);
+		int _response_www_authenticate_handler(exchange_t &exchange);
+
+		/* Response header helpers
+		 *
+		 *
+		 *
+		 */
+		void _pick_content_type(exchange_t &exchange);
 		static std::string get_current_HTTP_date(void);
 		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, method_t method);
+		static std::string _html_content_language_parser(const Response& response);
+		static std::string _xml_content_language_parser(const Response& response);
+		bool _is_accepted_language(const std::string& language_found, const std::list<std::string>& allowed_languages);
 };
 
 #endif

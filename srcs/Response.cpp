@@ -90,3 +90,23 @@ Response::StatusLine::render(void) const {
 	std::cout << "STATUS CODE : " << _status_code << "$" << std::endl;
 	std::cout << "REASON PHRASE : " << Syntax::status_codes_tab[_status_code].reason_phrase << "$" << std::endl;
 }
+
+std::string
+Response::get_target_path(void) const {
+	return _target_path;
+}
+
+void
+Response::set_target_path(const std::string& target_path) {
+	_target_path = target_path;
+}
+
+std::string
+Response::get_content_type(void) const {
+	return _content_type;
+}
+
+void
+Response::set_content_type(const std::string& content_type) {
+	_content_type = content_type;
+}
