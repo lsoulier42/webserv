@@ -139,7 +139,7 @@ class Client {
 		int _response_allow_handler(exchange_t &exchange);
 		int _response_date_handler(exchange_t &exchange);
 		static std::string get_current_HTTP_date(void);
-
+		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, method_t method);
 };
 
 #endif
