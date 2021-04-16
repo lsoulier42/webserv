@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 23:13:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/16 01:57:48 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -221,7 +221,8 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 		_failure(exchange, NOT_IMPLEMENTED);
 		return (FAILURE);
 	}
-	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
+	request.set_status(Request::REQUEST_LINE_RECEIVED);
+	_pick_location(request);
 	return (SUCCESS);
 }
 
@@ -306,6 +307,18 @@ Client::_pick_virtual_server(Request &request) {
 			}
 		}
 	}
+}
+
+void
+Client::_pick_location(Request &request) {
+	std::string					request_target(request.get_request_line().get_request_target());
+	std::string					absolute_path(request_target.substr(0, request_target.find('?')));
+	const std::list<Location>	&locations(request.get_virtual_server()->get_locations());
+
+	for (std::list<Location>::const_iterator it(locations.begin()) ; it != locations.end() ; it++)
+		if (!absolute_path.compare(0, (it->get_path()).size(), it->get_path())
+				&& request.get_location()->get_path().size() < it->get_path().size())
+			request.set_location(&(*it));
 }
 
 /*
@@ -690,24 +703,14 @@ Client::_process_error(exchange_t &exchange) {
 	return (_build_output_str(exchange));
 }
 
+
 std::string
 Client::_build_path_ressource(Request &request) {
-	std::string					request_target(request.get_request_line().get_request_target());
-	std::string					absolute_path(request_target.substr(0, request_target.find('?')));
-	const std::list<Location>&	locations = request.get_virtual_server()->get_locations();
-	Location					default_location = request.get_virtual_server()->get_locations().back();
-	std::string					location_root(default_location.get_root());
-	std::string					location_path("/");
+	std::string	request_target(request.get_request_line().get_request_target());
+	std::string	absolute_path(request_target.substr(0, request_target.find('?')));
+	std::string	location_root(request.get_location()->get_root());
 
-	for (std::list<Location>::const_iterator it(locations.begin()) ; it != locations.end() ; it++) {
-		if (!absolute_path.compare(0, (it->get_path()).size(), it->get_path())) {
-			location_root = it->get_root();
-			location_path = it->get_path();
-			request.set_location(&(*it));
-			break ;
-		}
-	}
-	absolute_path.erase(0, location_path.size());
+	absolute_path.erase(0, request.get_location()->get_path().size());
 	location_root += "/";
 	absolute_path.insert(0, location_root);
 	return (absolute_path);
@@ -730,8 +733,11 @@ Client::read_file(void) {
 	int			ret;
 
 	ret = read(_fd, buffer, _buffer_size);
-	if (ret == 0) {
+	if (ret < 0) {
 		close(_fd);
+		return (FAILURE);
+	}
+	if (ret == 0) {
 		_fd = 0;
 		if (_process_response_headers(exchange) == FAILURE)
 			return (_process_error(exchange));

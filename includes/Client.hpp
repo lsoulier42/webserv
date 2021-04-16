@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 23:12:32 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/16 01:53:10 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,6 +85,7 @@ class Client {
 		int _check_trailer(exchange_t &exchange);
 		int _collect_body(exchange_t &exchange);
 		void _pick_virtual_server(Request &request);
+		void _pick_location(Request &request);
 
 		/* Request headers parser
 		 *
