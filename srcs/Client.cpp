@@ -211,6 +211,10 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 	}
 	request.get_request_line().set_method(_input_str.substr(0, first_sp));
 	request.get_request_line().set_request_target(_input_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
+	if (request.get_request_line().get_request_target()[0] != '/') {
+		_failure(exchange, BAD_REQUEST);
+		return (FAILURE);
+	}
 	request.get_request_line().set_http_version(_input_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
 	_input_str.erase(0, end_rl + 2);
 	if (DEFAULT_METHOD == request.get_request_line().get_method()) {
@@ -341,10 +345,10 @@ Client::_parse_coma_q_factor(const std::string& unparsed_value) {
 
 int
 Client::_request_accept_charset_parser(Request &request) {
-	std::string unparsed_header_value = request.get_headers().get_unparsed_value(ACCEPT_CHARSETS);
+	std::string unparsed_header_value = request.get_headers().get_unparsed_value(ACCEPT_CHARSET);
 	std::list<std::string> charsets_list = _parse_coma_q_factor(unparsed_header_value);
 
-	request.get_headers().set_value(ACCEPT_CHARSETS, charsets_list);
+	request.get_headers().set_value(ACCEPT_CHARSET, charsets_list);
 	return SUCCESS;
 }
 
@@ -477,12 +481,12 @@ bool
 Client::is_valid_http_date(const std::string& date_str) {
 	char* strptime_ret;
 	int i = -1;
-	std::string HTTP_date_fmt[3] = {"%a, %d %b %Y %T %Z", "%A, %d-%b-%y %T %Z", "%a %b  %d %T %Y"};
+	std::string HTTP_date_fmt[3] = {"%a, %d %b %Y %T", "%A, %d-%b-%y %T %Z", "%a %b  %d %T %Y"};
 	struct tm timeval;
 
 	while(++i < 3) {
 		strptime_ret = strptime(date_str.c_str(), HTTP_date_fmt[i].c_str(), &timeval);
-		if (strptime_ret && *strptime_ret == '\0')
+		if (strptime_ret && (*strptime_ret == '\0' || *strptime_ret == 'G'))
 			return true;
 	}
 	return false;
@@ -631,14 +635,23 @@ int
 Client::_process_error(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
+	std::string error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
+	request.get_headers().reset();
+	response.get_headers().reset();
+	response.set_is_error_page();
+	error_page_path = "error/" + Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str + ".html";
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
-		if (response.get_status_line().get_status_code() == *it)
-			return (_open_file_to_read(request.get_virtual_server()->get_error_page_path()));
+		if (response.get_status_line().get_status_code() == *it) {
+			error_page_path = request.get_virtual_server()->get_error_page_path();
+			break ;
+		}
 	}
-	response.set_body("no error page to render\r\n");
-	return (_build_output_str(exchange));
+	response.set_target_path(error_page_path);
+	if (!request.get_location())
+		request.set_location(&request.get_virtual_server()->get_locations().back());
+	return(_open_file_to_read(error_page_path));
 }
 
 std::string
@@ -738,13 +751,14 @@ Client::_pick_content_type(exchange_t &exchange) {
 	std::string extension;
 	size_t extension_point_pos;
 
+
 	extension_point_pos = path.find_last_of('.');
 	if (extension_point_pos != std::string::npos) {
-		extension = path.substr(extension_point_pos + 1);
+		extension = path.substr(extension_point_pos);
 		for(size_t i = 0; i < TOTAL_MIME_TYPES; i++) {
 			if (extension == Syntax::mime_types_tab[i].ext) {
 				content_type = Syntax::mime_types_tab[i].name;
-					break ;
+				break ;
 			}
 		}
 	}
@@ -781,31 +795,25 @@ Client::_is_allowed_method(const std::list<std::string>& allowed_methods, method
 
 int
 Client::_response_allow_handler(exchange_t &exchange) {
-	Request& request = exchange.first;
-	Response& response = exchange.second;
+	Request &request = exchange.first;
+	Response &response = exchange.second;
 	std::string method_output;
 	std::list<std::string> allowed_methods = request.get_location()->get_methods();
 	AHTTPMessage::Headers::header_t allow_header;
 
-	if (allowed_methods.empty()) {
-		for(size_t i = 0; i < DEFAULT_METHOD; i++) {
-			method_output += Syntax::method_tab[i].name;
-			if (i != DEFAULT_METHOD - 1)
-				method_output += ", ";
-		}
-	} else {
+	if (!allowed_methods.empty() && !response.is_error_page()) {
 		if (!_is_allowed_method(allowed_methods, request.get_request_line().get_method())) {
-			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
+			response.get_status_line().set_status_code(METHOD_NOT_ALLOWED);
 			return FAILURE;
 		}
-		for(std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
+		for (std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
 			method_output += *it + ", ";
 		}
 		method_output = method_output.substr(0, method_output.size() - 2);
+		allow_header.name = Syntax::headers_tab[ALLOW].name;
+		allow_header.unparsed_value = method_output;
+		response.get_headers().insert(allow_header);
 	}
-	allow_header.name = Syntax::headers_tab[ALLOW].name;
-	allow_header.unparsed_value = method_output;
-	response.get_headers().insert(allow_header);
 	return SUCCESS;
 }
 
@@ -862,7 +870,7 @@ Client::_is_accepted_language(const std::string& language_found, const std::list
 	for(std::list<std::string>::const_iterator it = allowed_languages.begin(); it != allowed_languages.end(); it++) {
 		if (*it == "*")
 			return true;
-		if (*it == language_found) //a voir avec un language_found.find(*it) ou ca
+		if (language_found.find(*it) != std::string::npos)
 			return true;
 	}
 	return false;
@@ -895,19 +903,127 @@ Client::_response_content_language_handler(exchange_t &exchange) {
 
 int
 Client::_response_content_length_handler(exchange_t &exchange) {
-	(void)exchange;
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	struct stat buf;
+	std::stringstream ss;
+	AHTTPMessage::Headers::header_t content_length_header;
+
+	if (stat(response.get_target_path().c_str(), &buf) != -1) {
+		if (buf.st_size > static_cast<long>(request.get_virtual_server()->get_client_max_body_size())) {
+			response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
+			return FAILURE;
+		}
+		ss << buf.st_size;
+		content_length_header.name = Syntax::headers_tab[CONTENT_LENGTH].name;
+		content_length_header.unparsed_value = ss.str();
+		response.get_headers().insert(content_length_header);
+	}
 	return SUCCESS;
 }
 
 int
 Client::_response_content_location_handler(exchange_t &exchange) {
-	(void)exchange;
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	AHTTPMessage::Headers::header_t content_location_header;
+	std::string	request_target(request.get_request_line().get_request_target());
+	std::string	location_str(request_target.substr(0, request_target.find('?')));
+
+	if (response.is_error_page())
+		return SUCCESS;
+	content_location_header.name = Syntax::headers_tab[CONTENT_LOCATION].name;
+	content_location_header.unparsed_value =location_str;
+	response.get_headers().insert(content_location_header);
 	return SUCCESS;
+}
+
+bool
+Client::_is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets) {
+	if (allowed_charsets.empty())
+		return true;
+	for (std::list<std::string>::const_iterator it = allowed_charsets.begin(); it != allowed_charsets.end(); it++) {
+		if (*it == "*")
+			return true;
+		if (charset_found.find(Syntax::str_to_lower(*it)) != std::string::npos)
+			return true;
+	}
+	return false;
+}
+
+std::string
+Client::_html_charset_parser(const Response& response) {
+	const std::string& body = response.get_body();
+	std::string header_bloc, charset, meta_tag("<meta charset=\"") ;
+	size_t header_bloc_begin, header_bloc_end, meta_bloc_begin, meta_bloc_end;
+
+	header_bloc_begin = body.find("<head");
+	if (header_bloc_begin != std::string::npos) {
+		header_bloc = body.substr(header_bloc_begin);
+		header_bloc_end = header_bloc.find("</head>");
+		if (header_bloc_end != std::string::npos) {
+			header_bloc = header_bloc.substr(0, header_bloc_end);
+			meta_bloc_begin = header_bloc.find(meta_tag);
+			if (meta_bloc_begin != std::string::npos) {
+				charset = header_bloc.substr(meta_bloc_begin + meta_tag.size());
+				meta_bloc_end = charset.find_first_of('"');
+				if (meta_bloc_end != std::string::npos) {
+					charset = Syntax::str_to_lower(charset.substr(0, meta_bloc_end));
+				}
+			}
+		}
+	}
+	return charset;
+}
+
+std::string
+Client::_xml_charset_parser(const Response& response) {
+	const std::string& body = response.get_body();
+	std::string xml_tag, encoding, charset;
+	size_t xml_tag_begin, xml_tag_end, encoding_begin, encoding_end;
+
+	xml_tag_begin = body.find("<?xml");
+	if (xml_tag_begin != std::string::npos) {
+		xml_tag = body.substr(xml_tag_begin);
+		xml_tag_end = xml_tag.find("?>");
+		if (xml_tag_end != std::string::npos) {
+			xml_tag = xml_tag.substr(0, xml_tag_end);
+			encoding_begin = xml_tag.find("encoding=\"");
+			if (encoding_begin != std::string::npos) {
+				encoding = xml_tag.substr(encoding_begin + 10);
+				encoding_end = encoding.find_first_of('"');
+				if (encoding_end != std::string::npos) {
+					charset = Syntax::str_to_lower(encoding.substr(0, encoding_end));
+				}
+			}
+		}
+	}
+	return charset;
 }
 
 int
 Client::_response_content_type_handler(exchange_t &exchange) {
-	(void)exchange;
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	std::string charset, content_type;
+	AHTTPMessage::Headers::header_t content_type_header;
+
+	content_type = response.get_content_type();
+	if (content_type == Syntax::mime_types_tab[TEXT_HTML].name)
+		charset = _html_charset_parser(response);
+	else if (content_type == Syntax::mime_types_tab[APPLICATION_XML].name)
+		charset = _xml_charset_parser(response);
+	content_type_header.name = Syntax::headers_tab[CONTENT_TYPE].name;
+	content_type_header.unparsed_value = content_type;
+	if (!charset.empty()) {
+		if (request.get_headers().key_exists(ACCEPT_CHARSET) &&
+			!_is_accepted_charset(charset, request.get_headers().get_value(ACCEPT_CHARSET))) {
+			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
+			return FAILURE;
+		}
+		content_type_header.unparsed_value += "; charset=" + charset;
+	}
+	response.get_headers().insert(content_type_header);
 	return SUCCESS;
 }
 
@@ -919,7 +1035,7 @@ Client::get_current_HTTP_date(void) {
 
 	gettimeofday(&tv, NULL);
 	date = localtime(&(tv.tv_sec));
-	strftime(buff, sizeof(buff), "%a, %d %b %Y %T %Z", date);
+	strftime(buff, sizeof(buff), "%a, %d %b %Y %T GMT+02", date);
 	return std::string(buff);
 }
 
@@ -936,36 +1052,80 @@ Client::_response_date_handler(exchange_t &exchange) {
 
 int
 Client::_response_last_modified_handler(exchange_t &exchange) {
-	(void)exchange;
+	Response& response = exchange.second;
+	AHTTPMessage::Headers::header_t last_modified_header;
+	struct stat buf;
+	struct tm *date = NULL;
+	char time_buf[64];
+
+	if (stat(response.get_target_path().c_str(), &buf) != -1) {
+		date = localtime(&buf.st_mtim.tv_sec);
+		strftime(time_buf, sizeof(time_buf), "%a, %d %b %Y %T GMT+02", date);
+		last_modified_header.name = Syntax::headers_tab[LAST_MODIFIED].name;
+		last_modified_header.unparsed_value = std::string(time_buf);
+		response.get_headers().insert(last_modified_header);
+	}
 	return SUCCESS;
 }
 
 int
 Client::_response_location_handler(exchange_t &exchange) {
-	(void)exchange;
+	Response& response = exchange.second;
+	int status_code = response.get_status_line().get_status_code();
+	AHTTPMessage::Headers::header_t location_header;
+
+	if (Syntax::is_redirection_code(Syntax::status_codes_tab[status_code].code_int)
+		|| status_code == CREATED) {
+		(void)location_header;
+		//TODO: need handler for POST method
+	}
 	return SUCCESS;
 }
 
 int
 Client::_response_retry_after_handler(exchange_t &exchange) {
-	(void)exchange;
+	Response& response = exchange.second;
+	AHTTPMessage::Headers::header_t retry_after_header;
+	std::stringstream ss;
+
+	if (response.get_status_line().get_status_code() == SERVICE_UNAVAILABLE) {
+		ss << DELAY_RETRY_AFTER;
+		retry_after_header.name = Syntax::headers_tab[RETRY_AFTER].name;
+		retry_after_header.unparsed_value = ss.str();
+		response.get_headers().insert(retry_after_header);
+	}
 	return SUCCESS;
 }
 
 int
 Client::_response_server_handler(exchange_t &exchange) {
-	(void)exchange;
+	Response& response = exchange.second;
+	AHTTPMessage::Headers::header_t server_header;
+
+	server_header.name = Syntax::headers_tab[SERVER].name;
+	server_header.unparsed_value = "webserv/1.0";
+	response.get_headers().insert(server_header);
 	return SUCCESS;
 }
 
 int
 Client::_response_transfer_encoding_handler(exchange_t &exchange) {
 	(void)exchange;
+	//TODO: manage chunked format
 	return SUCCESS;
 }
 
 int
 Client::_response_www_authenticate_handler(exchange_t &exchange) {
-	(void)exchange;
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	int status_code = response.get_status_line().get_status_code();
+	AHTTPMessage::Headers::header_t www_authenticate_header;
+
+	if (status_code == UNAUTHORIZED && request.get_headers().key_exists(AUTHORIZATION)) {
+		www_authenticate_header.name = Syntax::headers_tab[WWW_AUTHENTICATE].name;
+		www_authenticate_header.unparsed_value = request.get_headers().get_value(AUTHORIZATION).front();
+		response.get_headers().insert(www_authenticate_header);
+	}
 	return SUCCESS;
 }

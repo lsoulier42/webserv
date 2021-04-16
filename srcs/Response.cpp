@@ -110,3 +110,13 @@ void
 Response::set_content_type(const std::string& content_type) {
 	_content_type = content_type;
 }
+
+bool
+Response::is_error_page(void) {
+	return _is_error_page;
+}
+
+void
+Response::set_is_error_page(void) {
+	_is_error_page = true;
+}

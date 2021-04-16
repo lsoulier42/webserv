@@ -91,7 +91,7 @@ Syntax::location_instructions_tab[] = {
 
 const Syntax::header_tab_entry_t
 Syntax::headers_tab[] = {
-	{ACCEPT_CHARSETS, "Accept-Charsets"},
+	{ACCEPT_CHARSET, "Accept-Charset"},
 	{ACCEPT_LANGUAGE, "Accept-Language"},
 	{ALLOW, "Allow"},
 	{AUTHORIZATION, "Authorization"},
@@ -114,7 +114,7 @@ Syntax::headers_tab[] = {
 
 const Syntax::header_tab_entry_t
 Syntax::request_headers_tab[] = {
-	headers_tab[ACCEPT_CHARSETS],
+	headers_tab[ACCEPT_CHARSET],
 	headers_tab[ACCEPT_LANGUAGE],
 	headers_tab[AUTHORIZATION],
 	headers_tab[CONTENT_LENGTH],
@@ -396,7 +396,7 @@ Syntax::get_URI_form(const std::string& uri_str) {
 		return INVALID_URI_FORM;
 	if (uri_str == "*")
 		return ASTERISK_FORM;
-	if (uri_str.find_first_of("@") != std::string::npos)
+	if (uri_str.find_first_of('@') != std::string::npos)
 		return AUTHORITY_FORM;
 	if (uri_str.find("http://") != std::string::npos
 		|| uri_str.find("https://") != std::string::npos)
@@ -407,6 +407,15 @@ Syntax::get_URI_form(const std::string& uri_str) {
 bool
 Syntax::is_valid_path(const std::string &path) {
 	struct stat	buf;
-
 	return stat(path.c_str(), &buf) != -1;
+}
+
+std::string
+Syntax::str_to_lower(const std::string& str) {
+	std::string return_str(str);
+	size_t size = return_str.size();
+
+	for(size_t i = 0; i < size; i++)
+		return_str[i] = tolower(return_str[i]);
+	return return_str;
 }

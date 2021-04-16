@@ -53,6 +53,8 @@ class Response : public AHTTPMessage {
 		void set_target_path(const std::string& target_path);
 		std::string get_content_type(void) const;
 		void set_content_type(const std::string& content_type);
+		bool is_error_page(void);
+		void set_is_error_page(void);
 
 		void reset(void);
 		void render(void) const;
@@ -61,7 +63,7 @@ class Response : public AHTTPMessage {
 		StatusLine _status_line;
 		std::string _target_path;
 		std::string _content_type;
-
+		bool _is_error_page;
 };
 
 #endif

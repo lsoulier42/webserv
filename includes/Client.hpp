@@ -26,6 +26,7 @@
 # include <algorithm>
 # include <fcntl.h>
 # include <cerrno>
+# include <sstream>
 # include "Request.hpp"
 # include "Response.hpp"
 # include "Syntax.hpp"
@@ -159,7 +160,10 @@ class Client {
 		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, method_t method);
 		static std::string _html_content_language_parser(const Response& response);
 		static std::string _xml_content_language_parser(const Response& response);
-		bool _is_accepted_language(const std::string& language_found, const std::list<std::string>& allowed_languages);
+		static bool _is_accepted_language(const std::string& language_found, const std::list<std::string>& allowed_languages);
+		static bool _is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets);
+		static std::string _html_charset_parser(const Response& response);
+		static std::string _xml_charset_parser(const Response& response);
 };
 
 #endif
