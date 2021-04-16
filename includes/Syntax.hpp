@@ -26,6 +26,7 @@
 # define TOTAL_RESPONSE_HEADERS 12
 # define SUCCESS 1
 # define FAILURE 0
+# define DELAY_RETRY_AFTER 10
 
 enum method_t {
 	GET,
@@ -104,7 +105,7 @@ enum status_code_t {
 };
 
 enum header_name_t {
-	ACCEPT_CHARSETS,
+	ACCEPT_CHARSET,
 	ACCEPT_LANGUAGE,
 	ALLOW,
 	AUTHORIZATION,
@@ -298,6 +299,7 @@ class Syntax {
 		static std::string	trim_comments(const std::string &str);
 		static std::string trim_whitespaces(const std::string& str);
 		static std::vector<std::string> split(const std::string& str, const std::string& charset);
+		static std::string str_to_lower(const std::string& str);
 
 		static bool is_implemented_header(const std::string& header_name);
 		static URI_form_t get_URI_form(const std::string& uri_str);
