@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/16 01:53:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/17 21:15:41 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,12 +25,14 @@
 # include <sys/types.h>
 # include <algorithm>
 # include <fcntl.h>
+# include <stdio.h>
 # include <cerrno>
 # include <sstream>
 # include "Request.hpp"
 # include "Response.hpp"
 # include "Syntax.hpp"
 # include "VirtualServer.hpp"
+# include "CGIMetaVariables.hpp"
 
 class Client {
 
@@ -47,9 +49,11 @@ class Client {
 
 		int get_sd(void) const;
 		int get_fd(void) const;
+		int get_cgi_fd(void) const;
   
 		int read_socket(void);
 		int read_file(void);
+		int read_cgi(void);
 
 	private:
 
@@ -57,6 +61,7 @@ class Client {
 
 		const int _sd;
 		int _fd;
+		int _cgi_fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
@@ -127,7 +132,8 @@ class Client {
 		int _process(exchange_t &exchange);
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
-		std::string _build_path_ressource(Request &request);
+		int _process_cgi(exchange_t &exchange);
+		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
@@ -167,6 +173,11 @@ class Client {
 		static bool _is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets);
 		static std::string _html_charset_parser(const Response& response);
 		static std::string _xml_charset_parser(const Response& response);
+
+		bool _is_cgi_related(const Request &request) const;
+		std::string _build_cgi_script_path(const Request &request) const;
+		int _create_cgi_child_process(void);
+		int _cgi_child_process(const CGIMetaVariables &mv);
 };
 
 #endif

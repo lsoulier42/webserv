@@ -6,7 +6,7 @@
 /*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/15 19:32:20 by louise            #+#    #+#             */
-/*   Updated: 2021/04/15 19:32:25 by louise           ###   ########.fr       */
+/*   Updated: 2021/04/16 15:45:42 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,7 @@ class VirtualServer {
 
 		static std::list<const VirtualServer*> build_virtual_server_list(const std::list<VirtualServer>& virtual_servers,
 			const VirtualServer* default_server);
+//		static void pick_virtual_server(Request &request, const std::list<const VirtualServer*> &virtual_servers);
 
 	private:
 		std::string _ip_addr;
