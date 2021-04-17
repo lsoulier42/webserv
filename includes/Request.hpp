@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 23:09:52 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/16 15:41:18 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,11 @@
 
 # include <string>
 # include <iostream>
-# include "VirtualServer.hpp"
 # include "Syntax.hpp"
 # include "AHTTPMessage.hpp"
+# include "VirtualServer.hpp"
+
+class Location;
 
 class Request : public AHTTPMessage {
 

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 23:13:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/16 22:30:14 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@ const size_t	Client::_buffer_size(1);
 Client::Client(void) :
 	_sd(),
 	_fd(),
+	_cgi_fd(),
 	_addr(),
 	_socket_len(),
 	_virtual_servers(),
@@ -28,7 +29,8 @@ Client::Client(void) :
 Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	const std::list<const VirtualServer*> &virtual_servers) :
 	_sd(sd),
-	_fd(0),
+	_fd(),
+	_cgi_fd(),
 	_addr(addr),
 	_socket_len(socket_len),
 	_virtual_servers(virtual_servers),
@@ -40,6 +42,7 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 Client::Client(const Client &x) :
 	_sd(x._sd),
 	_fd(x._fd),
+	_cgi_fd(x._cgi_fd),
 	_addr(x._addr),
 	_socket_len(x._socket_len),
 	_virtual_servers(x._virtual_servers),
@@ -53,6 +56,7 @@ Client::~Client(void) {}
 Client
 &Client::operator=(const Client &x) {
 	_fd = x._fd;
+	_cgi_fd = x._cgi_fd;
 	_exchanges = x._exchanges;
 	_input_str = x._input_str;
 	_output_str = x._output_str;
@@ -68,6 +72,11 @@ Client::get_sd(void) const {
 int
 Client::get_fd(void) const {
 	return (_fd);
+}
+
+int
+Client::get_cgi_fd(void) const {
+	return (_cgi_fd);
 }
 
 /*
@@ -221,7 +230,8 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 		_failure(exchange, NOT_IMPLEMENTED);
 		return (FAILURE);
 	}
-	exchange.first.set_status(Request::REQUEST_LINE_RECEIVED);
+	request.set_status(Request::REQUEST_LINE_RECEIVED);
+	_pick_location(request);
 	return (SUCCESS);
 }
 
@@ -306,6 +316,18 @@ Client::_pick_virtual_server(Request &request) {
 			}
 		}
 	}
+}
+
+void
+Client::_pick_location(Request &request) {
+	std::string					request_target(request.get_request_line().get_request_target());
+	std::string					absolute_path(request_target.substr(0, request_target.find('?')));
+	const std::list<Location>	&locations(request.get_virtual_server()->get_locations());
+
+	for (std::list<Location>::const_iterator it(locations.begin()) ; it != locations.end() ; it++)
+		if (!absolute_path.compare(0, (it->get_path()).size(), it->get_path())
+				&& request.get_location()->get_path().size() < it->get_path().size())
+			request.set_location(&(*it));
 }
 
 /*
@@ -611,16 +633,76 @@ Client::_process(exchange_t &exchange) {
 	response.get_status_line().set_http_version("HTTP/1.1");
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
 		return (_process_error(exchange));
+	if (_is_cgi_related(request))
+		return (_process_cgi(exchange));
 	if (request.get_request_line().get_method() == GET)
 		return (_process_GET(exchange));
 	return (FAILURE);
+}
+
+bool
+Client::_is_cgi_related(const Request &request) const {
+	std::string	path(_build_cgi_script_path(request));
+	return (path.find(".") != std::string::npos
+				&& path.substr(path.rfind(".")) == request.get_location()->get_cgi_extension());
+}
+
+std::string
+Client::_build_cgi_script_path(const Request &request) const {
+	std::string	request_target(request.get_request_line().get_request_target());
+	std::string	cgi_extension(request.get_location()->get_cgi_extension());
+	std::string	path(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
+	return (request.get_location()->get_cgi_path() + path);
+}
+
+int
+Client::_create_cgi_child_process(void) {
+	pid_t	pid;
+
+	pid = fork();
+	while (pid == -1 && errno == EAGAIN)
+		pid = fork();
+	return (pid);
+}
+
+int
+Client::_cgi_child_process(const CGIMetaVariables &mv) {
+	if (0 > execve("./a.out", mv.get_tab(), mv.get_tab()))
+		perror("execve");
+	return (FAILURE);
+}
+
+int
+Client::_process_cgi(exchange_t &exchange) {
+	Request				&request(exchange.first);
+	CGIMetaVariables	mv(request);
+	pid_t				pid;
+	int					req_pipe[2];
+	int					res_pipe[2];
+	pipe(req_pipe);
+	pipe(res_pipe);
+	if (-1 == (pid = _create_cgi_child_process()))
+		return (FAILURE);
+	if (!pid) {
+		close(req_pipe[1]);
+		close(res_pipe[0]);
+		dup2(req_pipe[0], STDIN_FILENO);
+		dup2(res_pipe[1], STDOUT_FILENO);
+		return (_cgi_child_process(mv));
+	}
+	close(req_pipe[0]);
+	close(res_pipe[1]);
+	write(req_pipe[1], request.get_body().c_str(), request.get_body().size());
+	close(req_pipe[1]);
+	_cgi_fd = res_pipe[0];
+	return (SUCCESS);
 }
 
 int
 Client::_process_GET(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-	std::string	path(_build_path_ressource(request));
+	std::string	path(_build_resource_path(request));
 
 	if (!Syntax::is_valid_path(path)) {
 		response.get_status_line().set_status_code(NOT_FOUND);
@@ -690,27 +772,14 @@ Client::_process_error(exchange_t &exchange) {
 	return (_build_output_str(exchange));
 }
 
-std::string
-Client::_build_path_ressource(Request &request) {
-	std::string					request_target(request.get_request_line().get_request_target());
-	std::string					absolute_path(request_target.substr(0, request_target.find('?')));
-	const std::list<Location>&	locations = request.get_virtual_server()->get_locations();
-	Location					default_location = request.get_virtual_server()->get_locations().back();
-	std::string					location_root(default_location.get_root());
-	std::string					location_path("/");
 
-	for (std::list<Location>::const_iterator it(locations.begin()) ; it != locations.end() ; it++) {
-		if (!absolute_path.compare(0, (it->get_path()).size(), it->get_path())) {
-			location_root = it->get_root();
-			location_path = it->get_path();
-			request.set_location(&(*it));
-			break ;
-		}
-	}
-	absolute_path.erase(0, location_path.size());
-	location_root += "/";
-	absolute_path.insert(0, location_root);
-	return (absolute_path);
+std::string
+Client::_build_resource_path(Request &request) {
+	std::string	request_target(request.get_request_line().get_request_target());
+	std::string	absolute_path(request_target.substr(0, request_target.find('?')));
+	std::string	location_root(request.get_location()->get_root());
+
+	return (location_root + absolute_path);
 }
 
 int
@@ -723,6 +792,27 @@ Client::_open_file_to_read(const std::string &path) {
 }
 
 int
+Client::read_cgi(void) {
+	char		buffer[_buffer_size + 1];
+	int			ret;
+
+	ret = read(_cgi_fd, buffer, _buffer_size);
+	if (ret < 0) {
+		close(_cgi_fd);
+		return (FAILURE);
+	}
+	if (ret == 0) {
+		close(_cgi_fd);
+		_cgi_fd = 0;
+		std::cout << "end of file" << std::endl;
+		return (SUCCESS);
+	}
+	buffer[ret] = '\0';
+	std::cout << buffer;
+	return (SUCCESS);
+}
+
+int
 Client::read_file(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
@@ -730,6 +820,10 @@ Client::read_file(void) {
 	int			ret;
 
 	ret = read(_fd, buffer, _buffer_size);
+	if (ret < 0) {
+		close(_fd);
+		return (FAILURE);
+	}
 	if (ret == 0) {
 		close(_fd);
 		_fd = 0;

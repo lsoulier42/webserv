@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/07 16:55:59 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/07 16:56:00 by lsoulier         ###   ########.fr       */
+/*   Updated: 2021/04/16 15:45:50 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,7 @@ class Location {
 		void set_cgi_path(const std::string &cgiPath);
 		bool is_autoindex() const;
 		void set_autoindex(bool autoindex);
+//		static void pick_location(Request &request);
 
 	private:
 		std::string _path;
