@@ -130,6 +130,8 @@ class Client {
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
+		void _generate_error_headers(exchange_t &exchange);
+		void _generate_error_page(exchange_t &exchange);
 
 		/* Response headers handlers
 		 *

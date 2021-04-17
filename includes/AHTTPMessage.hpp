@@ -65,6 +65,7 @@ class AHTTPMessage {
 				Headers &operator=(const Headers &x);
 
 				void insert(const header_t &header);
+				void insert(header_name_t key, const std::string& unparsed_value);
 
 				bool key_exists(header_name_t key) const;
 

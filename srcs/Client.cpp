@@ -631,6 +631,43 @@ Client::_process_GET(exchange_t &exchange) {
 	return (_open_file_to_read(path));
 }
 
+void
+Client::_generate_error_headers(exchange_t &exchange) {
+	Response& response = exchange.second;
+	status_code_t error_code = response.get_status_line().get_status_code();
+	std::stringstream ss;
+
+	ss << response.get_body().length();
+	_response_server_handler(exchange);
+	_response_date_handler(exchange);
+	response.get_headers().insert(CONTENT_TYPE, "text/html");
+	response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	if (error_code == FORBIDDEN)
+		_response_www_authenticate_handler(exchange);
+	if (error_code == SERVICE_UNAVAILABLE)
+		_response_retry_after_handler(exchange);
+}
+
+void
+Client::_generate_error_page(exchange_t &exchange) {
+	Response& response = exchange.second;
+	status_code_t error_code = response.get_status_line().get_status_code();
+	std::stringstream ss;
+
+	ss << "<html>" << std::endl << "<head>" << std::endl;
+	ss << "<title>Error " << Syntax::status_codes_tab[error_code].code_str;
+	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
+	ss << "</title>" << std::endl << "</head>" << std::endl;
+	ss << "<body bgcolor=\"white\">" << std::endl << "<center>" << std::endl;
+	ss << "<h1>Error " << Syntax::status_codes_tab[error_code].code_str;
+	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
+	ss << "</h1>" << std::endl << "</center>" << std::endl;
+	ss << "<hr><center>webserv/1.0</center>" << std::endl;
+	ss << "</body>" << std::endl << "</html>" << std::endl;
+	response.set_body(ss.str());
+	_generate_error_headers(exchange);
+}
+
 int
 Client::_process_error(exchange_t &exchange) {
 	Request		&request(exchange.first);
@@ -640,18 +677,17 @@ Client::_process_error(exchange_t &exchange) {
 
 	request.get_headers().reset();
 	response.get_headers().reset();
-	response.set_is_error_page();
-	error_page_path = "error/" + Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str + ".html";
+	if (!request.get_location())
+		request.set_location(&request.get_virtual_server()->get_locations().back());
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
 		if (response.get_status_line().get_status_code() == *it) {
 			error_page_path = request.get_virtual_server()->get_error_page_path();
-			break ;
+			response.set_target_path(error_page_path);
+			return(_open_file_to_read(error_page_path));
 		}
 	}
-	response.set_target_path(error_page_path);
-	if (!request.get_location())
-		request.set_location(&request.get_virtual_server()->get_locations().back());
-	return(_open_file_to_read(error_page_path));
+	_generate_error_page(exchange);
+	return (_build_output_str(exchange));
 }
 
 std::string
@@ -799,7 +835,6 @@ Client::_response_allow_handler(exchange_t &exchange) {
 	Response &response = exchange.second;
 	std::string method_output;
 	std::list<std::string> allowed_methods = request.get_location()->get_methods();
-	AHTTPMessage::Headers::header_t allow_header;
 
 	if (!allowed_methods.empty() && !response.is_error_page()) {
 		if (!_is_allowed_method(allowed_methods, request.get_request_line().get_method())) {
@@ -810,9 +845,7 @@ Client::_response_allow_handler(exchange_t &exchange) {
 			method_output += *it + ", ";
 		}
 		method_output = method_output.substr(0, method_output.size() - 2);
-		allow_header.name = Syntax::headers_tab[ALLOW].name;
-		allow_header.unparsed_value = method_output;
-		response.get_headers().insert(allow_header);
+		response.get_headers().insert(ALLOW, method_output);
 	}
 	return SUCCESS;
 }
@@ -882,7 +915,6 @@ Client::_response_content_language_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
 	std::string language;
 	const std::string& content_type = response.get_content_type();
-	AHTTPMessage::Headers::header_t content_language_header;
 
 	if (content_type == Syntax::mime_types_tab[TEXT_HTML].name)
 		language = _html_content_language_parser(response);
@@ -894,9 +926,7 @@ Client::_response_content_language_handler(exchange_t &exchange) {
 			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
 			return FAILURE;
 		}
-		content_language_header.name = Syntax::headers_tab[CONTENT_LANGUAGE].name;
-		content_language_header.unparsed_value = language;
-		response.get_headers().insert(content_language_header);
+		response.get_headers().insert(CONTENT_LANGUAGE, language);
 	}
 	return SUCCESS;
 }
@@ -907,7 +937,6 @@ Client::_response_content_length_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
 	struct stat buf;
 	std::stringstream ss;
-	AHTTPMessage::Headers::header_t content_length_header;
 
 	if (stat(response.get_target_path().c_str(), &buf) != -1) {
 		if (buf.st_size > static_cast<long>(request.get_virtual_server()->get_client_max_body_size())) {
@@ -915,9 +944,7 @@ Client::_response_content_length_handler(exchange_t &exchange) {
 			return FAILURE;
 		}
 		ss << buf.st_size;
-		content_length_header.name = Syntax::headers_tab[CONTENT_LENGTH].name;
-		content_length_header.unparsed_value = ss.str();
-		response.get_headers().insert(content_length_header);
+		response.get_headers().insert(CONTENT_LENGTH, ss.str());
 	}
 	return SUCCESS;
 }
@@ -926,15 +953,12 @@ int
 Client::_response_content_location_handler(exchange_t &exchange) {
 	Request& request = exchange.first;
 	Response& response = exchange.second;
-	AHTTPMessage::Headers::header_t content_location_header;
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	location_str(request_target.substr(0, request_target.find('?')));
 
 	if (response.is_error_page())
 		return SUCCESS;
-	content_location_header.name = Syntax::headers_tab[CONTENT_LOCATION].name;
-	content_location_header.unparsed_value =location_str;
-	response.get_headers().insert(content_location_header);
+	response.get_headers().insert(CONTENT_LOCATION, location_str);
 	return SUCCESS;
 }
 
@@ -1006,24 +1030,21 @@ Client::_response_content_type_handler(exchange_t &exchange) {
 	Request& request = exchange.first;
 	Response& response = exchange.second;
 	std::string charset, content_type;
-	AHTTPMessage::Headers::header_t content_type_header;
 
 	content_type = response.get_content_type();
 	if (content_type == Syntax::mime_types_tab[TEXT_HTML].name)
 		charset = _html_charset_parser(response);
 	else if (content_type == Syntax::mime_types_tab[APPLICATION_XML].name)
 		charset = _xml_charset_parser(response);
-	content_type_header.name = Syntax::headers_tab[CONTENT_TYPE].name;
-	content_type_header.unparsed_value = content_type;
 	if (!charset.empty()) {
 		if (request.get_headers().key_exists(ACCEPT_CHARSET) &&
 			!_is_accepted_charset(charset, request.get_headers().get_value(ACCEPT_CHARSET))) {
 			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
 			return FAILURE;
 		}
-		content_type_header.unparsed_value += "; charset=" + charset;
+		content_type += "; charset=" + charset;
 	}
-	response.get_headers().insert(content_type_header);
+	response.get_headers().insert(CONTENT_TYPE, content_type);
 	return SUCCESS;
 }
 
@@ -1042,18 +1063,14 @@ Client::get_current_HTTP_date(void) {
 int
 Client::_response_date_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
-	AHTTPMessage::Headers::header_t date_header;
 
-	date_header.name = Syntax::headers_tab[DATE].name;
-	date_header.unparsed_value = get_current_HTTP_date();
-	response.get_headers().insert(date_header);
+	response.get_headers().insert(DATE, get_current_HTTP_date());
 	return 1;
 }
 
 int
 Client::_response_last_modified_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
-	AHTTPMessage::Headers::header_t last_modified_header;
 	struct stat buf;
 	struct tm *date = NULL;
 	char time_buf[64];
@@ -1061,9 +1078,7 @@ Client::_response_last_modified_handler(exchange_t &exchange) {
 	if (stat(response.get_target_path().c_str(), &buf) != -1) {
 		date = localtime(&buf.st_mtim.tv_sec);
 		strftime(time_buf, sizeof(time_buf), "%a, %d %b %Y %T GMT+02", date);
-		last_modified_header.name = Syntax::headers_tab[LAST_MODIFIED].name;
-		last_modified_header.unparsed_value = std::string(time_buf);
-		response.get_headers().insert(last_modified_header);
+		response.get_headers().insert(LAST_MODIFIED, std::string(time_buf));
 	}
 	return SUCCESS;
 }
@@ -1072,11 +1087,9 @@ int
 Client::_response_location_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
 	int status_code = response.get_status_line().get_status_code();
-	AHTTPMessage::Headers::header_t location_header;
 
 	if (Syntax::is_redirection_code(Syntax::status_codes_tab[status_code].code_int)
 		|| status_code == CREATED) {
-		(void)location_header;
 		//TODO: need handler for POST method
 	}
 	return SUCCESS;
@@ -1085,14 +1098,11 @@ Client::_response_location_handler(exchange_t &exchange) {
 int
 Client::_response_retry_after_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
-	AHTTPMessage::Headers::header_t retry_after_header;
 	std::stringstream ss;
 
 	if (response.get_status_line().get_status_code() == SERVICE_UNAVAILABLE) {
 		ss << DELAY_RETRY_AFTER;
-		retry_after_header.name = Syntax::headers_tab[RETRY_AFTER].name;
-		retry_after_header.unparsed_value = ss.str();
-		response.get_headers().insert(retry_after_header);
+		response.get_headers().insert(RETRY_AFTER, ss.str());
 	}
 	return SUCCESS;
 }
@@ -1102,9 +1112,7 @@ Client::_response_server_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
 	AHTTPMessage::Headers::header_t server_header;
 
-	server_header.name = Syntax::headers_tab[SERVER].name;
-	server_header.unparsed_value = "webserv/1.0";
-	response.get_headers().insert(server_header);
+	response.get_headers().insert(SERVER, "webserv/1.0");
 	return SUCCESS;
 }
 
@@ -1120,12 +1128,8 @@ Client::_response_www_authenticate_handler(exchange_t &exchange) {
 	Request& request = exchange.first;
 	Response& response = exchange.second;
 	int status_code = response.get_status_line().get_status_code();
-	AHTTPMessage::Headers::header_t www_authenticate_header;
 
-	if (status_code == UNAUTHORIZED && request.get_headers().key_exists(AUTHORIZATION)) {
-		www_authenticate_header.name = Syntax::headers_tab[WWW_AUTHENTICATE].name;
-		www_authenticate_header.unparsed_value = request.get_headers().get_value(AUTHORIZATION).front();
-		response.get_headers().insert(www_authenticate_header);
-	}
+	if (status_code == UNAUTHORIZED && request.get_headers().key_exists(AUTHORIZATION))
+		response.get_headers().insert(WWW_AUTHENTICATE, request.get_headers().get_value(AUTHORIZATION).front());
 	return SUCCESS;
 }
