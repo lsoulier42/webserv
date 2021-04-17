@@ -83,11 +83,11 @@ Client::read_socket(void) {
 		if (0 == ret)
 			std::cout << "the client closed the connection." << std::endl;
 		else
-			std::cout << "error during reading the socket." << std::endl;
+			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
 		return (FAILURE);
 	}
 	buffer[ret] = '\0';
-	_input_str += (std::string(buffer));
+	_input_str += std::string(buffer);
 	_input_str_parsing();
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
@@ -432,29 +432,6 @@ Client::_request_content_length_parser(Request &request) {
 	return (SUCCESS);
 }
 
-std::string
-Client::_build_effective_request_URI(const Request::RequestLine& requestLine,
-	const std::string& header_host_value) {
-	std::string http("http://");
-	std::string port;
-	size_t colon_pos;
-	method_t method = requestLine.get_method();
-	std::string target = requestLine.get_request_target();
-
-	colon_pos = header_host_value.find(':');
-	if (colon_pos != std::string::npos)
-		port = header_host_value.substr(colon_pos + 1);
-	if (port == "443")
-		http = "https://";
-	if (header_host_value.find(http) != std::string::npos)
-		http.clear();
-	if (method == CONNECT || method == OPTIONS || target.find(header_host_value) != std::string::npos)
-		return http + target;
-	if (target == "*")
-		target.clear();
-	return http + header_host_value + target;
-}
-
 int
 Client::_request_content_type_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(CONTENT_TYPE);
@@ -616,19 +593,63 @@ Client::_process(exchange_t &exchange) {
 	return (FAILURE);
 }
 
+std::string
+Client::_format_index_path(const std::string& dir_path, const std::string& index_file) {
+	std::string definite_path = dir_path;
+	std::string definite_index_file = index_file;
+
+	if (*(--dir_path.end()) != '/')
+		definite_path += "/";
+	if (*index_file.begin() == '/')
+		definite_index_file = index_file.substr(1);
+	return definite_path + definite_index_file;
+}
+
+int
+Client::_get_default_index(exchange_t &exchange) {
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	std::string dir_path = response.get_target_path(), definite_path;
+	std::list<std::string> index_list = request.get_location()->get_index();
+
+	if (index_list.empty()) {
+		definite_path = _format_index_path(dir_path, "index.html");
+	} else {
+		for(std::list<std::string>::iterator it = index_list.begin(); it != index_list.end(); it++) {
+			definite_path = _format_index_path(dir_path, *it);
+			if (REGULAR_FILE == Syntax::get_path_type(definite_path))
+				break ;
+		}
+	}
+	if (Syntax::get_path_type(definite_path) == INVALID_PATH)
+		return FAILURE;
+	response.set_target_path(definite_path);
+	return SUCCESS;
+}
+
 int
 Client::_process_GET(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 	std::string	path(_build_path_ressource(request));
+	path_type_t path_type = Syntax::get_path_type(path);
 
-	if (!Syntax::is_valid_path(path)) {
+	if (path_type == INVALID_PATH) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
 	response.set_target_path(path);
+	if (path_type == DIRECTORY) {
+		if (!request.get_location()->is_autoindex()
+			&& _get_default_index(exchange) == FAILURE) {
+			response.get_status_line().set_status_code(FORBIDDEN);
+			return (_process_error(exchange));
+		}
+		/*else if (request.get_location()->is_autoindex())
+			return (_generate_autoindex(exchange));*/
+	}
 	response.get_status_line().set_status_code(OK);
-	return (_open_file_to_read(path));
+	return (_open_file_to_read(response.get_target_path()));
 }
 
 void
@@ -708,7 +729,6 @@ Client::_build_path_ressource(Request &request) {
 		}
 	}
 	absolute_path.erase(0, location_path.size());
-	location_root += "/";
 	absolute_path.insert(0, location_root);
 	return (absolute_path);
 }
@@ -716,7 +736,8 @@ Client::_build_path_ressource(Request &request) {
 int
 Client::_open_file_to_read(const std::string &path) {
 	if (0 > (_fd = open(path.c_str(), O_RDONLY))) {
-		std::cout << "error during opening a file." << std::endl;
+		std::cerr << "error during opening a file: ";
+		std::cerr << strerror(errno) << std::endl;
 		return (FAILURE);
 	}
 	return (SUCCESS);

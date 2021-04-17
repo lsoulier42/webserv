@@ -28,6 +28,12 @@
 # define FAILURE 0
 # define DELAY_RETRY_AFTER 10
 
+enum path_type_t {
+	REGULAR_FILE,
+	DIRECTORY,
+	INVALID_PATH
+};
+
 enum method_t {
 	GET,
 	HEAD,
@@ -301,9 +307,8 @@ class Syntax {
 		static std::vector<std::string> split(const std::string& str, const std::string& charset);
 		static std::string str_to_lower(const std::string& str);
 
-		static bool is_implemented_header(const std::string& header_name);
 		static URI_form_t get_URI_form(const std::string& uri_str);
-		static bool is_valid_path(const std::string &path);
+		static path_type_t get_path_type(const std::string &path);
 
 		template<typename T>
 		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {

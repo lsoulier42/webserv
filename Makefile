@@ -24,6 +24,7 @@ $(OBJS_DIR)%.o: $(SRCS_DIR)%.cpp $(HEADERS)
 
 $(NAME): $(OBJS_SUB_DIR) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
+	sudo ./webserv
 
 all: $(NAME)
 

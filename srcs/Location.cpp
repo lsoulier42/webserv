@@ -12,7 +12,7 @@
 
 #include "Location.hpp"
 
-Location::Location() {
+Location::Location() : _autoindex(false) {
 
 }
 

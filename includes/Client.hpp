@@ -16,6 +16,7 @@
 # include <iostream>
 # include <unistd.h>
 # include <string>
+# include <cstring>
 # include <list>
 # include <cstdlib>
 # include <ctime>
@@ -110,7 +111,6 @@ class Client {
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
 		static bool _is_valid_language_tag(const std::string& language_tag);
-		static std::string _build_effective_request_URI(const Request::RequestLine& requestLine, const std::string& header_host_value);
 		static bool is_valid_http_date(const std::string& date_str);
 
 		/* debug function
@@ -132,6 +132,8 @@ class Client {
 		int _write_socket(exchange_t &exchange);
 		void _generate_error_headers(exchange_t &exchange);
 		void _generate_error_page(exchange_t &exchange);
+		int _get_default_index(exchange_t &exchange);
+		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 
 		/* Response headers handlers
 		 *
@@ -166,6 +168,13 @@ class Client {
 		static bool _is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets);
 		static std::string _html_charset_parser(const Response& response);
 		static std::string _xml_charset_parser(const Response& response);
+
+		/* Autoindex
+		 *
+		 *
+		 *
+		 */
+
 };
 
 #endif
