@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 23:12:32 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/17 21:15:41 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,12 +28,14 @@
 # include <dirent.h>
 # include <algorithm>
 # include <fcntl.h>
+# include <stdio.h>
 # include <cerrno>
 # include <sstream>
 # include "Request.hpp"
 # include "Response.hpp"
 # include "Syntax.hpp"
 # include "VirtualServer.hpp"
+# include "CGIMetaVariables.hpp"
 
 class Client {
 
@@ -50,9 +52,11 @@ class Client {
 
 		int get_sd(void) const;
 		int get_fd(void) const;
+		int get_cgi_fd(void) const;
   
 		int read_socket(void);
 		int read_file(void);
+		int read_cgi(void);
 
 	private:
 
@@ -60,6 +64,7 @@ class Client {
 
 		const int _sd;
 		int _fd;
+		int _cgi_fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
@@ -88,6 +93,7 @@ class Client {
 		int _check_trailer(exchange_t &exchange);
 		int _collect_body(exchange_t &exchange);
 		void _pick_virtual_server(Request &request);
+		void _pick_location(Request &request);
 
 		/* Request headers parser
 		 *
@@ -128,7 +134,8 @@ class Client {
 		int _process(exchange_t &exchange);
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
-		std::string _build_path_ressource(Request &request);
+		int _process_cgi(exchange_t &exchange);
+		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
@@ -171,6 +178,7 @@ class Client {
 		static std::string _html_charset_parser(const Response& response);
 		static std::string _xml_charset_parser(const Response& response);
 
+
 		/* Autoindex
 		 *
 		 *
@@ -180,6 +188,16 @@ class Client {
 		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, const std::string& target_path, bool is_dir);
 		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
 			const std::set<std::string>& file_names);
+    
+    /* CGI
+     *
+     */ 
+    
+		bool _is_cgi_related(const Request &request) const;
+		std::string _build_cgi_script_path(const Request &request) const;
+		int _create_cgi_child_process(void);
+		int _cgi_child_process(const CGIMetaVariables &mv);
+
 };
 
 #endif

@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/14 19:44:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/16 22:14:38 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,6 +148,11 @@ WebServer::build_select_list() {
 			if (it->get_fd() > _highest_socket)
 				_highest_socket = it->get_fd();
 		}
+		if (it->get_cgi_fd()) {
+			FD_SET(it->get_cgi_fd(), &_sockets_list);
+			if (it->get_cgi_fd() > _highest_socket)
+				_highest_socket = it->get_cgi_fd();
+		}
   }
 }
 
@@ -168,6 +173,9 @@ WebServer::read_socks() {
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
 		if (FD_ISSET(it->get_fd(), &_sockets_list))
 			it->read_file();
+	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
+		if (FD_ISSET(it->get_cgi_fd(), &_sockets_list))
+			it->read_cgi();
 }
 
 int

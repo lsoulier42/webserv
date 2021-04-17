@@ -6,7 +6,7 @@
 /*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/15 20:59:19 by louise            #+#    #+#             */
-/*   Updated: 2021/04/15 20:59:20 by louise           ###   ########.fr       */
+/*   Updated: 2021/04/16 07:28:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -111,6 +111,7 @@ ConfigParsing::location_instructions_handler(std::vector<std::string>& tokens,
 			break;
 		}
 	}
+	std::cout << "THERE" << location.get_cgi_extension() << std::endl;
 	return SUCCESS;
 }
 
@@ -196,6 +197,7 @@ ConfigParsing::check_location_bloc(std::ifstream& config_file,
 	}
 	if (!closing_bracket)
 		return(bracket_not_found(location_tokens[INSTRUCTION_TOKEN], "server", OPENING_BRACKET));
+	std::cout << "OVER THERE" << new_location.get_cgi_extension() << std::endl;
 	virtual_server.add_location(new_location);
 	return SUCCESS;
 }
@@ -378,6 +380,7 @@ ConfigParsing::parse_index(const std::vector<std::string>& tokens, Location& loc
 
 int
 ConfigParsing::parse_cgi(const std::vector<std::string>& tokens, Location& location) {
+	std::cout << "HERE" << std::endl;
 	std::string usage("Usage: 'cgi [*.<ext>] [/absolute/or/relative/path];'");
 	std::string cgi_file_ext, cgi_path;
 
@@ -394,7 +397,7 @@ ConfigParsing::parse_cgi(const std::vector<std::string>& tokens, Location& locat
 	}
 	if (!check_instruction_path(cgi_path, tokens[0], usage))
 		return FAILURE;
-	location.set_cgi_extension(cgi_file_ext.substr(2));
+	location.set_cgi_extension(cgi_file_ext.substr(1));
 	location.set_cgi_path(cgi_path);
 	return SUCCESS;
 }

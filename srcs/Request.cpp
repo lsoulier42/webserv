@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 23:15:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/16 01:40:53 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ Request::Request(const VirtualServer *virtual_server) :
 	_request_line(),
 	_compromising(false),
 	_virtual_server(virtual_server),
-	_location() {}
+	_location(&(virtual_server->get_locations().back())) {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
