@@ -271,15 +271,6 @@ Syntax::fetch_method_index(const std::string& method) {
 	return -1;
 }
 
-bool
-Syntax::is_implemented_header(const std::string &header_name) {
-	for(int i = 0; i < TOTAL_HEADER_NAMES; i++) {
-		if (header_name == Syntax::headers_tab[i].name)
-			return true;
-	}
-	return false;
-}
-
 std::string
 Syntax::trim_comments(const std::string &str) {
 	std::string new_line;
@@ -404,10 +395,15 @@ Syntax::get_URI_form(const std::string& uri_str) {
 	return PARTIAL_URI;
 }
 
-bool
-Syntax::is_valid_path(const std::string &path) {
+path_type_t
+Syntax::get_path_type(const std::string &path) {
 	struct stat	buf;
-	return stat(path.c_str(), &buf) != -1;
+	int stat_return;
+
+	stat_return = stat(path.c_str(), &buf);
+	if (stat_return == -1)
+		return INVALID_PATH;
+	return S_ISDIR(buf.st_mode) ? DIRECTORY : REGULAR_FILE;
 }
 
 std::string

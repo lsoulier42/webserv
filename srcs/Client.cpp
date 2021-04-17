@@ -92,11 +92,11 @@ Client::read_socket(void) {
 		if (0 == ret)
 			std::cout << "the client closed the connection." << std::endl;
 		else
-			std::cout << "error during reading the socket." << std::endl;
+			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
 		return (FAILURE);
 	}
 	buffer[ret] = '\0';
-	_input_str += (std::string(buffer));
+	_input_str += std::string(buffer);
 	_input_str_parsing();
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
@@ -454,29 +454,6 @@ Client::_request_content_length_parser(Request &request) {
 	return (SUCCESS);
 }
 
-std::string
-Client::_build_effective_request_URI(const Request::RequestLine& requestLine,
-	const std::string& header_host_value) {
-	std::string http("http://");
-	std::string port;
-	size_t colon_pos;
-	method_t method = requestLine.get_method();
-	std::string target = requestLine.get_request_target();
-
-	colon_pos = header_host_value.find(':');
-	if (colon_pos != std::string::npos)
-		port = header_host_value.substr(colon_pos + 1);
-	if (port == "443")
-		http = "https://";
-	if (header_host_value.find(http) != std::string::npos)
-		http.clear();
-	if (method == CONNECT || method == OPTIONS || target.find(header_host_value) != std::string::npos)
-		return http + target;
-	if (target == "*")
-		target.clear();
-	return http + header_host_value + target;
-}
-
 int
 Client::_request_content_type_parser(Request &request) {
 	std::string unparsed_header_value = request.get_headers().get_unparsed_value(CONTENT_TYPE);
@@ -640,6 +617,118 @@ Client::_process(exchange_t &exchange) {
 	return (FAILURE);
 }
 
+
+std::string
+Client::_format_index_path(const std::string& dir_path, const std::string& index_file) {
+	std::string definite_path = dir_path;
+	std::string definite_index_file = index_file;
+
+	if (*(--dir_path.end()) != '/')
+		definite_path += "/";
+	if (*index_file.begin() == '/')
+		definite_index_file = index_file.substr(1);
+	return definite_path + definite_index_file;
+}
+
+int
+Client::_get_default_index(exchange_t &exchange) {
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	std::string dir_path = response.get_target_path(), definite_path;
+	std::list<std::string> index_list = request.get_location()->get_index();
+
+	if (index_list.empty()) {
+		definite_path = _format_index_path(dir_path, "index.html");
+	} else {
+		for(std::list<std::string>::iterator it = index_list.begin(); it != index_list.end(); it++) {
+			definite_path = _format_index_path(dir_path, *it);
+			if (REGULAR_FILE == Syntax::get_path_type(definite_path))
+				break ;
+		}
+	}
+	if (Syntax::get_path_type(definite_path) == INVALID_PATH)
+		return FAILURE;
+	response.set_target_path(definite_path);
+	return SUCCESS;
+}
+
+std::string
+Client::_format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
+	const std::set<std::string>& file_names) {
+	std::stringstream ss;
+	std::string		target_path = exchange.second.get_target_path();
+	std::string		request_target = exchange.first.get_request_line().get_request_target();
+	std::string		dir_name(request_target.substr(0, request_target.find('?')));
+
+	ss << "<html>" << std::endl << "<head>" << std::endl;
+	ss << "<title>Index of </title></head>" << std::endl;
+	ss << "<body bgcolor=\"white\">" << std::endl;
+	ss << "<h1>Index of " << dir_name << "</h1><hr><pre>";
+	ss << "<table><tr><th>Name</th><th>Last modification</th><th>Size</th></tr>";
+	for (std::set<std::string>::iterator it = directory_names.begin(); it != directory_names.end(); it++)
+		_format_autoindex_entry(ss, *it, target_path, true);
+	for (std::set<std::string>::iterator it = file_names.begin(); it != file_names.end(); it++)
+		_format_autoindex_entry(ss, *it, target_path, false);
+	ss << "</table></pre><hr></body>" << std::endl << "</html>" << std::endl;
+	return ss.str();
+}
+
+void
+Client::_format_autoindex_entry(std::stringstream& ss, const std::string& filename,
+	const std::string& target_path, bool is_dir) {
+	std::string		definite_filename, fullpath, size_str;
+	struct stat		stat_buf;
+	char 			time_buf[64];
+	time_t			last_modification;
+	struct tm		*tm;
+
+	fullpath = target_path + filename;
+	if (stat(fullpath.c_str(), &stat_buf) == -1) {
+		return;
+	}
+	last_modification = stat_buf.st_mtim.tv_sec;
+	tm = localtime(&last_modification);
+	strftime(time_buf, sizeof(time_buf), "%d-%b-%Y %H:%M", tm);
+	definite_filename = is_dir ? filename + "/" : filename;
+	ss << "<tr><td><a href=\"" << definite_filename << "\">";
+	ss << definite_filename << "</a></td>";
+	ss << "<td>--" << time_buf << "--</td>";
+	ss << "<td>";
+	if (is_dir)
+		ss << "-";
+	else
+		ss << stat_buf.st_size;
+	ss << "</td></tr>" << std::endl;
+}
+
+int
+Client::_generate_autoindex(exchange_t &exchange) {
+	Response		&response(exchange.second);
+	DIR       		*directory;
+	std::set<std::string> directory_names, file_names;
+	struct dirent	*file_listing;
+
+
+	directory = opendir(response.get_target_path().c_str());
+	if (!directory) {
+		response.get_status_line().set_status_code(FORBIDDEN);
+		return FAILURE;
+	}
+	while ((file_listing = readdir(directory))) {
+		if (file_listing->d_type == DT_DIR
+			&& strcmp(file_listing->d_name, ".") == 0)
+			continue;
+		if (file_listing->d_type == DT_DIR)
+			directory_names.insert(file_listing->d_name);
+		else if (file_listing->d_type == DT_REG)
+			file_names.insert(file_listing->d_name);
+	}
+	response.set_body(_format_autoindex_page(exchange, directory_names, file_names));
+	_generate_basic_headers(exchange);
+	closedir(directory);
+	return (_build_output_str(exchange));
+}
+
 bool
 Client::_is_cgi_related(const Request &request) const {
 	std::string	path(_build_cgi_script_path(request));
@@ -702,19 +791,29 @@ int
 Client::_process_GET(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-	std::string	path(_build_resource_path(request));
 
-	if (!Syntax::is_valid_path(path)) {
+	std::string	path(_build_resource_path(request));
+	path_type_t path_type = Syntax::get_path_type(path);
+
+	if (path_type == INVALID_PATH) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
 	response.set_target_path(path);
+	if (path_type == DIRECTORY) {
+		if (_get_default_index(exchange) == FAILURE) {
+			if (request.get_location()->is_autoindex())
+				return (_generate_autoindex(exchange));
+			response.get_status_line().set_status_code(FORBIDDEN);
+			return (_process_error(exchange));
+		}
+	}
 	response.get_status_line().set_status_code(OK);
-	return (_open_file_to_read(path));
+	return (_open_file_to_read(response.get_target_path()));
 }
 
 void
-Client::_generate_error_headers(exchange_t &exchange) {
+Client::_generate_basic_headers(exchange_t &exchange) {
 	Response& response = exchange.second;
 	status_code_t error_code = response.get_status_line().get_status_code();
 	std::stringstream ss;
@@ -747,7 +846,7 @@ Client::_generate_error_page(exchange_t &exchange) {
 	ss << "<hr><center>webserv/1.0</center>" << std::endl;
 	ss << "</body>" << std::endl << "</html>" << std::endl;
 	response.set_body(ss.str());
-	_generate_error_headers(exchange);
+	_generate_basic_headers(exchange);
 }
 
 int
@@ -785,7 +884,8 @@ Client::_build_resource_path(Request &request) {
 int
 Client::_open_file_to_read(const std::string &path) {
 	if (0 > (_fd = open(path.c_str(), O_RDONLY))) {
-		std::cout << "error during opening a file." << std::endl;
+		std::cerr << "error during opening a file: ";
+		std::cerr << strerror(errno) << std::endl;
 		return (FAILURE);
 	}
 	return (SUCCESS);

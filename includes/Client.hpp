@@ -16,13 +16,16 @@
 # include <iostream>
 # include <unistd.h>
 # include <string>
+# include <cstring>
 # include <list>
+# include <set>
 # include <cstdlib>
 # include <ctime>
 # include <sys/time.h>
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <sys/types.h>
+# include <dirent.h>
 # include <algorithm>
 # include <fcntl.h>
 # include <stdio.h>
@@ -116,7 +119,6 @@ class Client {
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
 		static bool _is_valid_language_tag(const std::string& language_tag);
-		static std::string _build_effective_request_URI(const Request::RequestLine& requestLine, const std::string& header_host_value);
 		static bool is_valid_http_date(const std::string& date_str);
 
 		/* debug function
@@ -137,8 +139,10 @@ class Client {
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
-		void _generate_error_headers(exchange_t &exchange);
+		void _generate_basic_headers(exchange_t &exchange);
 		void _generate_error_page(exchange_t &exchange);
+		int _get_default_index(exchange_t &exchange);
+		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 
 		/* Response headers handlers
 		 *
@@ -174,10 +178,26 @@ class Client {
 		static std::string _html_charset_parser(const Response& response);
 		static std::string _xml_charset_parser(const Response& response);
 
+
+		/* Autoindex
+		 *
+		 *
+		 *
+		 */
+		int	_generate_autoindex(exchange_t &exchange);
+		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, const std::string& target_path, bool is_dir);
+		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
+			const std::set<std::string>& file_names);
+    
+    /* CGI
+     *
+     */ 
+    
 		bool _is_cgi_related(const Request &request) const;
 		std::string _build_cgi_script_path(const Request &request) const;
 		int _create_cgi_child_process(void);
 		int _cgi_child_process(const CGIMetaVariables &mv);
+
 };
 
 #endif

@@ -63,10 +63,11 @@ WebServer::accept_connection(const Server& server) {
 	if (connection == -1)
 		return ;
 	if (_clients.size() == (size_t)_max_connection) {
-		std::string full_response = "Sorry, this server is too busy.\n Try again later! \r\n";
+		//TODO: handle SERVICE UNAVAILABLE
+		/*std::string full_response = "Sorry, this server is too busy.\n Try again later! \r\n";
 		std::cout << "No room left for new client." << std::endl;
-		send(connection, full_response.c_str(), full_response.size(), 0);
-			close(connection);
+		send(connection, full_response.c_str(), full_response.size(), 0);*/
+		close(connection);
 	} else {
 		std::cout << "Connection accepted: FD=" << connection << std::endl;
 		_clients.push_back(Client(connection, client_addr, client_socket_len,

@@ -478,7 +478,7 @@ ConfigParsing::wrong_path_format(const std::string& instruction, const std::stri
 
 int
 ConfigParsing::check_instruction_path(const std::string &path, const std::string& instruction, const std::string& usage) {
-	if (!Syntax::is_valid_path(path)) {
+	if (Syntax::get_path_type(path) == INVALID_PATH) {
 		std::cerr << "Error in instruction `" << instruction << "'" << std::endl;
 		std::cerr << "The path `" << path << "' can't be opened: ";
 		std::cerr << strerror(errno) << std::endl;
