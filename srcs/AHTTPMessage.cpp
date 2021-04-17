@@ -145,6 +145,15 @@ AHTTPMessage::Headers::insert(const header_t &header) {
 	(_tab[index])->push_front(header);
 }
 
+void
+AHTTPMessage::Headers::insert(header_name_t key, const std::string& unparsed_value) {
+	AHTTPMessage::Headers::header_t new_header;
+
+	new_header.name = Syntax::headers_tab[key].name;
+	new_header.unparsed_value = unparsed_value;
+	this->insert(new_header);
+}
+
 bool
 AHTTPMessage::Headers::key_exists(header_name_t key) const {
 	std::list<header_t>	*entry_list(_tab[_hash(Syntax::headers_tab[key].name.c_str())]);
