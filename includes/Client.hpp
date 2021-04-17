@@ -18,12 +18,14 @@
 # include <string>
 # include <cstring>
 # include <list>
+# include <set>
 # include <cstdlib>
 # include <ctime>
 # include <sys/time.h>
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <sys/types.h>
+# include <dirent.h>
 # include <algorithm>
 # include <fcntl.h>
 # include <cerrno>
@@ -130,7 +132,7 @@ class Client {
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
-		void _generate_error_headers(exchange_t &exchange);
+		void _generate_basic_headers(exchange_t &exchange);
 		void _generate_error_page(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
@@ -174,7 +176,10 @@ class Client {
 		 *
 		 *
 		 */
-
+		int	_generate_autoindex(exchange_t &exchange);
+		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, const std::string& target_path, bool is_dir);
+		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
+			const std::set<std::string>& file_names);
 };
 
 #endif
