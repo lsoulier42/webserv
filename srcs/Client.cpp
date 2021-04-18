@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/16 22:30:14 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 05:47:35 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -237,10 +237,10 @@ Client::_collect_request_line_elements(exchange_t &exchange) {
 
 int
 Client::_collect_header(exchange_t &exchange) {
-	Request							&request(exchange.first);
-	size_t							col(0);
-	size_t							end_header(_input_str.find("\r\n"));
-	AHTTPMessage::Headers::header_t	current_header;
+	Request				&request(exchange.first);
+	size_t				col(0);
+	size_t				end_header(_input_str.find("\r\n"));
+	Headers::header_t	current_header;
 
 	if (std::string::npos != (col = _input_str.find_first_of(':'))) {
 		current_header.name = _input_str.substr(0, col);
@@ -577,7 +577,7 @@ void Client::_send_debug_str(const std::string& str) const {
 
 int
 Client::_process_request_headers(Request &request) {
-	const AHTTPMessage::Headers& headers = request.get_headers();
+	const AHTTPMessage::HTTPHeaders& headers = request.get_headers();
 
 	int (Client::*handler_functions[])(Request &request) = {&Client::_request_accept_charset_parser,
 		&Client::_request_accept_language_parser, &Client::_request_authorization_parser,
@@ -939,7 +939,7 @@ Client::read_file(void) {
 int
 Client::_build_output_str(exchange_t &exchange) {
 	Response	&response(exchange.second);
-	AHTTPMessage::Headers& headers = response.get_headers();
+	AHTTPMessage::HTTPHeaders& headers = response.get_headers();
 
 	_output_str.clear();
 	_output_str += response.get_status_line().get_http_version();
@@ -1304,7 +1304,6 @@ Client::_response_retry_after_handler(exchange_t &exchange) {
 int
 Client::_response_server_handler(exchange_t &exchange) {
 	Response& response = exchange.second;
-	AHTTPMessage::Headers::header_t server_header;
 
 	response.get_headers().insert(SERVER, "webserv/1.0");
 	return SUCCESS;

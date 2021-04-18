@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:08:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/14 23:02:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 06:05:07 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,11 +14,11 @@
 # define AHTTPMESSAGE_HPP
 
 # include <string>
-# include <vector>
-# include <list>
 # include <iostream>
 # include <stdexcept>
+# include <list>
 # include "Syntax.hpp"
+# include "Headers.hpp"
 
 class AHTTPMessage {
 
@@ -49,22 +49,16 @@ class AHTTPMessage {
 
 		};
 
-		class Headers {
+		class HTTPHeaders : public Headers {
 
 			public:
 
-				struct header_t {
-					std::string name;
-					std::string unparsed_value;
-					std::list<std::string> value;
-				};
+				HTTPHeaders(void);
+				HTTPHeaders(const HTTPHeaders &x);
+				~HTTPHeaders(void);
+				HTTPHeaders &operator=(const HTTPHeaders &x);
 
-				Headers(void);
-				Headers(const Headers &x);
-				~Headers(void);
-				Headers &operator=(const Headers &x);
-
-				void insert(const header_t &header);
+				void insert(const Headers::header_t &header);
 				void insert(header_name_t key, const std::string& unparsed_value);
 
 				bool key_exists(header_name_t key) const;
@@ -74,24 +68,14 @@ class AHTTPMessage {
 
 				void set_value(header_name_t key, const std::list<std::string>& parsed_value) throw (std::invalid_argument);
 
-				void reset(void);
-				void render(void) const;
-
-			private:
-
-				static const size_t _tab_size;
-				std::vector<std::list<header_t>*> _tab;
-
-				unsigned long _hash(const char *buf) const;
-
 		};
 
 		AHTTPMessage(void);
 		AHTTPMessage(const AHTTPMessage &x);
 		virtual ~AHTTPMessage(void);
 
-		Headers &get_headers(void);
-		const Headers &get_headers(void) const;
+		HTTPHeaders &get_headers(void);
+		const HTTPHeaders &get_headers(void) const;
 		const std::string &get_body(void) const;
 
 		void set_body(const std::string &body);
@@ -105,7 +89,7 @@ class AHTTPMessage {
 
 	private:
 
-		Headers _headers;
+		HTTPHeaders _headers;
 		std::string _body;
 
 };
