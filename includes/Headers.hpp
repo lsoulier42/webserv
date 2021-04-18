@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 04:57:30 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 10:11:09 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 10:18:19 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,8 +45,12 @@ struct header_iterator {
 };
 
 struct const_header_iterator {
+	friend
+	bool operator==(const const_header_iterator &lhs, const const_header_iterator &rhs);
+	friend
+	bool operator!=(const const_header_iterator &lhs, const const_header_iterator &rhs);
 	const_header_iterator(void);
-	explicit const_header_iterator(std::list<header_t>::const_iterator x, std::vector<std::list<header_t>*>::const_iterator y);
+	explicit const_header_iterator(std::list<header_t>::const_iterator x, std::vector<std::list<header_t> >::const_iterator y);
 	explicit const_header_iterator(const header_iterator &it);
 	const header_t &operator*(void);
 	const header_t *operator->(void);
@@ -57,7 +61,8 @@ struct const_header_iterator {
 	std::list<header_t>::const_iterator _cur;
 	std::list<header_t>::const_iterator _first;
 	std::list<header_t>::const_iterator _last;
-	std::vector<std::list<header_t>*>::const_iterator _cell;
+	std::vector<std::list<header_t> >::const_iterator _cell;
+	void _set_cell(std::vector<std::list<header_t> >::const_iterator cell);
 };
 
 class Headers {
@@ -65,6 +70,7 @@ class Headers {
 	public:
 
 		typedef header_iterator iterator;
+		typedef const_header_iterator const_iterator;
 
 		Headers(void);
 		Headers(const Headers &x);
@@ -72,7 +78,9 @@ class Headers {
 		Headers &operator=(const Headers &x);
 
 		iterator begin(void);
+		const_iterator begin(void) const;
 		iterator end(void);
+		const_iterator end(void) const;
 
 		void insert(const header_t &header);
 		void insert(const std::string &key, const std::string &unparsed_value);

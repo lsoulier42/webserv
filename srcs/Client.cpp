@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 10:06:58 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 10:53:22 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -606,6 +606,7 @@ Client::_process(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 
+	request.get_headers().render();
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version("HTTP/1.1");
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
