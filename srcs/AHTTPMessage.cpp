@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:24:38 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 06:03:53 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 10:06:13 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ AHTTPMessage::set_body(const std::string &body) {
 
 void
 AHTTPMessage::reset(void) {
-	_headers.reset();
+	_headers.clear();
 	_body.clear();
 }
 
@@ -99,7 +99,7 @@ AHTTPMessage::HTTPHeaders
 }
 
 void
-AHTTPMessage::HTTPHeaders::insert(const Headers::header_t &header) {
+AHTTPMessage::HTTPHeaders::insert(const header_t &header) {
 	Headers::insert(header);
 }
 

@@ -6,16 +6,19 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 05:07:54 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 07:15:19 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 10:10:57 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Headers.hpp"
 
 header_iterator::header_iterator(void) :
-	_header() {}
+	_cur(),
+	_first(),
+	_last(),
+	_cell() {}
 
-header_iterator::header_iterator(std::list<header_t>::iterator x, std::vector<std::list<header_t>*>::iterator y) :
+header_iterator::header_iterator(std::list<header_t>::iterator x, std::vector<std::list<header_t> >::iterator y) :
 	_cur(x),
 	_first(y->begin()),
 	_last(y->end()),
@@ -35,8 +38,8 @@ header_iterator
 &header_iterator::operator++(void) {
 	++_cur;
 	if (_cur == _last) {
-		std::vector<std::list<header_t>*>::iterator new_cell(_cell + 1);
-		while (!*new_cell)
+		std::vector<std::list<header_t> >::iterator new_cell(_cell + 1);
+		while (new_cell->empty())
 			++new_cell;
 		_set_cell(new_cell);
 		_cur = _first;
@@ -46,51 +49,91 @@ header_iterator
 
 header_iterator
 header_iterator::operator++(int) {
+	header_iterator	tmp(*this);
+	++(*this);
+	return (tmp);
+}
+
+header_iterator
+&header_iterator::operator--(void) {
+	if (_cur == _first) {
+		std::vector<std::list<header_t> >::iterator new_cell(_cell - 1);
+		while (new_cell->empty())
+			--new_cell;
+		_set_cell(new_cell);
+		_cur = _last;
+	}
+	--_cur;
+	return (*this);
+}
+
+header_iterator
+header_iterator::operator--(int) {
+	header_iterator	tmp(*this);
+	--(*this);
+	return (tmp);
 }
 
 void
-header_iterator::_set_cell(std::vector<std::list<header_t>*>::iterator cell) {
+header_iterator::_set_cell(std::vector<std::list<header_t> >::iterator cell) {
 	_cell = cell;
 	_first = cell->begin();
 	_last = cell->end();
 }
 
+bool
+operator==(const header_iterator &lhs, const header_iterator &rhs) {
+	return (lhs._cur == rhs._cur);
+}
+
+bool
+operator!=(const header_iterator &lhs, const header_iterator &rhs) {
+	return (!(lhs == rhs));
+}
+
 const size_t Headers::_tab_size(30);
 
 Headers::Headers(void) :
-	_tab(_tab_size) {}
+	_tab(_tab_size),
+	_start(_tab.front().begin(), _tab.begin()),
+	_finish(_tab.front().end(), _tab.begin()) {}
 
 Headers::Headers(const Headers &x) :
 	_tab(_tab_size) {
-	for (size_t i(0) ; i < _tab_size ; i++)
-		if (x._tab[i])
-			_tab[i] = new std::list<header_t>(*(x._tab[i]));
+	for (const_iterator it(x.begin()) ; it != x.end() ; it++)
+		insert(*it);
 }
 
 Headers::~Headers(void) {
-	reset();
+	clear();
 }
 
 Headers
 &Headers::operator=(const Headers &x) {
-	for (size_t i(0) ; i < _tab_size ; i++) {
-		if (_tab[i]) {
-			delete _tab[i];
-			_tab[i] = 0;
-		}
-		if (x._tab[i])
-			_tab[i] = new std::list<header_t>(*(x._tab[i]));
-	}
+	clear();
+	for (iterator it(x.begin()) ; it != x.end() ; it++)
+		insert(*it);
 	return (*this);
 }
 
+Headers::iterator
+Headers::begin(void) {
+	return (_start);
+}
+
+Headers::iterator
+Headers::end(void) {
+	return (_finish);
+}
+
 void
-Headers::reset(void) {
-	for (size_t i(0) ; i < _tab_size ; i++)
-		if (_tab[i]) {
-			delete _tab[i];
-			_tab[i] = 0;
-		}
+Headers::clear(void) {
+	for (std::vector<std::list<header_t> >::iterator it(_tab.begin()) ; it != _tab.end() ; it++)
+		it->clear();
+	_start._set_cell(_tab.begin());
+	_start._cur = _start._first;
+	_finish._set_cell(_tab.begin());
+	_finish._cur = _finish._last;
 }
 
 void
@@ -108,12 +151,29 @@ Headers::render(void) const {
 	}
 }
 
+bool
+Headers::empty(void) const {
+	return (_start == _finish);
+}
+
 void
 Headers::insert(const header_t &header) {
 	unsigned long	index(_hash(header.name.c_str()));
-	if (!_tab[index])
-		_tab[index] = new std::list<header_t>;
-	(_tab[index])->push_front(header);
+	(_tab[index]).push_front(header);
+	if (empty()) {
+		_start._set_cell(_tab.begin() + index);
+		_start._cur = _start._first;
+		_finish._set_cell(_tab.begin() + index);
+		_finish._cur = _finish._last;
+	}
+	if (_start._cell > _tab.begin() + index) {
+		_start._set_cell(_tab.begin() + index);
+		_start._cur = _start._first;
+	}
+	if (_finish._cell <= _tab.begin() + index) {
+		_finish._set_cell(_tab.begin() + index);
+		_finish._cur = _finish._last;
+	}
 }
 
 void
@@ -127,10 +187,10 @@ Headers::insert(const std::string &key, const std::string &unparsed_value) {
 
 bool
 Headers::key_exists(const std::string &key) const {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
-	if (!entry_list)
+	std::list<header_t>	entry_list(_tab[_hash(key.c_str())]);
+	if (entry_list.empty())
 		return (false);
-	for (std::list<header_t>::iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+	for (std::list<header_t>::iterator it(entry_list.begin()) ; it != entry_list.end() ; it++)
 		if (it->name == key)
 			return (true);
 	return (false);
@@ -138,9 +198,9 @@ Headers::key_exists(const std::string &key) const {
 
 const std::string
 &Headers::get_unparsed_value(const std::string &key) const throw(std::invalid_argument) {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
+	std::list<header_t>	entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
-		for (std::list<header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+		for (std::list<header_t>::const_iterator it(entry_list.begin()) ; it != entry_list.end() ; it++)
 			if (it->name == key)
 				return (it->unparsed_value);
 	}
@@ -149,9 +209,9 @@ const std::string
 
 const std::list<std::string>&
 Headers::get_value(const std::string &key) const throw (std::invalid_argument) {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
+	std::list<header_t>	entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
-		for (std::list<header_t>::const_iterator it(entry_list->begin()) ; it != entry_list->end() ; it++)
+		for (std::list<header_t>::const_iterator it(entry_list.begin()) ; it != entry_list.end() ; it++)
 			if (it->name == key)
 				return (it->value);
 	}
@@ -160,9 +220,9 @@ Headers::get_value(const std::string &key) const throw (std::invalid_argument) {
 
 void
 Headers::set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument) {
-	std::list<header_t>	*entry_list(_tab[_hash(key.c_str())]);
+	std::list<header_t>	entry_list(_tab[_hash(key.c_str())]);
 	if (entry_list) {
-		for (std::list<header_t>::iterator it(entry_list->begin()); it != entry_list->end(); it++)
+		for (std::list<header_t>::iterator it(entry_list.begin()); it != entry_list.end(); it++)
 			if (it->name == key) {
 				it->value = parsed_value;
 				return ;

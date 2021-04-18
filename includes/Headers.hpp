@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 04:57:30 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 07:08:17 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 10:11:09 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,8 +25,12 @@ struct header_t {
 };
 
 struct header_iterator {
+	friend
+	bool operator==(const header_iterator &lhs, const header_iterator &rhs);
+	friend
+	bool operator!=(const header_iterator &lhs, const header_iterator &rhs);
 	header_iterator(void);
-	explicit header_iterator(std::list<header_t>::iterator x, std::vector<std::list<header_t>*>::iterator y);
+	explicit header_iterator(std::list<header_t>::iterator x, std::vector<std::list<header_t> >::iterator y);
 	header_t &operator*(void);
 	header_t *operator->(void);
 	header_iterator &operator++(void);
@@ -36,8 +40,8 @@ struct header_iterator {
 	std::list<header_t>::iterator _cur;
 	std::list<header_t>::iterator _first;
 	std::list<header_t>::iterator _last;
-	std::vector<std::list<header_t>*>::iterator _cell;
-	void _set_cell(std::vector<std::list<header_t>*>::iterator cell);
+	std::vector<std::list<header_t> >::iterator _cell;
+	void _set_cell(std::vector<std::list<header_t> >::iterator cell);
 };
 
 struct const_header_iterator {
@@ -60,10 +64,15 @@ class Headers {
 
 	public:
 
+		typedef header_iterator iterator;
+
 		Headers(void);
 		Headers(const Headers &x);
 		~Headers(void);
 		Headers &operator=(const Headers &x);
+
+		iterator begin(void);
+		iterator end(void);
 
 		void insert(const header_t &header);
 		void insert(const std::string &key, const std::string &unparsed_value);
@@ -75,13 +84,16 @@ class Headers {
 
 		void set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument);
 
-		void reset(void);
+		bool empty(void) const;
+		void clear(void);
 		void render(void) const;
 
 	private:
 
 		static const size_t _tab_size;
-		std::vector<std::list<header_t>*> _tab;
+		std::vector<std::list<header_t> > _tab;
+		iterator _start;
+		iterator _finish;
 
 		unsigned long _hash(const char *buf) const;
 

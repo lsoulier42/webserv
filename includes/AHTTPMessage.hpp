@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:08:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 06:05:07 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 10:04:52 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ class AHTTPMessage {
 				~HTTPHeaders(void);
 				HTTPHeaders &operator=(const HTTPHeaders &x);
 
-				void insert(const Headers::header_t &header);
+				void insert(const header_t &header);
 				void insert(header_name_t key, const std::string& unparsed_value);
 
 				bool key_exists(header_name_t key) const;

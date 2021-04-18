@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 05:47:35 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 10:06:58 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -240,7 +240,7 @@ Client::_collect_header(exchange_t &exchange) {
 	Request				&request(exchange.first);
 	size_t				col(0);
 	size_t				end_header(_input_str.find("\r\n"));
-	Headers::header_t	current_header;
+	header_t			current_header;
 
 	if (std::string::npos != (col = _input_str.find_first_of(':'))) {
 		current_header.name = _input_str.substr(0, col);
@@ -856,8 +856,8 @@ Client::_process_error(exchange_t &exchange) {
 	std::string error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
-	request.get_headers().reset();
-	response.get_headers().reset();
+	request.get_headers().clear();
+	response.get_headers().clear();
 	if (!request.get_location())
 		request.set_location(&request.get_virtual_server()->get_locations().back());
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
