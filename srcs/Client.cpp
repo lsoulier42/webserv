@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 09:25:38 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 12:41:20 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -83,6 +83,21 @@ Client::get_cgi_fd(void) const {
 	return (_cgi_fd);
 }
 
+std::string
+&Client::get_input_str(void) {
+	return (_input_str);
+}
+
+std::list<exchange_t>
+&Client::get_exchanges(void) {
+	return (_exchanges);
+}
+
+void
+Client::set_closing(bool closing) {
+	_closing = closing;
+}
+
 /*
  * REQUEST RECEPTION
  */
@@ -101,11 +116,12 @@ Client::read_socket(void) {
 	}
 	buffer[ret] = '\0';
 	_input_str += std::string(buffer);
-	_input_str_parsing();
+	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
 	return (SUCCESS);
 }
+/*
 
 void
 Client::_failure(exchange_t &exchange, status_code_t status_code ) {
@@ -294,12 +310,14 @@ Client::_collect_body(exchange_t &exchange) {
 		request.set_status(Request::REQUEST_RECEIVED);
 	return (SUCCESS);
 }
+*/
 
 /* _pick_virtual_server :
  * get the right configuration of virtual host
  * based on header host and server_name
  *
  */
+/*
 
 void
 Client::_pick_virtual_server(Request &request) {
@@ -333,10 +351,12 @@ Client::_pick_location(Request &request) {
 				&& request.get_location()->get_path().size() < it->get_path().size())
 			request.set_location(&(*it));
 }
+*/
 
 /*
  * Headers parsers
  */
+/*
 
 bool Client::_comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b) {
 	return a.second > b.second;
@@ -377,6 +397,7 @@ Client::_request_accept_charset_parser(Request &request) {
 	request.get_headers().set_value(ACCEPT_CHARSET, charsets_list);
 	return SUCCESS;
 }
+*/
 
 /* basic language tag check :
  * regular examples : fr, en-gb, en-US, fr-Latin-FR, cel-gaulish
@@ -389,6 +410,7 @@ Client::_request_accept_charset_parser(Request &request) {
  * case insensitive
  *
  */
+/*
 
 bool
 Client::_is_valid_language_tag(const std::string& language_tag) {
@@ -494,6 +516,7 @@ Client::is_valid_http_date(const std::string& date_str) {
 	}
 	return false;
 }
+*/
 
 /* _date_handler :
  * accept the three HTTP dates formats, in order in the std::string array :
@@ -502,6 +525,7 @@ Client::is_valid_http_date(const std::string& date_str) {
  * - obsolete 2 (ANSI C) example : Sun Nov  6 08:49:37 1994
  *
  */
+/*
 
 int
 Client::_request_date_parser(Request &request) {
@@ -600,6 +624,7 @@ Client::_process_request_headers(Request &request) {
 	}
 	return SUCCESS;
 }
+*/
 
 /*
  * RESPONSE SENDING

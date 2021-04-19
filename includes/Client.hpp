@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 09:15:11 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 12:37:33 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@
 # include "VirtualServer.hpp"
 # include "CGIMetaVariables.hpp"
 # include "CGIResponse.hpp"
+# include "RequestParsing.hpp"
 
 class Client {
 
@@ -54,6 +55,10 @@ class Client {
 		int get_sd(void) const;
 		int get_fd(void) const;
 		int get_cgi_fd(void) const;
+		std::string &get_input_str(void);
+		std::list<exchange_t> &get_exchanges(void);
+		
+		void set_closing(bool closing);
   
 		int read_socket(void);
 		int read_file(void);
@@ -79,6 +84,7 @@ class Client {
 		 *
 		 *
 		 */
+		/*
 		void _failure(exchange_t &exchange, status_code_t status_code);
 		bool _request_line_received(const Request &request) const;
 		bool _header_received(const Request &request) const;
@@ -96,11 +102,13 @@ class Client {
 		int _collect_body(exchange_t &exchange);
 		void _pick_virtual_server(Request &request);
 		void _pick_location(Request &request);
+		*/
 
 		/* Request headers parser
 		 *
 		 *
 		 */
+		/*
 		int _process_request_headers(Request &request);
 		int _request_accept_charset_parser(Request &request);
 		int _request_accept_language_parser(Request &request);
@@ -112,16 +120,19 @@ class Client {
 		int _request_referer_parser(Request &request);
 		int _request_transfer_encoding_parser(Request &request);
 		int _request_user_agent_parser(Request &request);
+		*/
 
 		/* Request headers helpers
 		 *
 		 *
 		 */
+		/*
 		static bool _transfer_encoding_chunked(const Request &request);
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
 		static bool _is_valid_language_tag(const std::string& language_tag);
 		static bool is_valid_http_date(const std::string& date_str);
+		*/
 
 		/* debug function
 		 *
