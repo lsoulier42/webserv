@@ -6,11 +6,12 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 12:41:20 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 12:58:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
+#include "RequestParsing.hpp"
 
 const size_t	Client::_buffer_size(1);
 
@@ -88,9 +89,14 @@ std::string
 	return (_input_str);
 }
 
-std::list<exchange_t>
+std::list<Client::exchange_t>
 &Client::get_exchanges(void) {
 	return (_exchanges);
+}
+
+const std::list<const VirtualServer*>
+&Client::get_virtual_servers(void) const {
+	return (_virtual_servers);
 }
 
 void
@@ -1116,7 +1122,7 @@ Client::_html_content_language_parser(const Response& response) {
 				end_lang_pos = line_tag.find_first_of('"');
 				if (end_lang_pos != std::string::npos) {
 					content_language_str = line_tag.substr(0, end_lang_pos);
-					if (!_is_valid_language_tag(content_language_str))
+					if (!RequestParsing::is_valid_language_tag(content_language_str))
 						content_language_str.clear();
 				}
 			}
@@ -1137,7 +1143,7 @@ Client::_xml_content_language_parser(const Response& response) {
 		end_lang_pos = line_tag.find_first_of('"');
 		if (end_lang_pos != std::string::npos) {
 			content_language_str = line_tag.substr(0, end_lang_pos);
-			if (!_is_valid_language_tag(content_language_str))
+			if (!RequestParsing::is_valid_language_tag(content_language_str))
 				content_language_str.clear();
 		}
 	}

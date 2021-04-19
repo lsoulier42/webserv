@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 12:37:33 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 12:59:35 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,9 +37,12 @@
 # include "VirtualServer.hpp"
 # include "CGIMetaVariables.hpp"
 # include "CGIResponse.hpp"
-# include "RequestParsing.hpp"
+
+class RequestParsing;
 
 class Client {
+
+	friend class RequestParsing;
 
 	public:
 
@@ -57,6 +60,7 @@ class Client {
 		int get_cgi_fd(void) const;
 		std::string &get_input_str(void);
 		std::list<exchange_t> &get_exchanges(void);
+		const std::list<const VirtualServer*> &get_virtual_servers(void) const;
 		
 		void set_closing(bool closing);
   

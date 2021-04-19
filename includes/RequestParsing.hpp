@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 11:42:38 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 12:35:17 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 13:06:19 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 # include <string>
 # include <list>
+# include "Client.hpp"
 # include "Request.hpp"
 # include "Response.hpp"
 # include "VirtualServer.hpp"
@@ -25,6 +26,7 @@ class RequestParsing {
 	public:
 
 		static void parsing(Client &client);
+		static bool is_valid_language_tag(const std::string& language_tag);
 
 	private:
 
@@ -39,7 +41,7 @@ class RequestParsing {
 		static bool _body_expected(const Request &request);
 		static bool _trailer_expected(const Request &request);
 		static int _collect_request_line_elements(Request &request, std::string &input_str);
-		static int _collect_header(Request &request, std::string &input_str);
+		static void _collect_header(Request &request, std::string &input_str);
 		static int _check_headers(Client &client, Request &request);
 		static int _check_trailer(Request &request, std::string &input_str);
 		static int _collect_body(Request &request, std::string &input_str);
@@ -58,7 +60,6 @@ class RequestParsing {
 		static int _request_user_agent_parser(Request &request);
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
-		static bool _is_valid_language_tag(const std::string& language_tag);
 		static bool is_valid_http_date(const std::string& date_str);
 
 };

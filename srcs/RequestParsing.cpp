@@ -6,34 +6,38 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 12:09:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 13:10:16 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+#include "RequestParsing.hpp"
 
 void
 RequestParsing::parsing(Client &client) {
-	std::string	&input_str(client._input_str);
+	int			ret(0);
+	std::string	&input_str(client.get_input_str());
 	while (!client._closing && !input_str.empty()) {
-		if (client._exchanges.empty() || client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
-			client._exchanges.push_back(std::make_pair(Request(client._virtual_servers.front()), Response()));
-		Client::exchange_t	&current_exchange(client._exchanges.back());
+		if (client.get_exchanges().empty() || client.get_exchanges().back().first.get_status() == Request::REQUEST_RECEIVED)
+			client.get_exchanges().push_back(std::make_pair(Request(client.get_virtual_servers().front()), Response()));
+		Client::exchange_t	&current_exchange(client.get_exchanges().back());
 		Request				&request(current_exchange.first);
 		if (_request_line_received(request, input_str) && SUCCESS != (ret = _collect_request_line_elements(request, input_str))) {
-			_failure(client, current_exchange, ret);
+			_failure(client, current_exchange, (status_code_t)ret);
 			return ;
 		}
 		while (_header_received(request, input_str))
-			_collect_header(client, current_exchange);
+			_collect_header(request, input_str);
 		if (_headers_received(request, input_str) && SUCCESS != (ret = _check_headers(client, request))) {
-			_failure(client, current_exchange, ret);
+			_failure(client, current_exchange, (status_code_t)ret);
 			return ;
 		}
 		if (_body_received(request, input_str))
-			_collect_body(client, current_exchange);
+			_collect_body(request, input_str);
 		while (_trailer_received(request, input_str))
-			_collect_header(client, current_exchange);
-		if (_trailers_received(request, input_str) && SUCCESS != _check_trailer(request, input_str))
+			_collect_header(request, input_str);
+		if (_trailers_received(request, input_str) && SUCCESS != (ret = _check_trailer(request, input_str))) {
+			_failure(client, current_exchange, (status_code_t)ret);
 			return ;
+		}
 		if (request.get_status() != Request::REQUEST_RECEIVED)
 			return ;
 	}
@@ -44,7 +48,7 @@ RequestParsing::_failure(Client &client, Client::exchange_t &exchange, status_co
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 
-	client._closing = true;
+	client.set_closing(true);
 	request.set_compromising(true);
 	request.set_status(Request::REQUEST_RECEIVED);
 	response.get_status_line().set_status_code(status_code);
@@ -58,7 +62,7 @@ RequestParsing::_request_line_received(const Request &request, const std::string
 bool
 RequestParsing::_header_received(const Request &request, const std::string &input_str) {
 	return (request.get_status() == Request::REQUEST_LINE_RECEIVED
-			&& !_headers_received(request)
+			&& !_headers_received(request, input_str)
 			&& std::string::npos != input_str.find("\r\n"));
 }
 
@@ -80,7 +84,7 @@ RequestParsing::_body_received(const Request &request, const std::string &input_
 bool
 RequestParsing::_trailer_received(const Request &request, const std::string &input_str) {
 	return (request.get_status() == Request::BODY_RECEIVED
-			&& !_trailers_received(request)
+			&& !_trailers_received(request, input_str)
 			&& std::string::npos != input_str.find("\r\n"));
 }
 
@@ -154,10 +158,10 @@ RequestParsing::_collect_header(Request &request, std::string &input_str) {
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
-	client._input_str.erase(0, client._input_str.find("\r\n") + 2);
+	client.get_input_str().erase(0, client.get_input_str().find("\r\n") + 2);
 	if (_process_request_headers(client, request) == FAILURE)
 		return (BAD_REQUEST);
-	if (_body_expected(request, input_str))
+	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
 	else
 		request.set_status(Request::REQUEST_RECEIVED);
@@ -181,7 +185,7 @@ RequestParsing::_collect_body(Request &request, std::string &input_str) {
 		body_length = static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
 	request.set_body(input_str.substr(0, body_length));
 	input_str.erase(0, body_length);
-	if (_trailer_expected(request, input_str))
+	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);
 	else
 		request.set_status(Request::REQUEST_RECEIVED);
@@ -193,11 +197,11 @@ RequestParsing::_pick_virtual_server(Client &client, Request &request) {
 	std::vector<std::string> host_elements;
 	std::list<std::string> server_names;
 
-	request.set_virtual_server(client._virtual_servers.front());
+	request.set_virtual_server(client.get_virtual_servers().front());
 	if (!request.get_headers().key_exists(HOST))
 		return ;
-	for(std::list<const VirtualServer*>::const_iterator it = client._virtual_servers.begin();
-		it != client._virtual_servers.end() ; it++) {
+	for(std::list<const VirtualServer*>::const_iterator it = client.get_virtual_servers().begin();
+		it != client.get_virtual_servers().end() ; it++) {
 		server_names = (*it)->get_server_names();
 		for (std::list<std::string>::const_iterator cit = server_names.begin();
 			cit != server_names.end(); cit++) {
@@ -278,7 +282,7 @@ RequestParsing::_request_accept_charset_parser(Request &request) {
  */
 
 bool
-RequestParsing::_is_valid_language_tag(const std::string& language_tag) {
+RequestParsing::is_valid_language_tag(const std::string& language_tag) {
 	std::vector<std::string> compounds = Syntax::split(language_tag, "-");
 	std::string language, script, region;
 
@@ -310,7 +314,7 @@ RequestParsing::_request_accept_language_parser(Request &request) {
 	std::list<std::string> languages_list = _parse_coma_q_factor(unparsed_header_value);
 
 	for(std::list<std::string>::const_iterator it = languages_list.begin(); it != languages_list.end(); it++) {
-		if (!_is_valid_language_tag(*it))
+		if (!is_valid_language_tag(*it))
 			return FAILURE;
 	}
 	request.get_headers().set_value(ACCEPT_LANGUAGE, languages_list);
@@ -458,18 +462,21 @@ RequestParsing::_request_user_agent_parser(Request &request) {
 	return SUCCESS;
 }
 
+/*
 void RequestParsing::_send_debug_str(const std::string& str) const {
 	std::string to_send = str + "\n";
 	size_t size = to_send.size();
 
 	send(_sd, to_send.c_str(), size, 0);
 }
+*/
 
 int
 RequestParsing::_process_request_headers(Client &client, Request &request) {
+	typedef int (*header_parser_t)(Request &);
 	const AHTTPMessage::HTTPHeaders& headers = request.get_headers();
 
-	int (RequestParsing::*handler_functions[])(Request &request) = {&RequestParsing::_request_accept_charset_parser,
+	header_parser_t handler_functions[] = {&RequestParsing::_request_accept_charset_parser,
 		&RequestParsing::_request_accept_language_parser, &RequestParsing::_request_authorization_parser,
 		&RequestParsing::_request_content_length_parser, &RequestParsing::_request_content_type_parser, &RequestParsing::_request_date_parser, NULL,
 		&RequestParsing::_request_referer_parser, &RequestParsing::_request_transfer_encoding_parser, &RequestParsing::_request_user_agent_parser,
