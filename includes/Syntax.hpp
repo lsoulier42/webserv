@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:42 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/14 23:00:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 03:23:58 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,6 +131,12 @@ enum header_name_t {
 	WWW_AUTHENTICATE,
 	TRAILER,
 	TOTAL_HEADER_NAMES
+};
+
+enum cgi_header_name_t {
+	CGI_CONTENT_TYPE,
+	CGI_LOCATION,
+	CGI_STATUS
 };
 
 enum accepted_charsets_t {
@@ -261,6 +267,11 @@ class Syntax {
 			std::string		name;
 		};
 
+		struct cgi_header_tab_entry_t {
+			cgi_header_name_t	header_index;
+			std::string			name;
+		};
+
 		struct accepted_charsets_entry_t {
 			accepted_charsets_t charset_index;
 			std::string			name;
@@ -284,6 +295,7 @@ class Syntax {
 		static const header_tab_entry_t headers_tab[];
 		static const header_tab_entry_t request_headers_tab[];
 		static const header_tab_entry_t response_headers_tab[];
+		static const cgi_header_tab_entry_t cgi_headers_tab[];
 		static const accepted_charsets_entry_t charsets_tab[];
 		static const mime_type_entry_t mime_types_tab[];
 		static const encoding_type_entry_t encoding_types_tab[];

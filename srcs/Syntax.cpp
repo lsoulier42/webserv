@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:25 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/14 23:23:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 03:23:10 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,6 +110,13 @@ Syntax::headers_tab[] = {
 	{USER_AGENT, "User-Agent"},
 	{WWW_AUTHENTICATE, "WWW-Authenticate"},
 	{TRAILER, "Trailer"}
+};
+
+const Syntax::cgi_header_tab_entry_t
+Syntax::cgi_headers_tab[] = {
+	{CGI_CONTENT_TYPE, "Content-Type"},
+	{CGI_LOCATION, "Location"},
+	{CGI_STATUS, "Status"}
 };
 
 const Syntax::header_tab_entry_t
