@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 16:38:48 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/19 16:55:14 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -326,6 +326,20 @@ Client::_process_GET(exchange_t &exchange) {
 	}
 	response.get_status_line().set_status_code(OK);
 	return (_open_file_to_read(response.get_target_path()));
+}
+
+int
+Client::_process_POST(exchange_t &exchange) {
+	Request		&request(exchange.first);
+	Response	&response(exchange.second);
+}
+
+int
+Client::_process_PUT(exchange_t &exchange) {
+	//Request		&request(exchange.first);
+	//Response	&response(exchange.second);
+	void (exchange);
+	return;
 }
 
 void

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:18:04 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 16:58:25 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,6 +92,8 @@ class Client {
 		int _process(exchange_t &exchange);
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
+		int	_process_POST(exchange _t &exchange);
+		int	_procvess_PUT(exchange _t &exchange);
 		int _process_cgi(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
