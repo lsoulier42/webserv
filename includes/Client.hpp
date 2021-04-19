@@ -61,6 +61,7 @@ class Client {
 		int get_cgi_fd(void) const;
 		
 		int read_socket(void);
+		int write_socket(void);
 		int read_file(void);
 		int read_cgi(void);
 
@@ -99,7 +100,6 @@ class Client {
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
-		int _write_socket(exchange_t &exchange);
 		void _generate_error_page(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);

@@ -15,7 +15,7 @@
 #include "ResponseHandling.hpp"
 #include "WebServer.hpp"
 
-const size_t	Client::_buffer_size(1);
+const size_t	Client::_buffer_size(2);
 
 Client::Client(void) :
 	_sd(),
@@ -125,6 +125,28 @@ Client::read_socket(void) {
 	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
+	return (SUCCESS);
+}
+
+int
+Client::write_socket(void) {
+	exchange_t	&exchange = _exchanges.front();
+	Request		&request(exchange.first);
+	size_t		to_write, output_size = _output_str.size();
+	ssize_t 	write_return;
+
+	if (output_size == 0)
+		return SUCCESS;
+	to_write = output_size > _buffer_size ? _buffer_size : output_size;
+	write_return = write(_sd, _output_str.c_str(), to_write);
+	if (write_return == -1)
+		return FAILURE;
+	_output_str.erase(0, write_return);
+	if (_output_str.empty()) {
+		if (request.get_compromising())
+			return (FAILURE);
+		_exchanges.pop_front();
+	}
 	return (SUCCESS);
 }
 
@@ -497,23 +519,8 @@ Client::_build_output_str(exchange_t &exchange) {
 	}
 	_output_str += "\r\n";
 	_output_str += response.get_body();
-	return (_write_socket(exchange));
-}
-
-int
-Client::_write_socket(exchange_t &exchange) {
-	Request		&request(exchange.first);
-
-	write(_sd, _output_str.c_str(), _output_str.size());
-	if (request.get_compromising())
-		return (FAILURE);
-	_exchanges.pop_front();
-	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
-		return (_process(_exchanges.front()));
 	return (SUCCESS);
 }
-
-
 
 void
 Client::_send_debug_str(const std::string& str) const {
