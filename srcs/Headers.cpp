@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 05:07:54 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 20:35:44 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/18 23:59:58 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -179,12 +179,13 @@ operator!=(const const_header_iterator &lhs, const const_header_iterator &rhs) {
 const size_t Headers::_tab_size(30);
 
 Headers::Headers(void) :
-	_tab(_tab_size),
-	_start(_tab.front().begin(), _tab.begin()),
-	_finish(_tab.front().end(), _tab.begin()) {}
+	_tab(_tab_size) {
+	_reset_start_finish();
+}
 
 Headers::Headers(const Headers &x) :
 	_tab(_tab_size) {
+	_reset_start_finish();
 	for (const_iterator it(x.begin()) ; it != x.end() ; it++)
 		insert(*it);
 }
@@ -221,30 +222,16 @@ Headers::end(void) const {
 	return (const_iterator(_finish));
 }
 
+bool
+Headers::empty(void) const {
+	return (_start == _finish);
+}
+
 void
 Headers::clear(void) {
 	for (std::vector<std::list<header_t> >::iterator it(_tab.begin()) ; it != _tab.end() ; it++)
 		it->clear();
-	_start._set_cell(_tab.begin());
-	_start._cur = _start._first;
-	_finish._set_cell(_tab.begin());
-	_finish._cur = _finish._last;
-}
-
-void
-Headers::render(void) const {
-	for (const_iterator it(begin()) ; it != end() ; it++) {
-		std::cout << "*" << std::endl;
-		std::cout << "KEY : " << it->name << "$" << std::endl;
-		std::cout << "HASH : " << _hash(it->name.c_str()) << "$" << std::endl;
-		std::cout << "VALUE : " << it->unparsed_value << "$" << std::endl;
-		std::cout << "*" << std::endl;
-	}
-}
-
-bool
-Headers::empty(void) const {
-	return (_start == _finish);
+	_reset_start_finish();
 }
 
 void
@@ -252,21 +239,13 @@ Headers::insert(const header_t &header) {
 	unsigned long	index(_hash(header.name.c_str()));
 	(_tab[index]).push_front(header);
 	if (empty()) {
-		_tab[index].push_back(header_t());
-		_start._set_cell(_tab.begin() + index);
-		_start._cur = _start._first;
-		_finish._set_cell(_tab.begin() + index);
-		_finish._cur = --_finish._last;
+		_update_start(index);
+		_update_finish(index);
 	}
-	if (_start._cell > _tab.begin() + index) {
-		_start._set_cell(_tab.begin() + index);
-		_start._cur = _start._first;
-	}
-	if (_finish._cell <= _tab.begin() + index) {
-		_finish._cell->erase(_finish._cur);
-		_tab[index].push_back(header_t());
-		_finish._set_cell(_tab.begin() + index);
-		_finish._cur = --_finish._last;
+	else if (_start._cell > _tab.begin() + index)
+		_update_start(index);
+	else if (_finish._cell < _tab.begin() + index) {
+		_update_finish(index);
 	}
 }
 
@@ -317,6 +296,40 @@ Headers::set_value(const std::string &key, const std::list<std::string>& parsed_
 			return ;
 		}
 	throw (std::invalid_argument("Headers::set_value : invalid argument"));
+}
+
+void
+Headers::render(void) const {
+	for (const_iterator it(begin()) ; it != end() ; it++) {
+		std::cout << "*" << std::endl;
+		std::cout << "KEY : " << it->name << "$" << std::endl;
+		std::cout << "HASH : " << _hash(it->name.c_str()) << "$" << std::endl;
+		std::cout << "VALUE : " << it->unparsed_value << "$" << std::endl;
+		std::cout << "*" << std::endl;
+	}
+}
+
+void
+Headers::_reset_start_finish(void) {
+	_tab.begin()->push_back(header_t());
+	_start._set_cell(_tab.begin());
+	_start._cur = _start._first;
+	_finish._set_cell(_tab.begin());
+	_finish._cur = --_finish._last;
+}
+
+void
+Headers::_update_start(size_t index) {
+	_start._set_cell(_tab.begin() + index);
+	_start._cur = _start._first;
+}
+
+void
+Headers::_update_finish(size_t index) {
+	_finish._cell->erase(_finish._cur);
+	_tab[index].push_back(header_t());
+	_finish._set_cell(_tab.begin() + index);
+	_finish._cur = --_finish._last;
 }
 
 unsigned long

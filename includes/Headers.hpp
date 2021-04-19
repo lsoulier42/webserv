@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 04:57:30 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 10:18:19 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 00:02:32 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ struct const_header_iterator {
 	bool operator!=(const const_header_iterator &lhs, const const_header_iterator &rhs);
 	const_header_iterator(void);
 	explicit const_header_iterator(std::list<header_t>::const_iterator x, std::vector<std::list<header_t> >::const_iterator y);
-	explicit const_header_iterator(const header_iterator &it);
+	const_header_iterator(const header_iterator &it);
 	const header_t &operator*(void);
 	const header_t *operator->(void);
 	const_header_iterator &operator++(void);
@@ -82,18 +82,19 @@ class Headers {
 		iterator end(void);
 		const_iterator end(void) const;
 
+		bool empty(void) const;
+		void clear(void);
+
 		void insert(const header_t &header);
 		void insert(const std::string &key, const std::string &unparsed_value);
 
 		bool key_exists(const std::string &key) const;
 
-		const std::list<std::string> &get_value(const std::string &key) const throw (std::invalid_argument);
 		const std::string &get_unparsed_value(const std::string &key) const throw (std::invalid_argument);
+		const std::list<std::string> &get_value(const std::string &key) const throw (std::invalid_argument);
 
 		void set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument);
 
-		bool empty(void) const;
-		void clear(void);
 		void render(void) const;
 
 	private:
@@ -103,6 +104,9 @@ class Headers {
 		iterator _start;
 		iterator _finish;
 
+		void _reset_start_finish(void);
+		void _update_start(size_t index);
+		void _update_finish(size_t index);
 		unsigned long _hash(const char *buf) const;
 
 };
