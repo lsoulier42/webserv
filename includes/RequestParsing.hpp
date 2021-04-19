@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 11:42:38 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:06:19 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 13:23:28 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@ class RequestParsing {
 
 		static void parsing(Client &client);
 		static bool is_valid_language_tag(const std::string& language_tag);
+		static bool is_valid_http_date(const std::string& date_str);
 
 	private:
 
@@ -60,7 +61,6 @@ class RequestParsing {
 		static int _request_user_agent_parser(Request &request);
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
-		static bool is_valid_http_date(const std::string& date_str);
 
 };
 

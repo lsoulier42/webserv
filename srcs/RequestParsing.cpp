@@ -6,19 +6,20 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:10:16 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 13:24:40 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 #include "RequestParsing.hpp"
 
 void
 RequestParsing::parsing(Client &client) {
 	int			ret(0);
-	std::string	&input_str(client.get_input_str());
+	std::string	&input_str(client._input_str);
 	while (!client._closing && !input_str.empty()) {
-		if (client.get_exchanges().empty() || client.get_exchanges().back().first.get_status() == Request::REQUEST_RECEIVED)
-			client.get_exchanges().push_back(std::make_pair(Request(client.get_virtual_servers().front()), Response()));
-		Client::exchange_t	&current_exchange(client.get_exchanges().back());
+		if (client._exchanges.empty() || client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
+			client._exchanges.push_back(std::make_pair(Request(client._virtual_servers.front()), Response()));
+		Client::exchange_t	&current_exchange(client._exchanges.back());
 		Request				&request(current_exchange.first);
 		if (_request_line_received(request, input_str) && SUCCESS != (ret = _collect_request_line_elements(request, input_str))) {
 			_failure(client, current_exchange, (status_code_t)ret);
@@ -48,7 +49,7 @@ RequestParsing::_failure(Client &client, Client::exchange_t &exchange, status_co
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 
-	client.set_closing(true);
+	client._closing = true;
 	request.set_compromising(true);
 	request.set_status(Request::REQUEST_RECEIVED);
 	response.get_status_line().set_status_code(status_code);
@@ -158,7 +159,7 @@ RequestParsing::_collect_header(Request &request, std::string &input_str) {
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
-	client.get_input_str().erase(0, client.get_input_str().find("\r\n") + 2);
+	client._input_str.erase(0, client._input_str.find("\r\n") + 2);
 	if (_process_request_headers(client, request) == FAILURE)
 		return (BAD_REQUEST);
 	if (_body_expected(request))
@@ -197,11 +198,11 @@ RequestParsing::_pick_virtual_server(Client &client, Request &request) {
 	std::vector<std::string> host_elements;
 	std::list<std::string> server_names;
 
-	request.set_virtual_server(client.get_virtual_servers().front());
+	request.set_virtual_server(client._virtual_servers.front());
 	if (!request.get_headers().key_exists(HOST))
 		return ;
-	for(std::list<const VirtualServer*>::const_iterator it = client.get_virtual_servers().begin();
-		it != client.get_virtual_servers().end() ; it++) {
+	for(std::list<const VirtualServer*>::const_iterator it = client._virtual_servers.begin();
+		it != client._virtual_servers.end() ; it++) {
 		server_names = (*it)->get_server_names();
 		for (std::list<std::string>::const_iterator cit = server_names.begin();
 			cit != server_names.end(); cit++) {
@@ -461,15 +462,6 @@ RequestParsing::_request_user_agent_parser(Request &request) {
 	request.get_headers().set_value(USER_AGENT, definitive_value);
 	return SUCCESS;
 }
-
-/*
-void RequestParsing::_send_debug_str(const std::string& str) const {
-	std::string to_send = str + "\n";
-	size_t size = to_send.size();
-
-	send(_sd, to_send.c_str(), size, 0);
-}
-*/
 
 int
 RequestParsing::_process_request_headers(Client &client, Request &request) {
