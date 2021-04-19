@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 03:50:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 09:15:11 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@
 # include "Syntax.hpp"
 # include "VirtualServer.hpp"
 # include "CGIMetaVariables.hpp"
+# include "CGIResponse.hpp"
 
 class Client {
 
@@ -197,7 +198,8 @@ class Client {
 		bool _is_cgi_related(const Request &request) const;
 		std::string _build_cgi_script_path(const Request &request) const;
 		int _create_cgi_child_process(void);
-		int _cgi_child_process(const CGIMetaVariables &mv);
+		int _cgi_output_str_parsing(void);
+		void _collect_cgi_header(CGIResponse &cgi_response);
 
 };
 

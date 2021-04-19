@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 04:08:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 09:25:38 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -610,7 +610,6 @@ Client::_process(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 
-	request.get_headers().render();
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version("HTTP/1.1");
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
@@ -760,13 +759,6 @@ Client::_create_cgi_child_process(void) {
 }
 
 int
-Client::_cgi_child_process(const CGIMetaVariables &mv) {
-	if (0 > execve("./a.out", mv.get_tab(), mv.get_tab()))
-		perror("execve");
-	return (FAILURE);
-}
-
-int
 Client::_process_cgi(exchange_t &exchange) {
 	Request				&request(exchange.first);
 	CGIMetaVariables	mv(request);
@@ -775,6 +767,7 @@ Client::_process_cgi(exchange_t &exchange) {
 	int					res_pipe[2];
 	pipe(req_pipe);
 	pipe(res_pipe);
+	std::cout << "PROCESS CGI" << std::endl;
 	if (-1 == (pid = _create_cgi_child_process()))
 		return (FAILURE);
 	if (!pid) {
@@ -782,7 +775,9 @@ Client::_process_cgi(exchange_t &exchange) {
 		close(res_pipe[0]);
 		dup2(req_pipe[0], STDIN_FILENO);
 		dup2(res_pipe[1], STDOUT_FILENO);
-		return (_cgi_child_process(mv));
+		if (0 > execve(_build_cgi_script_path(request).c_str(), mv.get_tab(), mv.get_tab()))
+			perror("execve");
+		return (FAILURE);
 	}
 	close(req_pipe[0]);
 	close(res_pipe[1]);
@@ -913,6 +908,7 @@ Client::read_cgi(void) {
 		return (_cgi_output_str_parsing());
 	}
 	buffer[ret] = '\0';
+	std::cout << buffer;
 	_cgi_output_str += buffer;
 	return (SUCCESS);
 }
@@ -927,6 +923,8 @@ Client::_cgi_output_str_parsing(void) {
 	_cgi_output_str.erase(0, _cgi_output_str.find("\n") + 1);
 	cgi_response.set_body(_cgi_output_str);
 	_cgi_output_str.clear();
+	cgi_response.get_headers().render();
+	return (SUCCESS);
 }
 
 void
@@ -936,11 +934,11 @@ Client::_collect_cgi_header(CGIResponse &cgi_response) {
 	header_t			current_header;
 
 	if (std::string::npos != (col = _cgi_output_str.find_first_of(':'))) {
-		current_header.name = _input_str.substr(0, col);
-		current_header.unparsed_value = Syntax::trim_whitespaces(_input_str.substr(col + 1, (end_header - col - 1)));
+		current_header.name = _cgi_output_str.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output_str.substr(col + 1, (end_header - col - 1)));
 		cgi_response.get_headers().insert(current_header);
 	}
-	_cgi_output_str_str.erase(0, end_header + 1);
+	_cgi_output_str.erase(0, end_header + 1);
 }
 
 int
