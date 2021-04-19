@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 10:53:22 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 04:08:30 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@ Client::Client(void) :
 	_virtual_servers(),
 	_input_str(),
 	_output_str(),
+	_cgi_output_str(),
 	_exchanges(),
 	_closing(false) {}
 
@@ -36,6 +37,7 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	_virtual_servers(virtual_servers),
 	_input_str(),
 	_output_str(),
+	_cgi_output_str(),
 	_exchanges(),
 	_closing(false) {}
 
@@ -48,6 +50,7 @@ Client::Client(const Client &x) :
 	_virtual_servers(x._virtual_servers),
 	_input_str(x._input_str),
 	_output_str(x._output_str),
+	_cgi_output_str(x._output_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing) {}
 
@@ -60,6 +63,7 @@ Client
 	_exchanges = x._exchanges;
 	_input_str = x._input_str;
 	_output_str = x._output_str;
+	_cgi_output_str = x._cgi_output_str;
 	_closing = x._closing;
 	return (*this);
 }
@@ -906,11 +910,37 @@ Client::read_cgi(void) {
 		close(_cgi_fd);
 		_cgi_fd = 0;
 		std::cout << "end of file" << std::endl;
-		return (SUCCESS);
+		return (_cgi_output_str_parsing());
 	}
 	buffer[ret] = '\0';
-	std::cout << buffer;
+	_cgi_output_str += buffer;
 	return (SUCCESS);
+}
+
+int
+Client::_cgi_output_str_parsing(void) {
+	CGIResponse	cgi_response;
+
+	while (std::string::npos != _cgi_output_str.find("\n")
+			&& _cgi_output_str.compare(0, 1, "\n"))
+		_collect_cgi_header(cgi_response);
+	_cgi_output_str.erase(0, _cgi_output_str.find("\n") + 1);
+	cgi_response.set_body(_cgi_output_str);
+	_cgi_output_str.clear();
+}
+
+void
+Client::_collect_cgi_header(CGIResponse &cgi_response) {
+	size_t				col(0);
+	size_t				end_header(_cgi_output_str.find("\n"));
+	header_t			current_header;
+
+	if (std::string::npos != (col = _cgi_output_str.find_first_of(':'))) {
+		current_header.name = _input_str.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(_input_str.substr(col + 1, (end_header - col - 1)));
+		cgi_response.get_headers().insert(current_header);
+	}
+	_cgi_output_str_str.erase(0, end_header + 1);
 }
 
 int

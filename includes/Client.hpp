@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/17 21:15:41 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 03:50:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,6 +70,7 @@ class Client {
 		const std::list<const VirtualServer*> _virtual_servers;
 		std::string _input_str;
 		std::string _output_str;
+		std::string _cgi_output_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
 
