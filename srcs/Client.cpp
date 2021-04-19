@@ -3,15 +3,19 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:20:07 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/19 16:38:48 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 #include "RequestParsing.hpp"
+
+#ifdef __APPLE__
+# define st_mtim st_mtimespec
+#endif
 
 const size_t	Client::_buffer_size(1);
 
@@ -126,6 +130,10 @@ Client::_process(exchange_t &exchange) {
 		return (_process_cgi(exchange));
 	if (request.get_request_line().get_method() == GET)
 		return (_process_GET(exchange));
+//	if (request.get_request_line().get_method() == POST)
+//		return (_process_POST(exchange));
+//	if (request.get_request_line().get_method() == PUT)
+//		return (_process_PUT(exchange));
 	return (FAILURE);
 }
 
