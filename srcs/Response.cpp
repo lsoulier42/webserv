@@ -14,18 +14,26 @@
 
 Response::Response(void) :
 	AHTTPMessage(),
-	_status_line() {}
+	_status_line(),
+	_target_path(),
+	_content_type() {}
 
 Response::Response(const Response &x) :
 	AHTTPMessage(x),
-	_status_line(x._status_line) {}
+	_status_line(x._status_line),
+	_target_path(x._target_path),
+	_content_type(x._content_type) {}
 
 Response::~Response(void) {}
 
 Response
 &Response::operator=(const Response &x) {
-	AHTTPMessage::operator=(x);
-	_status_line = x._status_line;
+	if (this != &x) {
+		AHTTPMessage::operator=(x);
+		_status_line = x._status_line;
+		_target_path = x._target_path;
+		_content_type = x._content_type;
+	}
 	return (*this);
 }
 
@@ -43,12 +51,6 @@ void
 Response::reset(void) {
 	AHTTPMessage::reset();
 	_status_line.reset();
-}
-
-void
-Response::render(void) const {
-	std::cout << "---STATUS LINE---" << std::endl;
-	_status_line.render();
 }
 
 Response::StatusLine::StatusLine(void) :
@@ -84,13 +86,6 @@ Response::StatusLine::reset(void) {
 	_status_code = TOTAL_STATUS_CODE;
 }
 
-void
-Response::StatusLine::render(void) const {
-	std::cout << "HTTP VERSION : " << get_http_version() << "$" << std::endl;
-	std::cout << "STATUS CODE : " << _status_code << "$" << std::endl;
-	std::cout << "REASON PHRASE : " << Syntax::status_codes_tab[_status_code].reason_phrase << "$" << std::endl;
-}
-
 std::string
 Response::get_target_path(void) const {
 	return _target_path;
@@ -109,14 +104,4 @@ Response::get_content_type(void) const {
 void
 Response::set_content_type(const std::string& content_type) {
 	_content_type = content_type;
-}
-
-bool
-Response::is_error_page(void) {
-	return _is_error_page;
-}
-
-void
-Response::set_is_error_page(void) {
-	_is_error_page = true;
 }

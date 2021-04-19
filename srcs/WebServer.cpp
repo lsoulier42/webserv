@@ -46,8 +46,9 @@ WebServer::setup_servers() {
 }
 
 void
-WebServer::accept_connection(const Server& server) {
+WebServer::_accept_connection(const Server& server) {
 	int connection;
+	bool max_client_reached;
 	struct sockaddr client_addr = *server.get_sock_addr();
 	socklen_t client_socket_len = *server.get_addr_len();
 
@@ -56,27 +57,19 @@ WebServer::accept_connection(const Server& server) {
 	if (connection < 0) {
 		std::cerr << "Failed to grab connection : ";
 		std::cerr << std::strerror(errno) << std::endl;
-		this->close_sockets();
+		this->_close_sockets();
 		exit(EXIT_FAILURE);
 	}
 	set_non_blocking(connection);
 	if (connection == -1)
 		return ;
-	if (_clients.size() == (size_t)_max_connection) {
-		//TODO: handle SERVICE UNAVAILABLE
-		/*std::string full_response = "Sorry, this server is too busy.\n Try again later! \r\n";
-		std::cout << "No room left for new client." << std::endl;
-		send(connection, full_response.c_str(), full_response.size(), 0);*/
-		close(connection);
-	} else {
-		std::cout << "Connection accepted: FD=" << connection << std::endl;
-		_clients.push_back(Client(connection, client_addr, client_socket_len,
-			VirtualServer::build_virtual_server_list(_virtual_servers, server.get_virtual_server())));
-	}
+	max_client_reached = _clients.size() >= _max_connection;
+	_clients.push_back(Client(connection, client_addr, client_socket_len,
+		VirtualServer::build_virtual_server_list(_virtual_servers, server.get_virtual_server()), max_client_reached));
 }
 
 void
-WebServer::close_sockets() {
+WebServer::_close_sockets() {
 	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
 		close(it->get_server_sd());
 	}
@@ -95,38 +88,37 @@ WebServer::routine(void) {
 	}
 
 	while(!_exit) {
-		this->build_select_list();
-		timeout.tv_sec = 1;
-		timeout.tv_usec = 0;
-		nb_sockets = select(_highest_socket + 1, &_sockets_list,
-			(fd_set*)0, (fd_set*)0, &timeout);
+		this->_build_select_list();
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 10;
+		nb_sockets = select(_highest_socket + 1, &_sockets_list[READ],
+			&_sockets_list[WRITE], (fd_set*)0, &timeout);
 		if (nb_sockets < 0) {
 			std::cerr << "Select error: ";
 			std::cerr << std::strerror(errno) << std::endl;
-			this->close_sockets();
+			this->_close_sockets();
 			exit(EXIT_FAILURE);
 		}
-		if (nb_sockets == 0) {
-			std::cout << ".";
+		if (nb_sockets != 0) {
+			this->_read_socks();
+			this->_write_socks();
 		}
-		else
-			this->read_socks();
 	}
-	this->close_sockets();
+	this->_close_sockets();
 }
 
 void
-WebServer::set_non_blocking(int socket_fd) {
+WebServer::set_non_blocking(int file_descriptor) {
 	int opts;
 
-	opts = fcntl(socket_fd, F_GETFD);
+	opts = fcntl(file_descriptor, F_GETFD);
 	if (opts < 0) {
 		std::cerr << "Fcntl error with F_GETFD : ";
 		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	opts = (opts | O_NONBLOCK);
-	if (fcntl(socket_fd, F_SETFL, opts) < 0) {
+	if (fcntl(file_descriptor, F_SETFL, opts) < 0) {
 		std::cerr << "Fcntl error with F_SETFL : ";
 		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
@@ -134,22 +126,24 @@ WebServer::set_non_blocking(int socket_fd) {
 }
 
 void
-WebServer::build_select_list() {
-	FD_ZERO(&_sockets_list);
+WebServer::_build_select_list() {
+	FD_ZERO(&_sockets_list[READ]);
+	FD_ZERO(&_sockets_list[WRITE]);
 	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		FD_SET(it->get_server_sd(), &_sockets_list);
+		FD_SET(it->get_server_sd(), &_sockets_list[READ]);
 	}
 	for(std::list<Client>::iterator it = _clients.begin(); it != _clients.end(); it++) {
-		FD_SET(it->get_sd(), &_sockets_list);
+		FD_SET(it->get_sd(), &_sockets_list[READ]);
+		FD_SET(it->get_sd(), &_sockets_list[WRITE]);
 		if (it->get_sd() > _highest_socket)
 			_highest_socket = it->get_sd();
-		if (it->get_fd()) {
-			FD_SET(it->get_fd(), &_sockets_list);
+		if (it->get_fd() != 0 && it->get_fd()) {
+			FD_SET(it->get_fd(), &_sockets_list[READ]);
 			if (it->get_fd() > _highest_socket)
 				_highest_socket = it->get_fd();
 		}
-		if (it->get_cgi_fd()) {
-			FD_SET(it->get_cgi_fd(), &_sockets_list);
+		if (it->get_cgi_fd() != 0 && it->get_cgi_fd()) {
+			FD_SET(it->get_cgi_fd(), &_sockets_list[READ]);
 			if (it->get_cgi_fd() > _highest_socket)
 				_highest_socket = it->get_cgi_fd();
 		}
@@ -157,13 +151,13 @@ WebServer::build_select_list() {
 }
 
 void
-WebServer::read_socks() {
+WebServer::_read_socks() {
 	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
-		if (FD_ISSET(it->get_server_sd(), &_sockets_list))
-			this->accept_connection(*it);
+		if (FD_ISSET(it->get_server_sd(), &_sockets_list[READ]))
+			this->_accept_connection(*it);
 	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
-		if (FD_ISSET(it->get_sd(), &_sockets_list) && SUCCESS != it->read_socket()) {
+		if (FD_ISSET(it->get_sd(), &_sockets_list[READ]) && SUCCESS != it->read_socket()) {
 			close(it->get_sd());
 			it = _clients.erase(it);
 		}
@@ -171,11 +165,23 @@ WebServer::read_socks() {
 			it++;
 	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
-		if (FD_ISSET(it->get_fd(), &_sockets_list))
+		if (FD_ISSET(it->get_fd(), &_sockets_list[READ]))
 			it->read_file();
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
-		if (FD_ISSET(it->get_cgi_fd(), &_sockets_list))
+		if (FD_ISSET(it->get_cgi_fd(), &_sockets_list[READ]))
 			it->read_cgi();
+}
+
+void
+WebServer::_write_socks() {
+	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
+		if (FD_ISSET(it->get_sd(), &_sockets_list[WRITE]) && SUCCESS != it->write_socket()) {
+			close(it->get_sd());
+			it = _clients.erase(it);
+		}
+		else
+			it++;
+	}
 }
 
 int
