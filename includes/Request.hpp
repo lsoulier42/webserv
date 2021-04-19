@@ -41,7 +41,6 @@ class Request : public AHTTPMessage {
 				void set_request_target(const std::string &request_target);
 
 				void reset(void);
-				void render(void) const;
 
 			private:
 
@@ -78,7 +77,6 @@ class Request : public AHTTPMessage {
 		void set_virtual_server(const VirtualServer* virtual_server);
 
 		void reset(void);
-		void render(void) const;
 
 	private:
 

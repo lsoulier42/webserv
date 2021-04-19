@@ -33,7 +33,7 @@
 # include "VirtualServer.hpp"
 # include "ConfigParsing.hpp"
 
-# define DEFAULT_MAX_CONNECTION 5
+# define DEFAULT_MAX_CONNECTION 10
 
 class Server;
 
@@ -45,15 +45,15 @@ class WebServer {
 		int parsing(const std::string& filepath);
 		void setup_servers();
 		void routine();
+		static void set_non_blocking(int file_descriptor);
 
 		static bool verbose;
 
 	private:
 		WebServer(const WebServer& src);
 		WebServer& operator=(const WebServer& rhs);
-
 		void accept_connection(const Server& server);
-		static void set_non_blocking(int socket_fd);
+
 		void build_select_list();
 		void read_socks();
 		void close_sockets();
@@ -61,7 +61,7 @@ class WebServer {
 		std::ifstream _config_file;
 		std::list<Server> _servers;
 		std::list<VirtualServer> _virtual_servers;
-		int _max_connection;
+		size_t _max_connection;
 		std::list<Client> _clients;
 		fd_set _sockets_list;
 		int _highest_socket;

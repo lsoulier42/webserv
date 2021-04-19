@@ -48,6 +48,7 @@ WebServer::setup_servers() {
 void
 WebServer::accept_connection(const Server& server) {
 	int connection;
+	bool max_client_reached;
 	struct sockaddr client_addr = *server.get_sock_addr();
 	socklen_t client_socket_len = *server.get_addr_len();
 
@@ -62,17 +63,9 @@ WebServer::accept_connection(const Server& server) {
 	set_non_blocking(connection);
 	if (connection == -1)
 		return ;
-	if (_clients.size() == (size_t)_max_connection) {
-		//TODO: handle SERVICE UNAVAILABLE
-		/*std::string full_response = "Sorry, this server is too busy.\n Try again later! \r\n";
-		std::cout << "No room left for new client." << std::endl;
-		send(connection, full_response.c_str(), full_response.size(), 0);*/
-		close(connection);
-	} else {
-		std::cout << "Connection accepted: FD=" << connection << std::endl;
-		_clients.push_back(Client(connection, client_addr, client_socket_len,
-			VirtualServer::build_virtual_server_list(_virtual_servers, server.get_virtual_server())));
-	}
+	max_client_reached = _clients.size() >= _max_connection;
+	_clients.push_back(Client(connection, client_addr, client_socket_len,
+		VirtualServer::build_virtual_server_list(_virtual_servers, server.get_virtual_server()), max_client_reached));
 }
 
 void
@@ -116,17 +109,17 @@ WebServer::routine(void) {
 }
 
 void
-WebServer::set_non_blocking(int socket_fd) {
+WebServer::set_non_blocking(int file_descriptor) {
 	int opts;
 
-	opts = fcntl(socket_fd, F_GETFD);
+	opts = fcntl(file_descriptor, F_GETFD);
 	if (opts < 0) {
 		std::cerr << "Fcntl error with F_GETFD : ";
 		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	opts = (opts | O_NONBLOCK);
-	if (fcntl(socket_fd, F_SETFL, opts) < 0) {
+	if (fcntl(file_descriptor, F_SETFL, opts) < 0) {
 		std::cerr << "Fcntl error with F_SETFL : ";
 		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);

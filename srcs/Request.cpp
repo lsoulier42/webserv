@@ -94,16 +94,6 @@ Request::reset(void) {
 	_request_line.reset();
 }
 
-void
-Request::render(void) const {
-	std::cout << "---REQUEST LINE---" << std::endl;
-	_request_line.render();
-	std::cout << std::endl << "---HEADERS---" << std::endl;
-	get_headers().render();
-	std::cout << std::endl << "---BODY---" << std::endl;
-	std::cout << get_body() << "$" << std::endl << std::endl;
-}
-
 Request::RequestLine::RequestLine(void) :
 	AStartLine(),
 	_method(DEFAULT_METHOD),
@@ -157,20 +147,6 @@ Request::RequestLine::reset(void) {
 	AStartLine::reset();
 	_method = DEFAULT_METHOD;
 	_request_target.clear();
-}
-
-void
-Request::RequestLine::render(void) const {
-	size_t	i(0);
-	while (i < DEFAULT_METHOD) {
-		if (Syntax::method_tab[i].method_index == _method) {
-			std::cout << "METHOD : " << Syntax::method_tab[i].name << std::endl;
-			break ;
-		}
-		i++;
-	}
-	std::cout << "REQUEST TARGET : " << _request_target << "$" << std::endl;
-	std::cout << "HTTP VERSION : " << get_http_version() << "$" << std::endl;
 }
 
 const Location*

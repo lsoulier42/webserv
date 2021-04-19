@@ -28,7 +28,7 @@
 # include <dirent.h>
 # include <algorithm>
 # include <fcntl.h>
-# include <stdio.h>
+# include <cstdio>
 # include <cerrno>
 # include <sstream>
 # include "Request.hpp"
@@ -39,6 +39,7 @@
 # include "CGIResponse.hpp"
 
 class RequestParsing;
+class ResponseHandling;
 
 class Client {
 
@@ -50,7 +51,7 @@ class Client {
 
 		Client(void);
 		explicit Client(int sd, struct sockaddr addr, socklen_t socket_len,
-			const std::list<const VirtualServer*> &virtual_servers);
+			const std::list<const VirtualServer*> &virtual_servers, bool connection_refused);
 		Client(const Client &x);
 		~Client(void);
 		Client &operator=(const Client &x);
@@ -78,6 +79,7 @@ class Client {
 		std::string _cgi_output_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
+		bool _connection_refused;
 
 		/* debug function
 		 *
@@ -89,6 +91,7 @@ class Client {
 		 *
 		 *
 		 */
+		int _process_connection_refused();
 		int _process(exchange_t &exchange);
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
@@ -97,45 +100,9 @@ class Client {
 		int _open_file_to_read(const std::string &path);
 		int _build_output_str(exchange_t &exchange);
 		int _write_socket(exchange_t &exchange);
-		void _generate_basic_headers(exchange_t &exchange);
 		void _generate_error_page(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
-
-		/* Response headers handlers
-		 *
-		 *
-		 *
-		 */
-		int _process_response_headers(exchange_t &exchange);
-		int _response_allow_handler(exchange_t &exchange);
-		int _response_content_language_handler(exchange_t &exchange);
-		int _response_content_length_handler(exchange_t &exchange);
-		int _response_content_location_handler(exchange_t &exchange);
-		int _response_content_type_handler(exchange_t &exchange);
-		int _response_date_handler(exchange_t &exchange);
-		int _response_last_modified_handler(exchange_t &exchange);
-		int _response_location_handler(exchange_t &exchange);
-		int _response_retry_after_handler(exchange_t &exchange);
-		int _response_server_handler(exchange_t &exchange);
-		int _response_transfer_encoding_handler(exchange_t &exchange);
-		int _response_www_authenticate_handler(exchange_t &exchange);
-
-		/* Response header helpers
-		 *
-		 *
-		 *
-		 */
-		void _pick_content_type(exchange_t &exchange);
-		static std::string get_current_HTTP_date(void);
-		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, method_t method);
-		static std::string _html_content_language_parser(const Response& response);
-		static std::string _xml_content_language_parser(const Response& response);
-		static bool _is_accepted_language(const std::string& language_found, const std::list<std::string>& allowed_languages);
-		static bool _is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets);
-		static std::string _html_charset_parser(const Response& response);
-		static std::string _xml_charset_parser(const Response& response);
-
 
 		/* Autoindex
 		 *

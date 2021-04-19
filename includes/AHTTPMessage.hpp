@@ -37,7 +37,6 @@ class AHTTPMessage {
 				void set_http_version(const std::string &http_version);
 
 				void reset(void);
-				virtual void render(void) const = 0;
 
 			protected:
 
@@ -81,7 +80,6 @@ class AHTTPMessage {
 		void set_body(const std::string &body);
 
 		void reset(void);
-		virtual void render(void) const = 0;
 
 	protected:
 
