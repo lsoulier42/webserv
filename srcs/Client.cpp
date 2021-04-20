@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:20:07 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 10:49:21 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,14 +90,13 @@ Client::get_cgi_fd(void) const {
 	return (_cgi_fd);
 }
 
-
 /*
  * REQUEST RECEPTION
  */
 
 int
 Client::_process_connection_refused() {
-	exchange_t refused_exchange = std::make_pair(Request(_virtual_servers.front()), Response());
+	exchange_t refused_exchange = std::make_pair(Request(*this), Response());
 	refused_exchange.second.get_status_line().set_http_version("HTTP/1.1");
 	refused_exchange.second.get_status_line().set_status_code(SERVICE_UNAVAILABLE);
 	refused_exchange.first.set_compromising(true);
@@ -164,7 +163,7 @@ Client::_process(exchange_t &exchange) {
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
 		return (_process_error(exchange));
 	if (_is_cgi_related(request))
-		return (_process_cgi(exchange));
+		return (_handle_cgi(exchange));
 	if (request.get_request_line().get_method() == GET)
 		return (_process_GET(exchange));
 	return (FAILURE);
@@ -282,60 +281,6 @@ Client::_generate_autoindex(exchange_t &exchange) {
 	return (_build_output_str(exchange));
 }
 
-bool
-Client::_is_cgi_related(const Request &request) const {
-	std::string	path(_build_cgi_script_path(request));
-	return (path.find(".") != std::string::npos
-				&& path.substr(path.rfind(".")) == request.get_location()->get_cgi_extension());
-}
-
-std::string
-Client::_build_cgi_script_path(const Request &request) const {
-	std::string	request_target(request.get_request_line().get_request_target());
-	std::string	cgi_extension(request.get_location()->get_cgi_extension());
-	std::string	path(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
-	return (request.get_location()->get_cgi_path() + path);
-}
-
-int
-Client::_create_cgi_child_process(void) {
-	pid_t	pid;
-
-	pid = fork();
-	while (pid == -1 && errno == EAGAIN)
-		pid = fork();
-	return (pid);
-}
-
-int
-Client::_process_cgi(exchange_t &exchange) {
-	Request				&request(exchange.first);
-	CGIMetaVariables	mv(request);
-	pid_t				pid;
-	int					req_pipe[2];
-	int					res_pipe[2];
-	pipe(req_pipe);
-	pipe(res_pipe);
-	std::cout << "PROCESS CGI" << std::endl;
-	if (-1 == (pid = _create_cgi_child_process()))
-		return (FAILURE);
-	if (!pid) {
-		close(req_pipe[1]);
-		close(res_pipe[0]);
-		dup2(req_pipe[0], STDIN_FILENO);
-		dup2(res_pipe[1], STDOUT_FILENO);
-		if (0 > execve(_build_cgi_script_path(request).c_str(), mv.get_tab(), mv.get_tab()))
-			perror("execve");
-		return (FAILURE);
-	}
-	close(req_pipe[0]);
-	close(res_pipe[1]);
-	write(req_pipe[1], request.get_body().c_str(), request.get_body().size());
-	close(req_pipe[1]);
-	_cgi_fd = res_pipe[0];
-	return (SUCCESS);
-}
-
 int
 Client::_process_GET(exchange_t &exchange) {
 	Request		&request(exchange.first);
@@ -425,56 +370,6 @@ Client::_open_file_to_read(const std::string &path) {
 }
 
 int
-Client::read_cgi(void) {
-	char		buffer[_buffer_size + 1];
-	int			ret;
-
-	ret = read(_cgi_fd, buffer, _buffer_size);
-	if (ret < 0) {
-		close(_cgi_fd);
-		return (FAILURE);
-	}
-	if (ret == 0) {
-		close(_cgi_fd);
-		_cgi_fd = 0;
-		std::cout << "end of file" << std::endl;
-		return (_cgi_output_str_parsing());
-	}
-	buffer[ret] = '\0';
-	std::cout << buffer;
-	_cgi_output_str += buffer;
-	return (SUCCESS);
-}
-
-int
-Client::_cgi_output_str_parsing(void) {
-	CGIResponse	cgi_response;
-
-	while (std::string::npos != _cgi_output_str.find("\n")
-			&& _cgi_output_str.compare(0, 1, "\n"))
-		_collect_cgi_header(cgi_response);
-	_cgi_output_str.erase(0, _cgi_output_str.find("\n") + 1);
-	cgi_response.set_body(_cgi_output_str);
-	_cgi_output_str.clear();
-	cgi_response.get_headers().render();
-	return (SUCCESS);
-}
-
-void
-Client::_collect_cgi_header(CGIResponse &cgi_response) {
-	size_t				col(0);
-	size_t				end_header(_cgi_output_str.find("\n"));
-	header_t			current_header;
-
-	if (std::string::npos != (col = _cgi_output_str.find_first_of(':'))) {
-		current_header.name = _cgi_output_str.substr(0, col);
-		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output_str.substr(col + 1, (end_header - col - 1)));
-		cgi_response.get_headers().insert(current_header);
-	}
-	_cgi_output_str.erase(0, end_header + 1);
-}
-
-int
 Client::read_file(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
@@ -528,4 +423,107 @@ Client::_send_debug_str(const std::string& str) const {
 	size_t size = to_send.size();
 
 	send(_sd, to_send.c_str(), size, 0);
+}
+
+bool
+Client::_is_cgi_related(const Request &request) const {
+	std::string	path(_build_cgi_script_path(request));
+	return (path.find(".") != std::string::npos
+				&& path.substr(path.rfind(".")) == request.get_location()->get_cgi_extension());
+}
+
+std::string
+Client::_build_cgi_script_path(const Request &request) const {
+	std::string	request_target(request.get_request_line().get_request_target());
+	std::string	cgi_extension(request.get_location()->get_cgi_extension());
+	std::string	path(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
+	return (request.get_location()->get_cgi_path() + path);
+}
+
+int
+Client::_create_cgi_child_process(void) {
+	pid_t	pid;
+
+	pid = fork();
+	while (pid == -1 && errno == EAGAIN)
+		pid = fork();
+	return (pid);
+}
+
+int
+Client::_handle_cgi(exchange_t &exchange) {
+	Request				&request(exchange.first);
+	CGIMetaVariables	mv(request);
+	pid_t				pid;
+	int					req_pipe[2];
+	int					res_pipe[2];
+	pipe(req_pipe);
+	pipe(res_pipe);
+	if (-1 == (pid = _create_cgi_child_process()))
+		return (FAILURE);
+	if (!pid) {
+		close(req_pipe[1]);
+		close(res_pipe[0]);
+		dup2(req_pipe[0], STDIN_FILENO);
+		dup2(res_pipe[1], STDOUT_FILENO);
+		if (0 > execve(_build_cgi_script_path(request).c_str(), mv.get_tab(), mv.get_tab()))
+			perror("execve");
+		return (FAILURE);
+	}
+	close(req_pipe[0]);
+	close(res_pipe[1]);
+	write(req_pipe[1], request.get_body().c_str(), request.get_body().size());
+	close(req_pipe[1]);
+	_cgi_fd = res_pipe[0];
+	return (SUCCESS);
+}
+
+int
+Client::read_cgi(void) {
+	char		buffer[_buffer_size + 1];
+	int			ret;
+
+	ret = read(_cgi_fd, buffer, _buffer_size);
+	if (ret < 0) {
+		close(_cgi_fd);
+		return (FAILURE);
+	}
+	if (ret == 0) {
+		close(_cgi_fd);
+		_cgi_fd = 0;
+		std::cout << "end of file" << std::endl;
+		return (_cgi_output_str_parsing());
+	}
+	buffer[ret] = '\0';
+	std::cout << buffer;
+	_cgi_output_str += buffer;
+	return (SUCCESS);
+}
+
+int
+Client::_cgi_output_str_parsing(void) {
+	CGIResponse	cgi_response;
+
+	while (std::string::npos != _cgi_output_str.find("\n")
+			&& _cgi_output_str.compare(0, 1, "\n"))
+		_collect_cgi_header(cgi_response);
+	_cgi_output_str.erase(0, _cgi_output_str.find("\n") + 1);
+	cgi_response.set_body(_cgi_output_str);
+	_cgi_output_str.clear();
+	cgi_response.get_headers().render();
+	return (SUCCESS);
+}
+
+void
+Client::_collect_cgi_header(CGIResponse &cgi_response) {
+	size_t				col(0);
+	size_t				end_header(_cgi_output_str.find("\n"));
+	header_t			current_header;
+
+	if (std::string::npos != (col = _cgi_output_str.find_first_of(':'))) {
+		current_header.name = _cgi_output_str.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output_str.substr(col + 1, (end_header - col - 1)));
+		cgi_response.get_headers().insert(current_header);
+	}
+	_cgi_output_str.erase(0, end_header + 1);
 }

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/16 23:00:25 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 11:53:23 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -314,7 +314,7 @@ char
 	char		*mv;
 	std::string	mv_str(_server_port + "=");
 
-	mv_str += "80";
+	mv_str += request.get_virtual_server()->get_port_str();
 	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
 		throw (std::bad_alloc());
 	strcpy(mv, mv_str.c_str());

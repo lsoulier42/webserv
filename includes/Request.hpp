@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:20:32 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/16 15:41:18 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 11:27:34 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,11 +15,13 @@
 
 # include <string>
 # include <iostream>
+# include <sys/socket.h>
 # include "Syntax.hpp"
 # include "AHTTPMessage.hpp"
 # include "VirtualServer.hpp"
 
 class Location;
+class Client;
 
 class Request : public AHTTPMessage {
 
@@ -59,7 +61,7 @@ class Request : public AHTTPMessage {
 		};
 
 		Request(void);
-		Request(const VirtualServer *virtual_server);
+		Request(const Client &client);
 		Request(const Request &x);
 		~Request(void);
 		Request &operator=(const Request &x);
@@ -70,6 +72,7 @@ class Request : public AHTTPMessage {
 		bool get_compromising(void) const;
 		const VirtualServer* get_virtual_server() const;
 		const Location* get_location() const;
+		const struct sockaddr &get_client_addr(void) const;
 		void set_location(const Location* location);
 
 		void set_status(request_status_t status);
@@ -85,6 +88,8 @@ class Request : public AHTTPMessage {
 		bool _compromising;
 		const VirtualServer* _virtual_server;
 		const Location*	_location;
+		const struct sockaddr _client_addr;
+
 };
 
 #endif

@@ -6,7 +6,7 @@
 /*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/15 19:32:20 by louise            #+#    #+#             */
-/*   Updated: 2021/04/16 15:45:42 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 11:49:54 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,8 @@ class VirtualServer {
 
 		std::string get_ip_addr() const;
 		void set_ip_addr(const std::string& ipAddr);
+		const std::string &get_port_str(void) const;
+		void set_port_str(const std::string &port_str);
 		int get_port() const;
 		void set_port(int port);
 		std::list<std::string> get_server_names() const;
@@ -47,10 +49,10 @@ class VirtualServer {
 
 		static std::list<const VirtualServer*> build_virtual_server_list(const std::list<VirtualServer>& virtual_servers,
 			const VirtualServer* default_server);
-//		static void pick_virtual_server(Request &request, const std::list<const VirtualServer*> &virtual_servers);
 
 	private:
 		std::string _ip_addr;
+		std::string _port_str;
 		int _port;
 		std::list<std::string> _server_names;
 		std::list<status_code_t> _error_page_codes;

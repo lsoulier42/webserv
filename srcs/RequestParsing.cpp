@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:24:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 10:48:20 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@ RequestParsing::parsing(Client &client) {
 	std::string	&input_str(client._input_str);
 	while (!client._closing && !input_str.empty()) {
 		if (client._exchanges.empty() || client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
-			client._exchanges.push_back(std::make_pair(Request(client._virtual_servers.front()), Response()));
+			client._exchanges.push_back(std::make_pair(Request(client), Response()));
 		Client::exchange_t	&current_exchange(client._exchanges.back());
 		Request				&request(current_exchange.first);
 		if (_request_line_received(request, input_str) && SUCCESS != (ret = _collect_request_line_elements(request, input_str))) {
