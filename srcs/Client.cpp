@@ -67,7 +67,7 @@ Client::Client(const Client &x) :
 	_connection_refused(x._connection_refused) {}
 
 Client::~Client(void) {
-
+	this->free_output();
 }
 
 Client
@@ -154,7 +154,7 @@ Client::write_socket(void) throw(std::bad_alloc) {
 	to_write = _output_size > _buffer_size ? _buffer_size : _output_size;
 	write_return = write(_sd, _output, to_write);
 	if (write_return == -1)
-		return (FAILURE);
+		return (free_output());
 	if (_output_size - write_return > 0) {
 		_output = Syntax::buffer_pop_front(_output, _output_size, write_return);
 		if (_output == NULL)
@@ -194,11 +194,10 @@ Client::_process(exchange_t &exchange) {
 
 std::string
 Client::_format_index_path(const std::string& dir_path, const std::string& index_file) {
-	std::string definite_path = dir_path;
+	std::string definite_path;
 	std::string definite_index_file = index_file;
 
-	if (*(--dir_path.end()) != '/')
-		definite_path += "/";
+	definite_path = _format_directory_name(dir_path);
 	if (*index_file.begin() == '/')
 		definite_index_file = index_file.substr(1);
 	return definite_path + definite_index_file;
@@ -221,9 +220,9 @@ Client::_get_default_index(exchange_t &exchange) {
 		}
 	}
 	if (Syntax::get_path_type(definite_path) == INVALID_PATH)
-		return FAILURE;
+		return (FAILURE);
 	response.set_target_path(definite_path);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 std::string
@@ -392,8 +391,6 @@ Client::_process_GET(exchange_t &exchange) {
 	return (_open_file_to_read(response.get_target_path()));
 }
 
-
-
 void
 Client::_generate_error_page(exchange_t &exchange) {
 	Response& response = exchange.second;
@@ -517,7 +514,7 @@ Client::read_file(void) {
 	ret = read(_fd, buffer, _buffer_size);
 	if (ret < 0) {
 		close(_fd);
-		return (FAILURE);
+		return (response.free_body());
 	}
 	if (ret == 0) {
 		close(_fd);
@@ -541,7 +538,7 @@ Client::_build_output(Response& response) throw(std::bad_alloc) {
 		throw(std::bad_alloc());
 	_output = (char*)memcpy(_output, _begin_response.c_str(), begin_size);
 	memcpy(_output + begin_size, body, body_size);
-	free(body);
+	response.free_body();
 	return (SUCCESS);
 }
 
@@ -574,4 +571,14 @@ Client::_send_debug_str(const std::string& str) const {
 	size_t size = to_send.size();
 
 	send(_sd, to_send.c_str(), size, 0);
+}
+
+int
+Client::free_output(void) {
+	if(_output != NULL && _output_size != 0) {
+		free(_output);
+		_output = NULL;
+		_output_size = 0;
+	}
+	return (FAILURE);
 }

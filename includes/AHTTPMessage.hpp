@@ -80,6 +80,7 @@ class AHTTPMessage {
 		void set_body(const char* body, size_t body_size) throw(std::bad_alloc);
 		void append_to_body(const char* to_append, size_t size_to_append) throw(std::bad_alloc);
 		size_t get_body_size() const;
+		int free_body();
 
 		virtual void reset(void);
 

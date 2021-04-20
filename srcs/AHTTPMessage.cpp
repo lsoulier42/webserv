@@ -22,7 +22,7 @@ AHTTPMessage::AHTTPMessage(const AHTTPMessage &x) throw(std::bad_alloc) {
 }
 
 AHTTPMessage::~AHTTPMessage(void) {
-
+	this->free_body();
 }
 
 AHTTPMessage
@@ -163,4 +163,14 @@ AHTTPMessage::append_to_body(const char* to_append, size_t size_to_append) throw
 			throw(std::bad_alloc());
 		_body_size += size_to_append;
 	}
+}
+
+int
+AHTTPMessage::free_body() {
+	if (_body != NULL && _body_size != 0) {
+		free(_body);
+		_body = NULL;
+		_body_size = 0;
+	}
+	return (FAILURE);
 }

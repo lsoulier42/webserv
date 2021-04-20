@@ -64,6 +64,7 @@ class Client {
 		int write_socket(void) throw(std::bad_alloc);
 		int read_file(void);
 		int read_cgi(void);
+		int free_output(void);
 
 	private:
 
