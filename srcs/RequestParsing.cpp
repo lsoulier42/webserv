@@ -184,7 +184,7 @@ RequestParsing::_collect_body(Request &request, std::string &input_str) {
 		body_length = input_str.find("0\r\n\r\n") + 5;
 	else if (request.get_headers().key_exists(CONTENT_LENGTH))
 		body_length = static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
-	request.set_body(input_str.substr(0, body_length));
+	request.set_body(input_str.substr(0, body_length).c_str(), body_length);
 	input_str.erase(0, body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);

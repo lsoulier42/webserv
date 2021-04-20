@@ -13,9 +13,13 @@
 #include "ResponseHandling.hpp"
 #include "RequestParsing.hpp"
 
-ResponseHandling::ResponseHandling() {}
+ResponseHandling::ResponseHandling() {
 
-ResponseHandling::~ResponseHandling() {}
+}
+
+ResponseHandling::~ResponseHandling() {
+
+}
 
 void
 ResponseHandling::_pick_content_type(Client::exchange_t &exchange) {
@@ -59,8 +63,7 @@ ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 
 bool
 ResponseHandling::_is_allowed_method(const std::list<std::string>& allowed_methods, method_t method) {
-	for(std::list<std::string>::const_iterator it = allowed_methods.begin();
-		it != allowed_methods.end(); it++) {
+	for(std::list<std::string>::const_iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
 		if (*it == Syntax::method_tab[method].name)
 			return true;
 	}
@@ -91,7 +94,7 @@ ResponseHandling::_response_allow_handler(Client::exchange_t &exchange) {
 std::string
 ResponseHandling::_html_content_language_parser(const Response& response) {
 	std::string content_language_str, line_tag;
-	const std::string& body = response.get_body();
+	std::string body(response.get_body(), response.get_body_size());
 	size_t html_tag_pos, end_html_tag_pos, lang_pos, end_lang_pos;
 
 	html_tag_pos = body.find("<html");
@@ -118,7 +121,7 @@ ResponseHandling::_html_content_language_parser(const Response& response) {
 std::string
 ResponseHandling::_xml_content_language_parser(const Response& response) {
 	std::string content_language_str, line_tag;
-	const std::string& body = response.get_body();
+	std::string body(response.get_body(), response.get_body_size());
 	size_t lang_pos, end_lang_pos;
 
 	lang_pos = body.find("xml:lang=\"");
@@ -215,7 +218,7 @@ ResponseHandling::_is_accepted_charset(const std::string& charset_found, const s
 
 std::string
 ResponseHandling::_html_charset_parser(const Response& response) {
-	const std::string& body = response.get_body();
+	std::string body(response.get_body(), response.get_body_size());
 	std::string header_bloc, charset, meta_tag("<meta charset=\"") ;
 	size_t header_bloc_begin, header_bloc_end, meta_bloc_begin, meta_bloc_end;
 
@@ -240,7 +243,7 @@ ResponseHandling::_html_charset_parser(const Response& response) {
 
 std::string
 ResponseHandling::_xml_charset_parser(const Response& response) {
-	const std::string& body = response.get_body();
+	std::string body(response.get_body(), response.get_body_size());
 	std::string xml_tag, encoding, charset;
 	size_t xml_tag_begin, xml_tag_end, encoding_begin, encoding_end;
 
@@ -378,7 +381,7 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	status_code_t error_code = response.get_status_line().get_status_code();
 	std::stringstream ss;
 
-	ss << response.get_body().length();
+	ss << response.get_body_size();
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
 	response.get_headers().insert(CONTENT_TYPE, "text/html");

@@ -54,14 +54,14 @@ class Client {
 			const std::list<const VirtualServer*> &virtual_servers, bool connection_refused);
 		Client(const Client &x);
 		~Client(void);
-		Client &operator=(const Client &x);
+		Client &operator=(const Client &x) throw(std::bad_alloc);
 
 		int get_sd(void) const;
 		int get_fd(void) const;
 		int get_cgi_fd(void) const;
 		
 		int read_socket(void);
-		int write_socket(void);
+		int write_socket(void) throw(std::bad_alloc);
 		int read_file(void);
 		int read_cgi(void);
 
@@ -76,7 +76,9 @@ class Client {
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
 		std::string _input_str;
-		std::string _output_str;
+		std::string _begin_response;
+		char*		_output;
+		size_t 		_output_size;
 		std::string _cgi_output_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
@@ -99,20 +101,22 @@ class Client {
 		int _process_cgi(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
-		int _build_output_str(exchange_t &exchange);
+		int _build_begin_response(exchange_t &exchange);
 		void _generate_error_page(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
+		int _build_output(Response& response) throw(std::bad_alloc);
 
-		/* Autoindex
+	/* Autoindex
 		 *
 		 *
 		 *
 		 */
 		int	_generate_autoindex(exchange_t &exchange);
-		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, const std::string& target_path, bool is_dir);
+		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, exchange_t& exchange, bool is_dir);
 		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
 			const std::set<std::string>& file_names);
+		std::string _format_directory_name(const std::string& directory_name);
     
     /* CGI
      *

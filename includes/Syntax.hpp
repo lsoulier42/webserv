@@ -13,6 +13,7 @@
 #ifndef SYNTAX_HPP
 # define SYNTAX_HPP
 # include <string>
+# include <cstring>
 # include <list>
 # include <vector>
 # include <map>
@@ -332,6 +333,10 @@ class Syntax {
 			}
 			return false;
 		}
+
+		static char *buffer_dup(const char* buffer, size_t n);
+		static char *buffer_append(char* dest, const char* buffer, size_t dest_size, size_t buffer_size);
+		static char *buffer_pop_front(char* buffer, size_t buffer_size, size_t size_to_erase);
 
 	private:
 		Syntax();

@@ -14,18 +14,28 @@
 
 AHTTPMessage::AHTTPMessage(void) :
 	_headers(),
-	_body() {}
+	_body(NULL),
+	_body_size(0) {}
 
-AHTTPMessage::AHTTPMessage(const AHTTPMessage &x) :
-	_headers(x._headers),
-	_body(x._body) {}
+AHTTPMessage::AHTTPMessage(const AHTTPMessage &x) throw(std::bad_alloc) {
+	*this = x;
+}
 
-AHTTPMessage::~AHTTPMessage(void) {}
+AHTTPMessage::~AHTTPMessage(void) {
+
+}
 
 AHTTPMessage
-&AHTTPMessage::operator=(const AHTTPMessage &x) {
-	_headers = x._headers;
-	_body = x._body;
+&AHTTPMessage::operator=(const AHTTPMessage &x) throw(std::bad_alloc) {
+	if (this != &x) {
+		_headers = x._headers;
+		if (x._body) {
+			_body = Syntax::buffer_dup(x._body, x._body_size);
+			if (_body == NULL)
+				throw(std::bad_alloc());
+		}
+		_body_size = x._body_size;
+	}
 	return (*this);
 }
 
@@ -39,20 +49,30 @@ AHTTPMessage::HTTPHeaders
 	return (_headers);
 }
 
-const std::string
-&AHTTPMessage::get_body(void) const {
+char*
+AHTTPMessage::get_body(void) const {
 	return (_body);
 }
 
 void
-AHTTPMessage::set_body(const std::string &body) {
-	_body = body;
+AHTTPMessage::set_body(const char* body, size_t body_size) throw(std::bad_alloc) {
+	if (_body != NULL) {
+		free(_body);
+		_body = NULL;
+	}
+	_body = Syntax::buffer_dup(body, body_size);
+	if (_body == NULL)
+		throw(std::bad_alloc());
+	_body_size = body_size;
 }
 
 void
 AHTTPMessage::reset(void) {
 	_headers.clear();
-	_body.clear();
+	if (_body) {
+		free(_body);
+		_body = NULL;
+	}
 }
 
 AHTTPMessage::AStartLine::AStartLine(void) :
@@ -126,4 +146,21 @@ AHTTPMessage::HTTPHeaders::get_value(header_name_t key) const throw (std::invali
 void
 AHTTPMessage::HTTPHeaders::set_value(header_name_t key, const std::list<std::string>& parsed_value) throw (std::invalid_argument) {
 	Headers::set_value(Syntax::headers_tab[key].name, parsed_value);
+}
+
+size_t
+AHTTPMessage::get_body_size() const {
+	return _body_size;
+}
+
+void
+AHTTPMessage::append_to_body(const char* to_append, size_t size_to_append) throw(std::bad_alloc) {
+	if (_body == NULL)
+		this->set_body(to_append, size_to_append);
+	else {
+		_body = Syntax::buffer_append(_body, to_append, _body_size, size_to_append);
+		if (_body == NULL)
+			throw(std::bad_alloc());
+		_body_size += size_to_append;
+	}
 }
