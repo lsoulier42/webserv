@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/20 10:49:21 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 18:28:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -437,7 +437,7 @@ Client::_build_cgi_script_path(const Request &request) const {
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	cgi_extension(request.get_location()->get_cgi_extension());
 	std::string	path(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
-	return (request.get_location()->get_cgi_path() + path);
+	return (request.get_location()->get_root() + path);
 }
 
 int
@@ -457,6 +457,16 @@ Client::_handle_cgi(exchange_t &exchange) {
 	pid_t				pid;
 	int					req_pipe[2];
 	int					res_pipe[2];
+	std::string			arg0_str(request.get_location()->get_cgi_path());
+	std::string			arg1_str(_build_cgi_script_path(request));
+	char				*arg0(new char[arg0_str.size() + 1]);
+	char				*arg1(new char[arg1_str.size() + 1]);
+
+	strcpy(arg0, arg0_str.c_str());
+	strcpy(arg1, arg1_str.c_str());
+	char	*args[2];
+	args[0] = arg0;
+	args[1] = arg1;
 	pipe(req_pipe);
 	pipe(res_pipe);
 	if (-1 == (pid = _create_cgi_child_process()))
@@ -466,7 +476,8 @@ Client::_handle_cgi(exchange_t &exchange) {
 		close(res_pipe[0]);
 		dup2(req_pipe[0], STDIN_FILENO);
 		dup2(res_pipe[1], STDOUT_FILENO);
-		if (0 > execve(_build_cgi_script_path(request).c_str(), mv.get_tab(), mv.get_tab()))
+		chdir(request.get_location()->get_root().c_str());
+		if (0 > execve(request.get_location()->get_cgi_path().c_str(), args, mv.get_tab()))
 			perror("execve");
 		return (FAILURE);
 	}

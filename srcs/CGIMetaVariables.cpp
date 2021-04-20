@@ -6,13 +6,13 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/20 15:50:08 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 18:15:13 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CGIMetaVariables.hpp"
 
-const size_t CGIMetaVariables::_size(17);
+const size_t CGIMetaVariables::_size(18);
 const CGIMetaVariables::_mv_builder_t CGIMetaVariables::_builder_tab[] =
 {
 	&CGIMetaVariables::_build_auth_type,
@@ -31,7 +31,8 @@ const CGIMetaVariables::_mv_builder_t CGIMetaVariables::_builder_tab[] =
 	&CGIMetaVariables::_build_server_name,
 	&CGIMetaVariables::_build_server_port,
 	&CGIMetaVariables::_build_server_protocol,
-	&CGIMetaVariables::_build_server_software
+	&CGIMetaVariables::_build_server_software,
+	&CGIMetaVariables::_build_redirect_status
 };
 const std::string CGIMetaVariables::_auth_type("AUTH_TYPE");
 const std::string CGIMetaVariables::_content_length("CONTENT_LENGTH");
@@ -50,6 +51,7 @@ const std::string CGIMetaVariables::_server_name("SERVER_NAME");
 const std::string CGIMetaVariables::_server_port("SERVER_PORT");
 const std::string CGIMetaVariables::_server_protocol("SERVER_PROTOCOL");
 const std::string CGIMetaVariables::_server_software("SERVER_SOFTWARE");
+const std::string CGIMetaVariables::_redirect_status("REDIRECT_STATUS");
 
 CGIMetaVariables::CGIMetaVariables(void) :
 	_tab() {}
@@ -155,11 +157,16 @@ char
 	char		*mv;
 	std::string	mv_str(_path_info + "=");
 	std::string	request_target(request.get_request_line().get_request_target());
+	/*
 	std::string	cgi_extension(request.get_location()->get_cgi_extension());
 	size_t		size_extra_path(request_target.find("?") - (request_target.find(cgi_extension) + cgi_extension.size()));
 	std::string	extra_path(request_target.substr(request_target.find(cgi_extension) + cgi_extension.size(), size_extra_path));
 
 	mv_str += extra_path;
+	*/
+	std::string	full_path(request_target.substr(0, request_target.find("?")));
+
+	mv_str += full_path;
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
@@ -171,12 +178,18 @@ char
 	char		*mv;
 	std::string	mv_str(_path_translated + "=");
 	std::string	request_target(request.get_request_line().get_request_target());
+	/*
 	std::string	cgi_extension(request.get_location()->get_cgi_extension());
 	size_t		size_extra_path(request_target.find("?") - (request_target.find(cgi_extension) + cgi_extension.size()));
 	std::string	extra_path(request_target.substr(request_target.find(cgi_extension) + cgi_extension.size(), size_extra_path));
 
 	if (!extra_path.empty())
 		mv_str += request.get_location()->get_root() + extra_path;
+		*/
+	std::string	full_path(request_target.substr(0, request_target.find("?")));
+
+	if (!full_path.empty())
+		mv_str += request.get_location()->get_root() + full_path;
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
@@ -263,11 +276,14 @@ char
 *CGIMetaVariables::_build_script_name(const Request &request) throw(std::bad_alloc) {
 	char		*mv;
 	std::string	mv_str(_script_name + "=");
+	/*
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	cgi_extension(request.get_location()->get_cgi_extension());
 	std::string	script_name(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
 
 	mv_str += script_name;
+	*/
+	mv_str += request.get_location()->get_cgi_path();
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
@@ -316,6 +332,18 @@ char
 	std::string	mv_str(_server_software + "=");
 
 	mv_str += "WebServer/1.0";
+	mv = new char[mv_str.size() + 1];
+	strcpy(mv, mv_str.c_str());
+	return (mv);
+}
+
+char
+*CGIMetaVariables::_build_redirect_status(const Request &request) throw(std::bad_alloc) {
+	(void)request;
+	char		*mv;
+	std::string	mv_str(_redirect_status + "=");
+
+	mv_str += "200";
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
