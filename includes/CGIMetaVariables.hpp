@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:19:23 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/20 11:27:26 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 15:49:09 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <string>
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 #include <sys/socket.h>
 #include <netinet/in.h> 
 #include "Syntax.hpp"

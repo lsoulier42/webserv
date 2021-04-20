@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/20 11:53:23 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 15:50:08 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,18 +55,14 @@ CGIMetaVariables::CGIMetaVariables(void) :
 	_tab() {}
 
 CGIMetaVariables::CGIMetaVariables(const Request &request) throw(std::bad_alloc) :
-	_tab() {
-	if (!(_tab = (char**)malloc(sizeof(*_tab) * (_size + 1))))
-		throw (std::bad_alloc());
+	_tab(new char*[_size + 1]) {
 	for (size_t i(0) ; i < _size ; i++)
 		_tab[i] = (*(_builder_tab[i]))(request);
 	_tab[_size] = 0;
 }
 
 CGIMetaVariables::CGIMetaVariables(const CGIMetaVariables &x) throw(std::bad_alloc) :
-	_tab() {
-	if (!(_tab = (char**)malloc(sizeof(*_tab) * (_size + 1))))
-		throw (std::bad_alloc());
+	_tab(new char *[_size + 1]) {
 	for (size_t i(0) ; i < _size ; i++)
 		if (!(_tab[i] = strdup(x._tab[i])))
 			throw (std::bad_alloc());
@@ -77,17 +73,17 @@ CGIMetaVariables::~CGIMetaVariables(void) {
 	if (!_tab)
 		return ;
 	for (size_t i(0) ; i < _size ; i++)
-		free(_tab[i]);
-	free(_tab);
+		delete[] _tab[i];
+	delete[] _tab;
 }
 
 CGIMetaVariables
 &CGIMetaVariables::operator=(const CGIMetaVariables &x) throw(std::bad_alloc) {
 	if (_tab) {
 		for (size_t i(0) ; i < _size ; i++)
-			free(_tab[i]);
-	} else if (!(_tab = (char**)malloc(sizeof(*_tab) * (_size + 1))))
-		throw (std::bad_alloc());
+			delete _tab[i];
+	} else
+		_tab = new char*[_size + 1];
 	for (size_t i(0) ; i < _size ; i++)
 		if (!(_tab[i] = strdup(x._tab[i])))
 			throw (std::bad_alloc());
@@ -112,8 +108,7 @@ char
 
 	if (request.get_headers().key_exists(AUTHORIZATION))
 		mv_str += request.get_headers().get_value(AUTHORIZATION).front();
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -125,8 +120,7 @@ char
 
 	if (request.get_headers().key_exists(CONTENT_LENGTH))
 		mv_str += request.get_headers().get_unparsed_value(CONTENT_LENGTH);
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -138,8 +132,7 @@ char
 
 	if (request.get_headers().key_exists(CONTENT_TYPE))
 		mv_str += request.get_headers().get_unparsed_value(CONTENT_TYPE);
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -151,8 +144,7 @@ char
 	std::string	mv_str(_gateway_interface + "=");
 
 	mv_str += "CGI/1.1";
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -168,8 +160,7 @@ char
 	std::string	extra_path(request_target.substr(request_target.find(cgi_extension) + cgi_extension.size(), size_extra_path));
 
 	mv_str += extra_path;
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -177,7 +168,6 @@ char
 //TODO:: URL-decode
 char
 *CGIMetaVariables::_build_path_translated(const Request &request) throw(std::bad_alloc) {
-	(void)request;
 	char		*mv;
 	std::string	mv_str(_path_translated + "=");
 	std::string	request_target(request.get_request_line().get_request_target());
@@ -187,8 +177,7 @@ char
 
 	if (!extra_path.empty())
 		mv_str += request.get_location()->get_root() + extra_path;
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -200,26 +189,25 @@ char
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	query_string("");
 
-	if (request_target.find("?") != std::string::npos) {
+	if (request_target.find("?") != std::string::npos)
 		query_string = request_target.substr(request_target.find("?") + 1);
-	}
 	mv_str += query_string;
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
 
-//TODO:: ajouter addr_client a Request
 char
 *CGIMetaVariables::_build_remote_addr(const Request &request) throw(std::bad_alloc) {
-	(void)request;
-	char		*mv;
-	std::string	mv_str(_remote_addr + "=");
+	char			*mv;
+	std::string		mv_str(_remote_addr + "=");
+	in_addr			addr(((const struct sockaddr_in*)(&(request.get_client_addr())))->sin_addr);
+	unsigned char	*bytes((unsigned char*)&addr);
+	std::stringstream	ss;
 
-	mv_str += "0123456789";
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	ss << (int)(bytes[0]) << "." << (int)bytes[1] << "." << (int)bytes[2] << "." << (int)bytes[3];
+	mv_str += ss.str();
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -231,8 +219,7 @@ char
 	std::string	mv_str(_remote_ident + "=");
 
 	mv_str += "pouet";
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -244,8 +231,7 @@ char
 
 	if (request.get_headers().key_exists(AUTHORIZATION))
 		mv_str += request.get_headers().get_value(AUTHORIZATION).back();
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -256,25 +242,19 @@ char
 	std::string	mv_str(_request_method + "=");
 
 	mv_str += Syntax::method_tab[request.get_request_line().get_method()].name;
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
 
-//TODO:: probablement pas la bonne valeur...
 char
 *CGIMetaVariables::_build_request_uri(const Request &request) throw(std::bad_alloc) {
-	(void)request;
 	char		*mv;
 	std::string	mv_str(_request_uri + "=");
 	std::string	request_target(request.get_request_line().get_request_target());
-	std::string	cgi_extension(request.get_location()->get_cgi_extension());
-	std::string	request_uri(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
 
-	mv_str += request_uri;
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv_str += request_target;
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -288,8 +268,7 @@ char
 	std::string	script_name(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
 
 	mv_str += script_name;
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -301,13 +280,11 @@ char
 
 	if (request.get_headers().key_exists(HOST))
 		mv_str += request.get_headers().get_unparsed_value(HOST);
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
 
-//TODO:: recuperer port
 char
 *CGIMetaVariables::_build_server_port(const Request &request) throw(std::bad_alloc) {
 	(void)request;
@@ -315,8 +292,7 @@ char
 	std::string	mv_str(_server_port + "=");
 
 	mv_str += request.get_virtual_server()->get_port_str();
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -328,8 +304,7 @@ char
 	std::string	mv_str(_server_protocol + "=");
 
 	mv_str += "HTTP/1.1";
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
@@ -340,9 +315,8 @@ char
 	char		*mv;
 	std::string	mv_str(_server_software + "=");
 
-	mv_str += "WebServer";
-	if (!(mv = (char*)malloc(sizeof(*mv) * (mv_str.size() + 1))))
-		throw (std::bad_alloc());
+	mv_str += "WebServer/1.0";
+	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
 }
