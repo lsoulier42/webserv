@@ -134,9 +134,9 @@ class Client {
 			const std::set<std::string>& file_names);
 		std::string _format_directory_name(const std::string& directory_name);
     
-    /* CGI
-     *
-     */ 
+		/* CGI
+		 *
+		 */
     
 		bool _is_cgi_related(const Request &request) const;
 		std::string _build_cgi_script_path(const Request &request) const;
