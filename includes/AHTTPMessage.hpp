@@ -14,6 +14,7 @@
 # define AHTTPMESSAGE_HPP
 
 # include <string>
+# include <cstring>
 # include <iostream>
 # include <stdexcept>
 # include <list>
@@ -70,26 +71,24 @@ class AHTTPMessage {
 		};
 
 		AHTTPMessage(void);
-		AHTTPMessage(const AHTTPMessage &x);
+		AHTTPMessage(const AHTTPMessage &x) throw(std::bad_alloc);
 		virtual ~AHTTPMessage(void);
 
 		HTTPHeaders &get_headers(void);
 		const HTTPHeaders &get_headers(void) const;
-		const std::string &get_body(void) const;
+		const ByteArray& get_body(void) const;
+		void set_body(const ByteArray& body);
 
-		void set_body(const std::string &body);
-
-		void reset(void);
+		virtual void reset(void);
 
 	protected:
 
-		AHTTPMessage &operator=(const AHTTPMessage &x);
+		AHTTPMessage &operator=(const AHTTPMessage &x) throw(std::bad_alloc);
 
 	private:
 
 		HTTPHeaders _headers;
-		std::string _body;
-
+		ByteArray _body;
 };
 
 #endif

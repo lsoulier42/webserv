@@ -14,8 +14,8 @@
 # define CGIMETAVARIABLES_HPP
 
 #include <string>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include "Syntax.hpp"
 #include "Request.hpp"
 

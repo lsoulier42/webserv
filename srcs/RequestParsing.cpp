@@ -15,27 +15,28 @@
 void
 RequestParsing::parsing(Client &client) {
 	int			ret(0);
-	std::string	&input_str(client._input_str);
-	while (!client._closing && !input_str.empty()) {
+	ByteArray& 	input(client._input);
+	
+	while (!client._closing && !input.empty()) {
 		if (client._exchanges.empty() || client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
 			client._exchanges.push_back(std::make_pair(Request(client._virtual_servers.front()), Response()));
 		Client::exchange_t	&current_exchange(client._exchanges.back());
 		Request				&request(current_exchange.first);
-		if (_request_line_received(request, input_str) && SUCCESS != (ret = _collect_request_line_elements(request, input_str))) {
+		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input))) {
 			_failure(client, current_exchange, (status_code_t)ret);
 			return ;
 		}
-		while (_header_received(request, input_str))
-			_collect_header(request, input_str);
-		if (_headers_received(request, input_str) && SUCCESS != (ret = _check_headers(client, request))) {
+		while (_header_received(request, input))
+			_collect_header(request, input);
+		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request))) {
 			_failure(client, current_exchange, (status_code_t)ret);
 			return ;
 		}
-		if (_body_received(request, input_str))
-			_collect_body(request, input_str);
-		while (_trailer_received(request, input_str))
-			_collect_header(request, input_str);
-		if (_trailers_received(request, input_str) && SUCCESS != (ret = _check_trailer(request, input_str))) {
+		if (_body_received(request, input))
+			_collect_body(request, input);
+		while (_trailer_received(request, input))
+			_collect_header(request, input);
+		if (_trailers_received(request, input) && SUCCESS != (ret = _check_trailer(request, input))) {
 			_failure(client, current_exchange, (status_code_t)ret);
 			return ;
 		}
@@ -56,42 +57,44 @@ RequestParsing::_failure(Client &client, Client::exchange_t &exchange, status_co
 }
 
 bool
-RequestParsing::_request_line_received(const Request &request, const std::string &input_str) {
-	return (request.get_status() == Request::START && std::string::npos != input_str.find("\r\n"));
+RequestParsing::_request_line_received(const Request &request, const ByteArray &input) {
+	return (request.get_status() == Request::START && std::string::npos != input.find("\r\n"));
 }
 
 bool
-RequestParsing::_header_received(const Request &request, const std::string &input_str) {
+RequestParsing::_header_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::REQUEST_LINE_RECEIVED
-			&& !_headers_received(request, input_str)
-			&& std::string::npos != input_str.find("\r\n"));
+			&& !_headers_received(request, input)
+			&& std::string::npos != input.find("\r\n"));
 }
 
 bool
-RequestParsing::_headers_received(const Request &request, const std::string &input_str) {
+RequestParsing::_headers_received(const Request &request, const ByteArray &input) {
+	std::string input_str(input.c_str(), input.size());
 	return (request.get_status() == Request::REQUEST_LINE_RECEIVED
 			&& !input_str.compare(0, 2, "\r\n"));
 }
 
 bool
-RequestParsing::_body_received(const Request &request, const std::string &input_str) {
+RequestParsing::_body_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::HEADERS_RECEIVED
 			&& ((_transfer_encoding_chunked(request)
-					&& input_str.find("0\r\n\r\n") != std::string::npos)
+					&& input.find("0\r\n\r\n") != std::string::npos)
 				|| (request.get_headers().key_exists(CONTENT_LENGTH)
-					&& input_str.size() >= static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())))));
+					&& input.size() >= static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())))));
 }
 
 bool
-RequestParsing::_trailer_received(const Request &request, const std::string &input_str) {
+RequestParsing::_trailer_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::BODY_RECEIVED
-			&& !_trailers_received(request, input_str)
-			&& std::string::npos != input_str.find("\r\n"));
+			&& !_trailers_received(request, input)
+			&& std::string::npos != input.find("\r\n"));
 }
 
 //TODO:: pas du tout comme ca qu'on repere la fin des trailers, provisoire, pour test
 bool
-RequestParsing::_trailers_received(const Request &request, const std::string &input_str) {
+RequestParsing::_trailers_received(const Request &request, const ByteArray &input) {
+	std::string input_str(input.c_str(), input.size());
 	return (request.get_status() == Request::BODY_RECEIVED
 			&& !input_str.compare(0, 2, "\r\n"));
 }
@@ -120,48 +123,51 @@ RequestParsing::_trailer_expected(const Request &request) {
 }
 
 int
-RequestParsing::_collect_request_line_elements(Request &request, std::string &input_str) {
-	size_t		first_sp(0);
-	size_t		scnd_sp(0);
-	size_t		end_rl(input_str.find("\r\n"));
+RequestParsing::_collect_request_line_elements(Request &request, ByteArray &input) {
+	size_t						end_rl(input.find("\r\n"));
+	std::vector<std::string> 	rl_elements = Syntax::split(input.substr(0, end_rl), " ");
 
-	if (std::string::npos == (first_sp = input_str.find_first_of(' '))
-			|| std::string::npos == (scnd_sp = input_str.find_first_of(' ', first_sp + 1))) {
-		input_str.erase(0, end_rl + 2);
+	if (rl_elements.size() != 3) {
+		input.pop_front(end_rl + 2);
 		return (BAD_REQUEST);
 	}
-	request.get_request_line().set_method(input_str.substr(0, first_sp));
-	request.get_request_line().set_request_target(input_str.substr(first_sp + 1, scnd_sp - first_sp - 1));
-	if (request.get_request_line().get_request_target()[0] != '/')
-		return (BAD_REQUEST);
-	request.get_request_line().set_http_version(input_str.substr(scnd_sp + 1, (end_rl - scnd_sp - 1)));
-	input_str.erase(0, end_rl + 2);
-	if (DEFAULT_METHOD == request.get_request_line().get_method())
+	if (!Syntax::is_accepted_value(rl_elements[0], Syntax::method_tab, DEFAULT_METHOD))
 		return (NOT_IMPLEMENTED);
+	if (rl_elements[1][0] != '/')
+		return (BAD_REQUEST);
+	std::vector<std::string> http_elements = Syntax::split(rl_elements[2], "/");
+	if (http_elements.size() != 2 || http_elements[0] != "HTTP")
+		return (BAD_REQUEST);
+	if (strtod(http_elements[1].c_str(), NULL) > 1.1)
+		return (HTTP_VERSION_NOT_SUPPORTED);
+	request.get_request_line().set_method(rl_elements[0]);
+	request.get_request_line().set_request_target(rl_elements[1]);
+	request.get_request_line().set_http_version(rl_elements[2]);
+	input.pop_front(end_rl + 2);
 	request.set_status(Request::REQUEST_LINE_RECEIVED);
 	_pick_location(request);
 	return (SUCCESS);
 }
 
 void
-RequestParsing::_collect_header(Request &request, std::string &input_str) {
+RequestParsing::_collect_header(Request &request, ByteArray &input) {
 	size_t				col(0);
-	size_t				end_header(input_str.find("\r\n"));
+	size_t				end_header(input.find("\r\n"));
 	header_t			current_header;
 
-	if (std::string::npos != (col = input_str.find_first_of(':'))) {
-		current_header.name = input_str.substr(0, col);
-		current_header.unparsed_value = Syntax::trim_whitespaces(input_str.substr(col + 1, (end_header - col - 1)));
+	if (std::string::npos != (col = input.find_first_of(':'))) {
+		current_header.name = input.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(input.substr(col + 1, (end_header - col - 1)));
 		request.get_headers().insert(current_header);
 	}
-	input_str.erase(0, end_header + 2);
+	input.pop_front(end_header + 2);
 }
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
-	client._input_str.erase(0, client._input_str.find("\r\n") + 2);
+	client._input.pop_front(client._input.find("\r\n") + 2);
 	if (_process_request_headers(client, request) == FAILURE)
-		return (BAD_REQUEST);
+		return(FAILURE);
 	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
 	else
@@ -170,22 +176,22 @@ RequestParsing::_check_headers(Client &client, Request &request) {
 }
 
 int
-RequestParsing::_check_trailer(Request &request, std::string &input_str) {
-	(void)input_str;
+RequestParsing::_check_trailer(Request &request, ByteArray &input) {
+	(void)input;
 	request.set_status(Request::REQUEST_RECEIVED);
 	return (SUCCESS);
 }
 
 int
-RequestParsing::_collect_body(Request &request, std::string &input_str) {
+RequestParsing::_collect_body(Request &request, ByteArray &input) {
 	size_t		body_length(0);
 
 	if (_transfer_encoding_chunked(request))
-		body_length = input_str.find("0\r\n\r\n") + 5;
+		body_length = input.find("0\r\n\r\n") + 5;
 	else if (request.get_headers().key_exists(CONTENT_LENGTH))
 		body_length = static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
-	request.set_body(input_str.substr(0, body_length));
-	input_str.erase(0, body_length);
+	request.set_body(ByteArray(input.substr(0, body_length).c_str()));
+	input.pop_front(body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);
 	else
@@ -267,7 +273,7 @@ RequestParsing::_request_accept_charset_parser(Request &request) {
 	std::list<std::string> charsets_list = _parse_coma_q_factor(unparsed_header_value);
 
 	request.get_headers().set_value(ACCEPT_CHARSET, charsets_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 /* basic language tag check :
@@ -288,25 +294,25 @@ RequestParsing::is_valid_language_tag(const std::string& language_tag) {
 	std::string language, script, region;
 
 	if (language_tag == "*")
-		return true;
+		return (true);
 	language = compounds[0];
 	if (!Syntax::str_is_alpha(language)
 		|| language.size() < 2 || language.size() > 3)
-		return false;
+		return (false);
 	if (compounds.size() > 2) {
 		script = compounds[1];
 		region = compounds[2];
 		if (!Syntax::str_is_alnum(script) || !Syntax::str_is_alnum(region))
-			return false;
+			return (false);
 		if (script.size() < 2 || region.size() < 2)
-			return false;
+			return (false);
 	}
 	if (compounds.size() == 2) {
 		region = compounds[1];
 		if (!Syntax::str_is_alnum(region) || region.size() < 2)
-			return false;
+			return (false);
 	}
-	return true;
+	return (true);
 }
 
 int
@@ -316,10 +322,10 @@ RequestParsing::_request_accept_language_parser(Request &request) {
 
 	for(std::list<std::string>::const_iterator it = languages_list.begin(); it != languages_list.end(); it++) {
 		if (!is_valid_language_tag(*it))
-			return FAILURE;
+			return (FAILURE);
 	}
 	request.get_headers().set_value(ACCEPT_LANGUAGE, languages_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -329,11 +335,11 @@ RequestParsing::_request_authorization_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if (compounds.size() != 2)
-		return FAILURE;
+		return (FAILURE);
 	definitive_value.push_back(compounds[0]); // authorization type
 	definitive_value.push_back(compounds[1]); // authorization credentials
 	request.get_headers().set_value(AUTHORIZATION, definitive_value);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -342,9 +348,9 @@ RequestParsing::_request_content_length_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if(request.get_headers().key_exists(TRANSFER_ENCODING))
-		return FAILURE;
+		return (FAILURE);
 	if (!Syntax::str_is_num(content_length_str))
-		return FAILURE;
+		return (FAILURE);
 	definitive_value.push_back(content_length_str);
 	request.get_headers().set_value(CONTENT_LENGTH, definitive_value);
 	return (SUCCESS);
@@ -367,9 +373,9 @@ RequestParsing::_request_content_type_parser(Request &request) {
 	}
 	if (!Syntax::is_accepted_value<Syntax::mime_type_entry_t>(mime_type,
 		Syntax::mime_types_tab, TOTAL_MIME_TYPES))
-		return FAILURE;
+		return (FAILURE);
 	request.get_headers().set_value(CONTENT_TYPE, content_type_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 bool
@@ -382,9 +388,9 @@ RequestParsing::is_valid_http_date(const std::string& date_str) {
 	while(++i < 3) {
 		strptime_ret = strptime(date_str.c_str(), HTTP_date_fmt[i].c_str(), &timeval);
 		if (strptime_ret && (*strptime_ret == '\0' || *strptime_ret == 'G'))
-			return true;
+			return (true);
 	}
-	return false;
+	return (false);
 }
 
 /* _date_handler :
@@ -401,10 +407,10 @@ RequestParsing::_request_date_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if (!is_valid_http_date(unparsed_header_value))
-		return FAILURE;
+		return (FAILURE);
 	definitive_value.push_back(unparsed_header_value);
 	request.get_headers().set_value(DATE, definitive_value);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -414,11 +420,10 @@ RequestParsing::_request_host_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if (unparsed_header_value.find_first_of(WHITESPACES) != std::string::npos)
-		return FAILURE;
+		return (FAILURE);
 	compounds = Syntax::split(unparsed_header_value, ":");
 	if (compounds.size() > 2)
-		return FAILURE;
-
+		return (FAILURE);
 	definitive_value.push_back(compounds[0]);// host name
 	if (compounds.size() == 2)
 		definitive_value.push_back(compounds[1]); //port
@@ -432,10 +437,10 @@ RequestParsing::_request_referer_parser(Request &request) {
 	URI_form_t uri_form = Syntax::get_URI_form(unparsed_header_value);
 
 	if (uri_form != ABSOLUTE_URI && uri_form != PARTIAL_URI)
-		return FAILURE;
+		return (FAILURE);
 	request.get_headers().set_value(REFERER,
 		std::list<std::string>(1, unparsed_header_value));
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -446,9 +451,9 @@ RequestParsing::_request_transfer_encoding_parser(Request &request) {
 	for(std::list<std::string>::iterator it = encoding_types_list.begin();
 		it != encoding_types_list.end(); it++)
 		if (!Syntax::is_accepted_value(*it, Syntax::encoding_types_tab, TOTAL_ENCODING_TYPES))
-			return FAILURE;
+			return (FAILURE);
 	request.get_headers().set_value(TRANSFER_ENCODING, encoding_types_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -460,7 +465,7 @@ RequestParsing::_request_user_agent_parser(Request &request) {
 	for(size_t i = 0; i < compounds.size(); i++)
 		definitive_value.push_back(compounds[i]);
 	request.get_headers().set_value(USER_AGENT, definitive_value);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -475,13 +480,13 @@ RequestParsing::_process_request_headers(Client &client, Request &request) {
 	};
 	if (!request.get_headers().key_exists(HOST)
 			|| _request_host_parser(request) == FAILURE)
-		return FAILURE;
+		return (FAILURE);
 	_pick_virtual_server(client, request);
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
 		if (Syntax::request_headers_tab[i].header_index != HOST
 			&& headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
 			if ((*handler_functions[i])(request) == FAILURE)
-				return FAILURE;
+				return (FAILURE);
 		}
 	}
 	return SUCCESS;

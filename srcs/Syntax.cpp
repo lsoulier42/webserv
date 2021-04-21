@@ -422,3 +422,80 @@ Syntax::str_to_lower(const std::string& str) {
 		return_str[i] = tolower(return_str[i]);
 	return return_str;
 }
+
+char*
+Syntax::buffer_dup(const char* buffer, size_t n) {
+	char* new_buffer;
+
+	new_buffer = (char*)malloc(sizeof(char) * n);
+	if (!new_buffer)
+		return (NULL);
+	new_buffer = (char*)memcpy(new_buffer, buffer, n);
+	return (new_buffer);
+}
+
+char*
+Syntax::buffer_append(char* dest, const char* buffer, size_t dest_size, size_t buffer_size) {
+	char* new_buffer;
+
+	new_buffer = (char*)malloc(sizeof(char) * (dest_size + buffer_size));
+	if (!new_buffer)
+		return (NULL);
+	new_buffer = (char*)memcpy(new_buffer, dest, dest_size);
+	memcpy(new_buffer + dest_size, buffer, buffer_size);
+	free(dest);
+	return (new_buffer);
+}
+
+char*
+Syntax::buffer_pop_front(char* buffer, size_t buffer_size, size_t size_to_erase) {
+	char* new_buffer;
+	size_t new_size = buffer_size - size_to_erase;
+
+	new_buffer = (char*)malloc(sizeof(char) * (new_size));
+	if (!new_buffer)
+		return (NULL);
+	new_buffer = (char*) memcpy(new_buffer, buffer + size_to_erase, new_size);
+	free(buffer);
+	return (new_buffer);
+}
+
+std::string
+Syntax::body_error_code(status_code_t error_code) {
+	std::stringstream ss;
+
+	ss << "<html>" << std::endl << "<head>" << std::endl;
+	ss << "<title>Error " << Syntax::status_codes_tab[error_code].code_str;
+	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
+	ss << "</title>" << std::endl << "</head>" << std::endl;
+	ss << "<body bgcolor=\"white\">" << std::endl << "<center>" << std::endl;
+	ss << "<h1>Error " << Syntax::status_codes_tab[error_code].code_str;
+	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
+	ss << "</h1>" << std::endl << "</center>" << std::endl;
+	ss << "<hr><center>" << PROGRAM_VERSION << "</center>" << std::endl;
+	ss << "</body>" << std::endl << "</html>" << std::endl;
+	return (ss.str());
+}
+
+std::string
+Syntax::format_status_line(const std::string& http_version, status_code_t status_code) {
+	std::string status_line;
+
+	status_line = http_version;
+	status_line += " ";
+	status_line += Syntax::status_codes_tab[status_code].code_str;
+	status_line += " ";
+	status_line += Syntax::status_codes_tab[status_code].reason_phrase;
+	status_line += "\r\n";
+	return (status_line);
+}
+
+std::string
+Syntax::format_header_field(header_name_t header_code, const std::string& header_value) {
+	std::string header_field;
+
+	header_field = Syntax::headers_tab[header_code].name + ": ";
+	header_field += header_value;
+	header_field += "\r\n";
+	return (header_field);
+}
