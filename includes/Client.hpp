@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/20 11:27:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 09:43:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,6 +124,9 @@ class Client {
 		int _create_cgi_child_process(void);
 		int _cgi_output_str_parsing(void);
 		void _collect_cgi_header(CGIResponse &cgi_response);
+		bool _is_document_response(const CGIResponse &cgi_response) const;
+		bool _is_local_redirect_response(const CGIResponse &cgi_response) const;
+		bool _is_client_redirect_response(const CGIResponse &cgi_response) const;
 
 };
 

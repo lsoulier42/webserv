@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/21 07:15:40 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 07:54:16 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 11:22:19 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,12 +49,36 @@ Path::is_hex_char(const char c) {
 }
 
 bool
-Path::is_unreserved_path_char(const std::string &path, size_t index) {
-	return (is_alphanum_char(path[index]) || is_mark_char(path[index]));
+Path::is_unreserved_path_char(const char c) {
+	return (is_alphanum_char(c) || is_mark_char(c));
 }
 
 bool
-Path::is_extra_path_char(const std::string &path
+Path::is_reserved_path_char(const char c) {
+	return (c == ';'
+			|| c == '/'
+			|| c == '?'
+			|| c == ':'
+			|| c == '@'
+			|| c == '&'
+			|| c == '='
+			|| c == '+'
+			|| c == '$'
+			|| c == ','
+			|| c == '['
+			|| c == ']');
+}
+
+bool
+Path::is_extra_path_char(const char c) {
+	return (c == ':'
+			|| c == '@'
+			|| c == '&'
+			|| c == '='
+			|| c == '+'
+			|| c == '$'
+			|| c == ',');
+}
 
 bool
 Path::is_escaped_path_char(const std::string &path, size_t index) {
@@ -69,7 +93,7 @@ bool
 Path::is_path_segment(const std::string &path) {
 	size_t index(0);
 	while (index < path.size()) {
-		if (is_unreserved_path_char(path, index) || is_extra_path_char(path, index))
+		if (is_unreserved_path_char(path[index]) || is_extra_path_char(path[index]))
 			index++;
 		else if (is_escaped_path_char(path, index))
 			index += 3;
@@ -98,6 +122,152 @@ Path::is_absolute_path(const std::string &path) {
 }
 
 bool
-Path::_is_local_path_query(const std::string &path) {
+Path::is_query_string(const std::string &path) {
+	size_t index(0);
+	while (index < path.size()) {
+		if (is_reserved_path_char(path[index])
+				|| is_unreserved_path_char(path[index]))
+			index++;
+		else if (is_escaped_path_char(path, index))
+			index += 3;
+		else
+			return (false);
+	}
+	return (true);
+}
 
+bool
+Path::is_fragment(const std::string &path) {
+	size_t index(0);
+	while (index < path.size()) {
+		if (is_reserved_path_char(path[index])
+				|| is_unreserved_path_char(path[index]))
+			index++;
+		else if (is_escaped_path_char(path, index))
+			index += 3;
+		else
+			return (false);
+	}
+	return (true);
+}
+
+bool
+Path::is_scheme(const std::string &path) {
+	if (path.size() == 0 || !is_alpha_char(path[0]))
+		return (false);
+	size_t	index(0);
+	while (index < path.size()) {
+		if (!is_alphanum_char(path[index])
+				&& !(path[index] == '+'
+					|| path[index] == '-'
+					|| path[index] == '.'))
+			return (false);
+		index++;
+	}
+	return (true);
+}
+
+bool
+Path::is_user_info(const std::string &path) {
+	size_t	index(0);
+	while (index < path.size()) {
+		if (is_unreserved_path_char(path[index]) 
+				|| path[index] == ';'
+				|| path[index] == ':'
+				|| path[index] == '&'
+				|| path[index] == '='
+				|| path[index] == '+'
+				|| path[index] == '$'
+				|| path[index] == ',')
+			index++;
+		else if (is_escaped_path_char(path, index))
+			index += 3;
+		else
+			return (false);
+	}
+	return (true);
+}
+
+bool
+Path::is_hostport(const std::string &path) {
+	std::string	seg(path.substr(0, path.find(":")));
+	if (!is_host(seg))
+		return (false);
+	size_t	start_port;
+	if (std::string::npose != (start_port = path.find(":"))) {
+		seg = path.substr(start_port + 1);
+		return (is_port(seg));
+	}
+	return (true);
+}
+
+bool
+Path::is_server(const std::string &path) {
+	std::string seg;
+	if (std::string::npos != path.find("@")) {
+		seg = path.substr(0, path.find("@"));
+		if (!is_user_info(seg))
+			return (false);
+		seg = path.substr(path.find("@") + 1);
+	} else
+		seg = path;
+	if (seg.size() > 0)
+		return (is_hostport(seg));
+	return (true);
+}
+
+bool
+Path::is_authority_component(const std::string &path) {
+	return (is_server(path) || is_reg_name(path));
+}
+
+bool
+Path::is_net_path(const std::string &path) {
+	if (path.size() < 3 || path.compare(0, 2, "//"))
+		return (false);
+	std::string	seg(path.substr(2));
+}
+
+bool
+Path::is_hier_part(const std::string &path) {
+	std::string seg(path.substr(0, path.find("?")));
+	if (!is_net_path(seg) && !is_abs_path(seg))
+		return (false);
+	seg = path.substr(path.find("?") + 1);
+	return (is_query_string(seg));
+}
+
+bool
+Path::is_absolute_uri(const std::string &path) {
+	std::string seg(path.substr(0, path.find(":")));
+	if (!is_scheme(seg))
+		return (false);
+	seg = path.substr(path.find(":") + 1);
+	return (is_hier_part(seg) || is_opaque_part(seg));
+}
+
+bool
+Path::is_local_path_query(const std::string &path) {
+	std::string	seg(path.substr(0, path.find("?")));
+	if (!is_absolute_path(seg))
+		return (false);
+	size_t	start_query;
+	if (std::string::npose != (start_query = path.find("?"))) {
+		seg = path.substr(start_query + 1);
+		return (is_query_string(seg));
+	}
+	return (true);
+}
+
+bool
+Path::is_fragment_uri(const std::string &path) {
+	std::string	seg(path.substr(0, path.find("#")));
+	if (!is_absolute_uri(seg))
+		return (false);
+	size_t	start_fragment;
+	if (std::string::npose != (start_fragment = path.find("#"))) {
+		seg = path.substr(start_fragment + 1);
+		return (is_fragment(seg));
+	}
+	return (true);
 }

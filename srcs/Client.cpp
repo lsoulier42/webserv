@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 07:16:09 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 10:12:28 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -520,13 +520,23 @@ Client::read_cgi(void) {
 
 bool
 Client::_is_document_response(const CGIResponse &cgi_response) const {
-	return (cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE));
+	return (cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE)
+			&& !cgi_response.get_body().empty());
 }
 
 bool
 Client::_is_local_redirect_response(const CGIResponse &cgi_response) const {
 	return (cgi_response.get_body().empty()
-			&& cgi_response.
+			&& cgi_response.get_headers().key_exists(CGI_LOCATION)
+			&& Path::is_local_path_query(cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
+			&& cgi_response.get_headers().size() == 1);
+}
+
+bool
+Client::_is_client_redirect_response(const CGIResponse &cgi_response) const {
+	return (cgi_response.get_body().empty()
+			&& cgi_response.get_headers().key_exists(CGI_LOCATION)
+			&& Path::is_fragment_uri(cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
 			&& cgi_response.get_headers().size() == 1);
 }
 
