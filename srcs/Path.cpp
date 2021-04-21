@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/21 07:15:40 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 13:05:20 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 13:18:14 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -335,7 +335,7 @@ Path::is_opaque_part(const std::string &path) {
 	if (path.size() == 0 || !is_uric_no_slash_path_char(path, 0))
 		return (false);
 	if (path.size() > 0) {
-		size_t	index(1);
+		size_t	index(is_escaped_path_char(path, 0) ? 3 : 0);
 		while (index < path.size()) {
 			if (is_reserved_path_char(path[index])
 					|| is_unreserved_path_char(path[index]))
@@ -351,24 +351,14 @@ Path::is_opaque_part(const std::string &path) {
 
 bool
 Path::is_absolute_uri(const std::string &path) {
-	std::string seg(path.substr(0, path.find(":")));
-	if (!is_scheme(seg))
+	size_t	end_scheme(path.find(":"));
+	if (std::string::npos == end_scheme)
 		return (false);
-	seg = path.substr(path.find(":") + 1);
+	std::string seg(path.substr(0, end_scheme));
+	if (!is_scheme(seg) || path.size() == end_scheme + 1)
+		return (false);
+	seg = path.substr(end_scheme + 1);
 	return (is_hier_part(seg) || is_opaque_part(seg));
-}
-
-bool
-Path::is_local_path_query(const std::string &path) {
-	std::string	seg(path.substr(0, path.find("?")));
-	if (!is_absolute_path(seg))
-		return (false);
-	size_t	start_query;
-	if (std::string::npose != (start_query = path.find("?"))) {
-		seg = path.substr(start_query + 1);
-		return (is_query_string(seg));
-	}
-	return (true);
 }
 
 bool
@@ -380,6 +370,19 @@ Path::is_fragment_uri(const std::string &path) {
 	if (std::string::npose != start_fragment) {
 		seg = path.substr(start_fragment + 1);
 		return (is_fragment(seg));
+	}
+	return (true);
+}
+
+bool
+Path::is_local_path_query(const std::string &path) {
+	size_t	start_query(path.find("?"));
+	std::string	seg(path.substr(0, start_query));
+	if (!is_absolute_path(seg))
+		return (false);
+	if (std::string::npose != start_query) {
+		seg = path.substr(start_query + 1);
+		return (is_query_string(seg));
 	}
 	return (true);
 }
