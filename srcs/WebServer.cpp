@@ -152,6 +152,16 @@ WebServer::_build_select_list() {
 }
 
 void
+WebServer::_close_error(std::list<Client>::iterator& it, const Client::ClientError& e) {
+	if (e.get_error_code() == INTERNAL_SERVER_ERROR)
+		_process_internal_server_error(*it);
+	std::cerr << "Connection close on sd " << it->get_sd();
+	std::cerr << " with error: " << e.what() << std::endl;
+	close(it->get_sd());
+	it = _clients.erase(it);
+}
+
+void
 WebServer::_read_socks() {
 	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
 		if (FD_ISSET(it->get_server_sd(), &_sockets_list[READ]))
@@ -162,14 +172,8 @@ WebServer::_read_socks() {
 			try {
 				it->read_socket();
 				it++;
-			} catch (std::exception& e) {
-				Client::ClientError* ce = dynamic_cast<Client::ClientError*>(&e);
-				if ((ce && ce->get_error_code() == INTERNAL_SERVER_ERROR) || !ce)
-					_process_internal_server_error(*it);
-				std::cerr << "Connection close on sd" << it->get_sd();
-				std::cerr << " with error: " << e.what() << std::endl;
-				close(it->get_sd());
-				it = _clients.erase(it);
+			} catch (Client::ClientError& e) {
+				this->_close_error(it, e);
 			}
 		}
 		else
@@ -181,12 +185,7 @@ WebServer::_read_socks() {
 				it->read_file();
 				it++;
 			} catch (Client::ClientError& e) {
-				if (e.get_error_code() == INTERNAL_SERVER_ERROR)
-					_process_internal_server_error(*it);
-				std::cerr << "Connection close on sd" << it->get_sd();
-				std::cerr << " with error: " << e.what() << std::endl;
-				close(it->get_sd());
-				it = _clients.erase(it);
+				this->_close_error(it, e);
 			}
 		}
 	}
@@ -219,13 +218,7 @@ WebServer::_write_socks() {
 				it->write_socket();
 				it++;
 			} catch (Client::ClientError& e) {
-				Client::ClientError* ce = dynamic_cast<Client::ClientError*>(&e);
-				if (ce && ce->get_error_code() == INTERNAL_SERVER_ERROR)
-					_process_internal_server_error(*it);
-				std::cerr << "Connection close on sd" << it->get_sd();
-				std::cerr << " with error: " << e.what() << std::endl;
-				close(it->get_sd());
-				it = _clients.erase(it);
+				this->_close_error(it, e);
 			}
 		}
 		else
