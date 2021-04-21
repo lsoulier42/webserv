@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 04:57:30 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 00:02:32 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 06:51:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,6 +82,7 @@ class Headers {
 		iterator end(void);
 		const_iterator end(void) const;
 
+		size_t size(void) const;
 		bool empty(void) const;
 		void clear(void);
 

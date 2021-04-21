@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 04:04:16 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 07:16:09 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -518,6 +518,17 @@ Client::read_cgi(void) {
 	return (SUCCESS);
 }
 
+bool
+Client::_is_document_response(const CGIResponse &cgi_response) const {
+	return (cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE));
+}
+
+bool
+Client::_is_local_redirect_response(const CGIResponse &cgi_response) const {
+	return (cgi_response.get_body().empty()
+			&& cgi_response.
+			&& cgi_response.get_headers().size() == 1);
+}
 
 int
 Client::_cgi_output_str_parsing(void) {
