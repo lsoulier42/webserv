@@ -6,14 +6,11 @@
 /*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/21 15:42:16 by cchenot          ###   ########.fr       */
+/*   Updated: 2021/04/21 19:59:13 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "WebServer.hpp"
-
-bool
-WebServer::verbose = false;
 
 WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
 	_highest_socket(0), _exit(false) {
