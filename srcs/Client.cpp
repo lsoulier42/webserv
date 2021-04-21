@@ -24,10 +24,8 @@ Client::Client(void) :
 	_addr(),
 	_socket_len(),
 	_virtual_servers(),
-	_input_str(),
-	_begin_response(),
-	_output(NULL),
-	_output_size(0),
+	_input(),
+	_output(),
 	_cgi_output_str(),
 	_exchanges(),
 	_closing(false),
@@ -41,10 +39,8 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	_addr(addr),
 	_socket_len(socket_len),
 	_virtual_servers(virtual_servers),
-	_input_str(),
-	_begin_response(),
-	_output(NULL),
-	_output_size(0),
+	_input(),
+	_output(),
 	_cgi_output_str(),
 	_exchanges(),
 	_closing(false),
@@ -57,17 +53,15 @@ Client::Client(const Client &x) :
 	_addr(x._addr),
 	_socket_len(x._socket_len),
 	_virtual_servers(x._virtual_servers),
-	_input_str(x._input_str),
-	_begin_response(x._begin_response),
-	_output(Syntax::buffer_dup(x._output, x._output_size)),
-	_output_size(x._output_size),
-	_cgi_output_str(x._begin_response),
+	_input(x._input),
+	_output(x._output),
+	_cgi_output_str(x._cgi_output_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing),
 	_connection_refused(x._connection_refused) {}
 
 Client::~Client(void) {
-	this->free_output();
+
 }
 
 Client
@@ -76,12 +70,8 @@ Client
 		_fd = x._fd;
 		_cgi_fd = x._cgi_fd;
 		_exchanges = x._exchanges;
-		_input_str = x._input_str;
-		_begin_response = x._begin_response;
-		_output = Syntax::buffer_dup(x._output, x._output_size);
-		if (_output == NULL)
-			throw(std::bad_alloc());
-		_output_size = x._output_size;
+		_input = x._input;
+		_output = x._output;
 		_cgi_output_str = x._cgi_output_str;
 		_closing = x._closing;
 		_connection_refused = x._connection_refused;
@@ -122,22 +112,19 @@ Client::_process_connection_refused() {
 
 int
 Client::read_socket(void) throw (ClientError) {
-	char	buffer[_buffer_size + 1];
+	char	buffer[_buffer_size];
 	int		ret;
 
 	if (_connection_refused)
 		return(_process_connection_refused());
 	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
-		if (0 == ret) {
+		if (0 == ret)
 			std::cerr << "the client closed the connection." << std::endl;
-		}
-		else {
+		else
 			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
-		}
 		throw (ClientError(INTERNAL_SERVER_ERROR));
 	}
-	buffer[ret] = '\0';
-	_input_str += std::string(buffer);
+	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
@@ -146,21 +133,15 @@ Client::read_socket(void) throw (ClientError) {
 
 int
 Client::write_socket(void) throw(std::bad_alloc, ClientError) {
-	size_t		to_write;
+	size_t		to_write, output_size = _output.size();
 	ssize_t 	write_return;
 
-	if (_output_size == 0)
+	if (output_size == 0)
 		return (SUCCESS);
-	to_write = _output_size > _buffer_size ? _buffer_size : _output_size;
-	write_return = write(_sd, _output, to_write);
-	if (_output_size - write_return > 0) {
-		_output = Syntax::buffer_pop_front(_output, _output_size, write_return);
-		if (_output == NULL)
-			throw(std::bad_alloc());
-	}
-	_output_size -= write_return;
-	if (_output_size == 0) {
-		free_output();
+	to_write = output_size > _buffer_size ? _buffer_size : output_size;
+	write_return = write(_sd, _output.c_str(), to_write);
+	_output.pop_front(write_return);
+	if (_output.empty()) {
 		status_code_t status_code = _exchanges.front().second.get_status_line().get_status_code();
 		if (status_code >= BAD_REQUEST)
 			throw (ClientError(status_code));
@@ -287,7 +268,6 @@ Client::_generate_autoindex(exchange_t &exchange) {
 	DIR       		*directory;
 	std::set<std::string> directory_names, file_names;
 	struct dirent	*file_listing;
-	std::string		autoindex_body;
 
 	directory = opendir(response.get_target_path().c_str());
 	if (!directory) {
@@ -303,11 +283,10 @@ Client::_generate_autoindex(exchange_t &exchange) {
 		else if (file_listing->d_type == DT_REG)
 			file_names.insert(file_listing->d_name);
 	}
-	autoindex_body = _format_autoindex_page(exchange, directory_names, file_names);
-	response.set_body(autoindex_body.c_str(), autoindex_body.size());
+	response.set_body(ByteArray(_format_autoindex_page(exchange, directory_names, file_names)));
 	ResponseHandling::generate_basic_headers(exchange);
 	closedir(directory);
-	return (_build_begin_response(exchange));
+	return (_build_output(exchange));
 }
 
 bool
@@ -358,7 +337,7 @@ Client::_process_cgi(exchange_t &exchange) {
 	}
 	close(req_pipe[0]);
 	close(res_pipe[1]);
-	write(req_pipe[1], request.get_body(), request.get_body_size());
+	write(req_pipe[1], request.get_body().c_str(), request.get_body().size());
 	close(req_pipe[1]);
 	_cgi_fd = res_pipe[0];
 	return (SUCCESS);
@@ -408,10 +387,9 @@ Client::_process_error(exchange_t &exchange) {
 			return(_open_file_to_read(error_page_path));
 		}
 	}
-	std::string body(Syntax::body_error_code(error_code));
-	response.set_body(body.c_str(), body.size());
+	response.set_body(ByteArray(Syntax::body_error_code(error_code)));
 	ResponseHandling::generate_basic_headers(exchange);
-	return(_build_begin_response(exchange));
+	return(_build_output(exchange));
 }
 
 std::string
@@ -501,43 +479,28 @@ Client::read_file(void) throw(ClientError) {
 		_fd = 0;
 		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 			return (_process_error(exchange));
-		return (_build_begin_response(exchange));
+		return (_build_output(exchange));
 	}
-	response.append_to_body(buffer, ret);
+	response.set_body(response.get_body() + ByteArray(buffer, ret));
 	return (SUCCESS);
 }
 
 int
-Client::_build_output(Response& response) throw(std::bad_alloc) {
-	size_t begin_size = _begin_response.size(), body_size = response.get_body_size();
-	char *body = response.get_body();
-
-	_output_size = begin_size + body_size;
-	_output = (char*)malloc(sizeof(char) * (_output_size));
-	if (_output == NULL)
-		throw(std::bad_alloc());
-	_output = (char*)memcpy(_output, _begin_response.c_str(), begin_size);
-	memcpy(_output + begin_size, body, body_size);
-	response.free_body();
-	return (SUCCESS);
-}
-
-int
-Client::_build_begin_response(exchange_t &exchange) {
+Client::_build_output(exchange_t &exchange) {
 	Response	&response(exchange.second);
 	Response::StatusLine status_line = response.get_status_line();
 	AHTTPMessage::HTTPHeaders& headers = response.get_headers();
 
-	_begin_response.clear();
-	_begin_response = Syntax::format_status_line(status_line.get_http_version(), status_line.get_status_code());
+	_output = ByteArray(Syntax::format_status_line(status_line.get_http_version(), status_line.get_status_code()));
 	for(size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (headers.key_exists(Syntax::response_headers_tab[i].header_index)) {
-			_begin_response += Syntax::format_header_field(Syntax::response_headers_tab[i].header_index,
+			_output += Syntax::format_header_field(Syntax::response_headers_tab[i].header_index,
 				headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index));
 		}
 	}
-	_begin_response += "\r\n";
-	return (_build_output(response));
+	_output += "\r\n";
+	_output += response.get_body();
+	return (SUCCESS);
 }
 
 void
@@ -546,14 +509,4 @@ Client::_send_debug_str(const std::string& str) const {
 	size_t size = to_send.size();
 
 	send(_sd, to_send.c_str(), size, 0);
-}
-
-int
-Client::free_output(void) {
-	if(_output != NULL && _output_size != 0) {
-		free(_output);
-		_output = NULL;
-		_output_size = 0;
-	}
-	return (FAILURE);
 }

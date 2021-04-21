@@ -76,11 +76,8 @@ class AHTTPMessage {
 
 		HTTPHeaders &get_headers(void);
 		const HTTPHeaders &get_headers(void) const;
-		char* get_body(void) const;
-		void set_body(const char* body, size_t body_size) throw(std::bad_alloc);
-		void append_to_body(const char* to_append, size_t size_to_append) throw(std::bad_alloc);
-		size_t get_body_size() const;
-		int free_body();
+		const ByteArray& get_body(void) const;
+		void set_body(const ByteArray& body);
 
 		virtual void reset(void);
 
@@ -91,9 +88,7 @@ class AHTTPMessage {
 	private:
 
 		HTTPHeaders _headers;
-		char *_body;
-		size_t _body_size;
-
+		ByteArray _body;
 };
 
 #endif

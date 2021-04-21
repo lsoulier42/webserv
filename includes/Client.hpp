@@ -64,7 +64,6 @@ class Client {
 		int write_socket(void) throw(std::bad_alloc, ClientError);
 		int read_file(void) throw(ClientError);
 		int read_cgi(void);
-		int free_output(void);
 
 		class ClientError : public std::exception {
 			public:
@@ -91,10 +90,8 @@ class Client {
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
-		std::string _input_str;
-		std::string _begin_response;
-		char*		_output;
-		size_t 		_output_size;
+		ByteArray _input;
+		ByteArray _output;
 		std::string _cgi_output_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
@@ -118,10 +115,9 @@ class Client {
 		int _process_cgi(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
-		int _build_begin_response(exchange_t &exchange);
+		int _build_output(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
-		int _build_output(Response& response) throw(std::bad_alloc);
 
 	/* Autoindex
 		 *

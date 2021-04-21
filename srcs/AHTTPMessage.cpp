@@ -14,27 +14,21 @@
 
 AHTTPMessage::AHTTPMessage(void) :
 	_headers(),
-	_body(NULL),
-	_body_size(0) {}
+	_body() {}
 
 AHTTPMessage::AHTTPMessage(const AHTTPMessage &x) throw(std::bad_alloc) {
 	*this = x;
 }
 
 AHTTPMessage::~AHTTPMessage(void) {
-	this->free_body();
+
 }
 
 AHTTPMessage
 &AHTTPMessage::operator=(const AHTTPMessage &x) throw(std::bad_alloc) {
 	if (this != &x) {
 		_headers = x._headers;
-		if (x._body) {
-			_body = Syntax::buffer_dup(x._body, x._body_size);
-			if (_body == NULL)
-				throw(std::bad_alloc());
-		}
-		_body_size = x._body_size;
+		_body = x._body;
 	}
 	return (*this);
 }
@@ -49,30 +43,20 @@ AHTTPMessage::HTTPHeaders
 	return (_headers);
 }
 
-char*
+const ByteArray&
 AHTTPMessage::get_body(void) const {
 	return (_body);
 }
 
 void
-AHTTPMessage::set_body(const char* body, size_t body_size) throw(std::bad_alloc) {
-	if (_body != NULL) {
-		free(_body);
-		_body = NULL;
-	}
-	_body = Syntax::buffer_dup(body, body_size);
-	if (_body == NULL)
-		throw(std::bad_alloc());
-	_body_size = body_size;
+AHTTPMessage::set_body(const ByteArray& body) {
+	_body = body;
 }
 
 void
 AHTTPMessage::reset(void) {
 	_headers.clear();
-	if (_body) {
-		free(_body);
-		_body = NULL;
-	}
+	_body.clear();
 }
 
 AHTTPMessage::AStartLine::AStartLine(void) :
@@ -146,31 +130,4 @@ AHTTPMessage::HTTPHeaders::get_value(header_name_t key) const throw (std::invali
 void
 AHTTPMessage::HTTPHeaders::set_value(header_name_t key, const std::list<std::string>& parsed_value) throw (std::invalid_argument) {
 	Headers::set_value(Syntax::headers_tab[key].name, parsed_value);
-}
-
-size_t
-AHTTPMessage::get_body_size() const {
-	return _body_size;
-}
-
-void
-AHTTPMessage::append_to_body(const char* to_append, size_t size_to_append) throw(std::bad_alloc) {
-	if (_body == NULL)
-		this->set_body(to_append, size_to_append);
-	else {
-		_body = Syntax::buffer_append(_body, to_append, _body_size, size_to_append);
-		if (_body == NULL)
-			throw(std::bad_alloc());
-		_body_size += size_to_append;
-	}
-}
-
-int
-AHTTPMessage::free_body() {
-	if (_body != NULL && _body_size != 0) {
-		free(_body);
-		_body = NULL;
-		_body_size = 0;
-	}
-	return (FAILURE);
 }

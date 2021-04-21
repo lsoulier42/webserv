@@ -15,7 +15,7 @@
 const ByteArray::size_type
 ByteArray::npos = -1;
 
-ByteArray::ByteArray() {
+ByteArray::ByteArray() : _byte_array() {
 
 }
 
@@ -140,23 +140,27 @@ ByteArray::push_back(const char& c) {
 
 void
 ByteArray::append(const char* to_add, size_t len) {
-	_byte_array.resize(size() + len);
-	for(size_t i = 0; i < len; i++) {
+	size_t size = this->size(), new_len;
+	new_len = size == 0 ? len : len + size;
+	_byte_array.reserve(new_len);
+	for(size_t i = 0; i < len; i++)
 		_byte_array.push_back(to_add[i]);
-	}
 }
 
 void
 ByteArray::append(const std::string& to_add) {
-	_byte_array.resize(size() + to_add.size());
+	size_t size = this->size(), new_len;
+	new_len = size == 0 ? to_add.size() : to_add.size() + size;
+	_byte_array.reserve(new_len);
 	_byte_array.insert(end(), to_add.begin(), to_add.end());
 }
 
 void
 ByteArray::append(const ByteArray& to_add) {
-	size_t size = to_add.size();
-	_byte_array.resize(this->size() + to_add.size());
-	for(size_t i = 0; i < size; i++)
+	size_t current_size = this->size(), to_add_size = to_add.size(), new_len;
+	new_len = current_size == 0 ? to_add_size : to_add_size + current_size;
+	_byte_array.reserve(new_len);
+	for(size_t i = 0; i < to_add_size; i++)
 		_byte_array.push_back(to_add[i]);
 }
 
@@ -192,11 +196,6 @@ ByteArray::resize( ByteArray::size_type count ) {
 const char*
 ByteArray::c_str() const {
 	return &(*_byte_array.begin());
-}
-
-std::string
-ByteArray::to_str() {
-	return (this->substr(0));
 }
 
 ByteArray::size_type
@@ -408,7 +407,7 @@ ByteArray::substr(size_type pos, size_type len) throw(std::out_of_range) {
 		throw(std::out_of_range("pos >= size"));
 	definite_len = len == npos ? size - pos : len;
 	new_str.reserve(definite_len);
-	for(size_t i = 0; i < definite_len && _byte_array[pos + i] != '\0'; i++)
+	for(size_t i = 0; i < definite_len; i++)
 		new_str.push_back(_byte_array[pos + i]);
 	return new_str;
 }

@@ -23,6 +23,7 @@
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <unistd.h>
+# include "ByteArray.hpp"
 
 # define WHITESPACES " \n\r\t\f\v"
 # define TOTAL_REQUEST_HEADERS 10

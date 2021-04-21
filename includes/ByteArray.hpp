@@ -72,8 +72,8 @@ class ByteArray {
 		void pop_front(size_t len);
 		void resize( size_type count );
 
+
 		const char* c_str() const;
-		std::string to_str();
 
 		size_type find(const char& c) const;
 		size_type rfind(const char& c) const;
