@@ -459,3 +459,43 @@ Syntax::buffer_pop_front(char* buffer, size_t buffer_size, size_t size_to_erase)
 	free(buffer);
 	return (new_buffer);
 }
+
+std::string
+Syntax::body_error_code(status_code_t error_code) {
+	std::stringstream ss;
+
+	ss << "<html>" << std::endl << "<head>" << std::endl;
+	ss << "<title>Error " << Syntax::status_codes_tab[error_code].code_str;
+	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
+	ss << "</title>" << std::endl << "</head>" << std::endl;
+	ss << "<body bgcolor=\"white\">" << std::endl << "<center>" << std::endl;
+	ss << "<h1>Error " << Syntax::status_codes_tab[error_code].code_str;
+	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
+	ss << "</h1>" << std::endl << "</center>" << std::endl;
+	ss << "<hr><center>" << PROGRAM_VERSION << "</center>" << std::endl;
+	ss << "</body>" << std::endl << "</html>" << std::endl;
+	return (ss.str());
+}
+
+std::string
+Syntax::format_status_line(const std::string& http_version, status_code_t status_code) {
+	std::string status_line;
+
+	status_line = http_version;
+	status_line += " ";
+	status_line += Syntax::status_codes_tab[status_code].code_str;
+	status_line += " ";
+	status_line += Syntax::status_codes_tab[status_code].reason_phrase;
+	status_line += "\r\n";
+	return (status_line);
+}
+
+std::string
+Syntax::format_header_field(header_name_t header_code, const std::string& header_value) {
+	std::string header_field;
+
+	header_field = Syntax::headers_tab[header_code].name + ": ";
+	header_field += header_value;
+	header_field += "\r\n";
+	return (header_field);
+}

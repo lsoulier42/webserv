@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "WebServer.hpp"
+#include "ResponseHandling.hpp"
 
 bool
 WebServer::verbose = false;
@@ -157,27 +158,75 @@ WebServer::_read_socks() {
 			this->_accept_connection(*it);
 	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
-		if (FD_ISSET(it->get_sd(), &_sockets_list[READ]) && SUCCESS != it->read_socket()) {
-			close(it->get_sd());
-			it = _clients.erase(it);
+		if (FD_ISSET(it->get_sd(), &_sockets_list[READ])) {
+			try {
+				it->read_socket();
+				it++;
+			} catch (std::exception& e) {
+				Client::ClientError* ce = dynamic_cast<Client::ClientError*>(&e);
+				if ((ce && ce->get_error_code() == INTERNAL_SERVER_ERROR) || !ce)
+					_process_internal_server_error(*it);
+				std::cerr << "Connection close on sd" << it->get_sd();
+				std::cerr << " with error: " << e.what() << std::endl;
+				close(it->get_sd());
+				it = _clients.erase(it);
+			}
 		}
 		else
 			it++;
 	}
-	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
-		if (FD_ISSET(it->get_fd(), &_sockets_list[READ]))
-			it->read_file();
+	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++) {
+		if (FD_ISSET(it->get_fd(), &_sockets_list[READ])) {
+			try {
+				it->read_file();
+				it++;
+			} catch (Client::ClientError& e) {
+				if (e.get_error_code() == INTERNAL_SERVER_ERROR)
+					_process_internal_server_error(*it);
+				std::cerr << "Connection close on sd" << it->get_sd();
+				std::cerr << " with error: " << e.what() << std::endl;
+				close(it->get_sd());
+				it = _clients.erase(it);
+			}
+		}
+	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
 		if (FD_ISSET(it->get_cgi_fd(), &_sockets_list[READ]))
 			it->read_cgi();
 }
 
 void
+WebServer::_process_internal_server_error(const Client& client) {
+	std::string output, body = Syntax::body_error_code(INTERNAL_SERVER_ERROR);
+	std::stringstream ss;
+
+	output = Syntax::format_status_line(OUR_HTTP_VERSION, INTERNAL_SERVER_ERROR);
+	output += Syntax::format_header_field(SERVER, PROGRAM_VERSION);
+	output += Syntax::format_header_field(DATE, ResponseHandling::get_current_HTTP_date());
+	ss << body.size();
+	output += Syntax::format_header_field(CONTENT_LENGTH, ss.str());
+	output += Syntax::format_header_field(CONTENT_TYPE, Syntax::mime_types_tab[TEXT_HTML].name);
+	output += "\r\n";
+	output += body;
+	write(client.get_sd(), output.c_str(), output.size());
+}
+
+void
 WebServer::_write_socks() {
 	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
-		if (FD_ISSET(it->get_sd(), &_sockets_list[WRITE]) && SUCCESS != it->write_socket()) {
-			close(it->get_sd());
-			it = _clients.erase(it);
+		if (FD_ISSET(it->get_sd(), &_sockets_list[WRITE])) {
+			try {
+				it->write_socket();
+				it++;
+			} catch (Client::ClientError& e) {
+				Client::ClientError* ce = dynamic_cast<Client::ClientError*>(&e);
+				if (ce && ce->get_error_code() == INTERNAL_SERVER_ERROR)
+					_process_internal_server_error(*it);
+				std::cerr << "Connection close on sd" << it->get_sd();
+				std::cerr << " with error: " << e.what() << std::endl;
+				close(it->get_sd());
+				it = _clients.erase(it);
+			}
 		}
 		else
 			it++;
@@ -187,12 +236,12 @@ WebServer::_write_socks() {
 int
 WebServer::parsing(const std::string &filepath) {
 	if (!ConfigParsing::check_config_file(filepath, _config_file))
-		return 0;
+		return (FAILURE);
 	if (!ConfigParsing::check_main_bloc(_config_file, _virtual_servers)) {
 		std::cerr << "Error during config file parsing." << std::endl;
 		_config_file.close();
-		return 0;
+		return (FAILURE);
 	}
 	_config_file.close();
-	return 1;
+	return (SUCCESS);
 }

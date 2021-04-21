@@ -27,6 +27,7 @@
 # include <fstream>
 # include <ios>
 # include <set>
+# include <sstream>
 
 # include "Server.hpp"
 # include "Client.hpp"
@@ -60,6 +61,7 @@ class WebServer {
 		void _read_socks();
 		void _close_sockets();
 		void _write_socks();
+		void _process_internal_server_error(const Client& client);
 
 		std::ifstream _config_file;
 		std::list<Server> _servers;

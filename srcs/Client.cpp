@@ -112,7 +112,7 @@ Client::get_cgi_fd(void) const {
 int
 Client::_process_connection_refused() {
 	exchange_t refused_exchange = std::make_pair(Request(_virtual_servers.front()), Response());
-	refused_exchange.second.get_status_line().set_http_version("HTTP/1.1");
+	refused_exchange.second.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	refused_exchange.second.get_status_line().set_status_code(SERVICE_UNAVAILABLE);
 	refused_exchange.first.set_compromising(true);
 	_closing = true;
@@ -121,18 +121,20 @@ Client::_process_connection_refused() {
 }
 
 int
-Client::read_socket(void) {
+Client::read_socket(void) throw (ClientError) {
 	char	buffer[_buffer_size + 1];
 	int		ret;
 
 	if (_connection_refused)
-		return (_process_connection_refused());
+		return(_process_connection_refused());
 	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
-		if (0 == ret)
-			std::cout << "the client closed the connection." << std::endl;
-		else
+		if (0 == ret) {
+			std::cerr << "the client closed the connection." << std::endl;
+		}
+		else {
 			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
-		return (FAILURE);
+		}
+		throw (ClientError(INTERNAL_SERVER_ERROR));
 	}
 	buffer[ret] = '\0';
 	_input_str += std::string(buffer);
@@ -143,9 +145,7 @@ Client::read_socket(void) {
 }
 
 int
-Client::write_socket(void) throw(std::bad_alloc) {
-	exchange_t	&exchange = _exchanges.front();
-	Request		&request(exchange.first);
+Client::write_socket(void) throw(std::bad_alloc, ClientError) {
 	size_t		to_write;
 	ssize_t 	write_return;
 
@@ -153,8 +153,6 @@ Client::write_socket(void) throw(std::bad_alloc) {
 		return (SUCCESS);
 	to_write = _output_size > _buffer_size ? _buffer_size : _output_size;
 	write_return = write(_sd, _output, to_write);
-	if (write_return == -1)
-		return (free_output());
 	if (_output_size - write_return > 0) {
 		_output = Syntax::buffer_pop_front(_output, _output_size, write_return);
 		if (_output == NULL)
@@ -162,10 +160,10 @@ Client::write_socket(void) throw(std::bad_alloc) {
 	}
 	_output_size -= write_return;
 	if (_output_size == 0) {
-		free(_output);
-		_output = NULL;
-		if (request.get_compromising())
-			return (FAILURE);
+		free_output();
+		status_code_t status_code = _exchanges.front().second.get_status_line().get_status_code();
+		if (status_code >= BAD_REQUEST)
+			throw (ClientError(status_code));
 		_exchanges.pop_front();
 	}
 	return (SUCCESS);
@@ -181,7 +179,7 @@ Client::_process(exchange_t &exchange) {
 	Response	&response(exchange.second);
 
 	request.set_status(Request::REQUEST_PROCESSED);
-	response.get_status_line().set_http_version("HTTP/1.1");
+	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
 		return (_process_error(exchange));
 	if (_is_cgi_related(request))
@@ -391,30 +389,11 @@ Client::_process_GET(exchange_t &exchange) {
 	return (_open_file_to_read(response.get_target_path()));
 }
 
-void
-Client::_generate_error_page(exchange_t &exchange) {
-	Response& response = exchange.second;
-	status_code_t error_code = response.get_status_line().get_status_code();
-	std::stringstream ss;
-
-	ss << "<html>" << std::endl << "<head>" << std::endl;
-	ss << "<title>Error " << Syntax::status_codes_tab[error_code].code_str;
-	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
-	ss << "</title>" << std::endl << "</head>" << std::endl;
-	ss << "<body bgcolor=\"white\">" << std::endl << "<center>" << std::endl;
-	ss << "<h1>Error " << Syntax::status_codes_tab[error_code].code_str;
-	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
-	ss << "</h1>" << std::endl << "</center>" << std::endl;
-	ss << "<hr><center>webserv/1.0</center>" << std::endl;
-	ss << "</body>" << std::endl << "</html>" << std::endl;
-	response.set_body(ss.str().c_str(), ss.str().size());
-	ResponseHandling::generate_basic_headers(exchange);
-}
-
 int
 Client::_process_error(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
+	status_code_t error_code = response.get_status_line().get_status_code();
 	std::string error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
@@ -423,16 +402,17 @@ Client::_process_error(exchange_t &exchange) {
 	if (!request.get_location())
 		request.set_location(&request.get_virtual_server()->get_locations().back());
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
-		if (response.get_status_line().get_status_code() == *it) {
+		if (error_code == *it) {
 			error_page_path = request.get_virtual_server()->get_error_page_path();
 			response.set_target_path(error_page_path);
 			return(_open_file_to_read(error_page_path));
 		}
 	}
-	_generate_error_page(exchange);
-	return (_build_begin_response(exchange));
+	std::string body(Syntax::body_error_code(error_code));
+	response.set_body(body.c_str(), body.size());
+	ResponseHandling::generate_basic_headers(exchange);
+	return(_build_begin_response(exchange));
 }
-
 
 std::string
 Client::_build_resource_path(Request &request) {
@@ -505,7 +485,7 @@ Client::_collect_cgi_header(CGIResponse &cgi_response) {
 }
 
 int
-Client::read_file(void) {
+Client::read_file(void) throw(ClientError) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
 	char		buffer[_buffer_size];
@@ -514,7 +494,7 @@ Client::read_file(void) {
 	ret = read(_fd, buffer, _buffer_size);
 	if (ret < 0) {
 		close(_fd);
-		return (response.free_body());
+		throw(ClientError(INTERNAL_SERVER_ERROR));
 	}
 	if (ret == 0) {
 		close(_fd);
@@ -545,20 +525,15 @@ Client::_build_output(Response& response) throw(std::bad_alloc) {
 int
 Client::_build_begin_response(exchange_t &exchange) {
 	Response	&response(exchange.second);
+	Response::StatusLine status_line = response.get_status_line();
 	AHTTPMessage::HTTPHeaders& headers = response.get_headers();
 
 	_begin_response.clear();
-	_begin_response += response.get_status_line().get_http_version();
-	_begin_response += " ";
-	_begin_response += Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str;
-	_begin_response += " ";
-	_begin_response += Syntax::status_codes_tab[response.get_status_line().get_status_code()].reason_phrase;
-	_begin_response += "\r\n";
+	_begin_response = Syntax::format_status_line(status_line.get_http_version(), status_line.get_status_code());
 	for(size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (headers.key_exists(Syntax::response_headers_tab[i].header_index)) {
-			_begin_response += Syntax::response_headers_tab[i].name + ": ";
-			_begin_response += headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index);
-			_begin_response += "\r\n";
+			_begin_response += Syntax::format_header_field(Syntax::response_headers_tab[i].header_index,
+				headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index));
 		}
 	}
 	_begin_response += "\r\n";

@@ -60,11 +60,26 @@ class Client {
 		int get_fd(void) const;
 		int get_cgi_fd(void) const;
 		
-		int read_socket(void);
-		int write_socket(void) throw(std::bad_alloc);
-		int read_file(void);
+		int read_socket(void) throw (ClientError);
+		int write_socket(void) throw(std::bad_alloc, ClientError);
+		int read_file(void) throw(ClientError);
 		int read_cgi(void);
 		int free_output(void);
+
+		class ClientError : public std::exception {
+			public:
+				ClientError(status_code_t error_code) throw() :
+					_error_code(error_code) {}
+				virtual ~ClientError() throw() {}
+				virtual const char* what() const throw() {
+					return (Syntax::status_codes_tab[_error_code].reason_phrase.c_str());
+				}
+				status_code_t get_error_code() const throw() {
+					return (_error_code);
+				}
+			private:
+				status_code_t _error_code;
+		};
 
 	private:
 
@@ -97,13 +112,13 @@ class Client {
 		 */
 		int _process_connection_refused();
 		int _process(exchange_t &exchange);
+
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
 		int _process_cgi(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_begin_response(exchange_t &exchange);
-		void _generate_error_page(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 		int _build_output(Response& response) throw(std::bad_alloc);

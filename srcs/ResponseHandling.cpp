@@ -197,9 +197,8 @@ ResponseHandling::_response_content_location_handler(Client::exchange_t &exchang
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	location_str(request_target.substr(0, request_target.find('?')));
 
-	if (response.get_status_line().get_status_code() >= BAD_REQUEST)
-		return SUCCESS;
-	response.get_headers().insert(CONTENT_LOCATION, location_str);
+	if (response.get_status_line().get_status_code() < BAD_REQUEST)
+		response.get_headers().insert(CONTENT_LOCATION, location_str);
 	return SUCCESS;
 }
 
@@ -286,7 +285,7 @@ ResponseHandling::_response_content_type_handler(Client::exchange_t &exchange) {
 		content_type += "; charset=" + charset;
 	}
 	response.get_headers().insert(CONTENT_TYPE, content_type);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 std::string
@@ -298,7 +297,7 @@ ResponseHandling::get_current_HTTP_date(void) {
 	gettimeofday(&tv, NULL);
 	date = localtime(&(tv.tv_sec));
 	strftime(buff, sizeof(buff), "%a, %d %b %Y %T GMT+02", date);
-	return std::string(buff);
+	return (std::string(buff));
 }
 
 int
@@ -306,7 +305,7 @@ ResponseHandling::_response_date_handler(Client::exchange_t &exchange) {
 	Response& response = exchange.second;
 
 	response.get_headers().insert(DATE, get_current_HTTP_date());
-	return 1;
+	return (SUCCESS);
 }
 
 int
@@ -321,7 +320,7 @@ ResponseHandling::_response_last_modified_handler(Client::exchange_t &exchange) 
 		strftime(time_buf, sizeof(time_buf), "%a, %d %b %Y %T GMT+02", date);
 		response.get_headers().insert(LAST_MODIFIED, std::string(time_buf));
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -333,7 +332,7 @@ ResponseHandling::_response_location_handler(Client::exchange_t &exchange) {
 		|| status_code == CREATED) {
 		//TODO: need handler for POST method
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -345,7 +344,7 @@ ResponseHandling::_response_retry_after_handler(Client::exchange_t &exchange) {
 		ss << DELAY_RETRY_AFTER;
 		response.get_headers().insert(RETRY_AFTER, ss.str());
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -353,7 +352,7 @@ ResponseHandling::_response_server_handler(Client::exchange_t &exchange) {
 	Response& response = exchange.second;
 
 	response.get_headers().insert(SERVER, "webserv/1.0");
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -361,7 +360,7 @@ ResponseHandling::_response_transfer_encoding_handler(Client::exchange_t &exchan
 	Response &response = exchange.second;
 
 	response.get_headers().insert(TRANSFER_ENCODING, Syntax::encoding_types_tab[IDENTITY].name);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -372,7 +371,7 @@ ResponseHandling::_response_www_authenticate_handler(Client::exchange_t &exchang
 
 	if (status_code == UNAUTHORIZED && request.get_headers().key_exists(AUTHORIZATION))
 		response.get_headers().insert(WWW_AUTHENTICATE, request.get_headers().get_value(AUTHORIZATION).front());
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 void

@@ -161,7 +161,7 @@ int
 RequestParsing::_check_headers(Client &client, Request &request) {
 	client._input_str.erase(0, client._input_str.find("\r\n") + 2);
 	if (_process_request_headers(client, request) == FAILURE)
-		return (BAD_REQUEST);
+		return(FAILURE);
 	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
 	else
@@ -267,7 +267,7 @@ RequestParsing::_request_accept_charset_parser(Request &request) {
 	std::list<std::string> charsets_list = _parse_coma_q_factor(unparsed_header_value);
 
 	request.get_headers().set_value(ACCEPT_CHARSET, charsets_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 /* basic language tag check :
@@ -288,25 +288,25 @@ RequestParsing::is_valid_language_tag(const std::string& language_tag) {
 	std::string language, script, region;
 
 	if (language_tag == "*")
-		return true;
+		return (true);
 	language = compounds[0];
 	if (!Syntax::str_is_alpha(language)
 		|| language.size() < 2 || language.size() > 3)
-		return false;
+		return (false);
 	if (compounds.size() > 2) {
 		script = compounds[1];
 		region = compounds[2];
 		if (!Syntax::str_is_alnum(script) || !Syntax::str_is_alnum(region))
-			return false;
+			return (false);
 		if (script.size() < 2 || region.size() < 2)
-			return false;
+			return (false);
 	}
 	if (compounds.size() == 2) {
 		region = compounds[1];
 		if (!Syntax::str_is_alnum(region) || region.size() < 2)
-			return false;
+			return (false);
 	}
-	return true;
+	return (true);
 }
 
 int
@@ -316,10 +316,10 @@ RequestParsing::_request_accept_language_parser(Request &request) {
 
 	for(std::list<std::string>::const_iterator it = languages_list.begin(); it != languages_list.end(); it++) {
 		if (!is_valid_language_tag(*it))
-			return FAILURE;
+			return (FAILURE);
 	}
 	request.get_headers().set_value(ACCEPT_LANGUAGE, languages_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -329,11 +329,11 @@ RequestParsing::_request_authorization_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if (compounds.size() != 2)
-		return FAILURE;
+		return (FAILURE);
 	definitive_value.push_back(compounds[0]); // authorization type
 	definitive_value.push_back(compounds[1]); // authorization credentials
 	request.get_headers().set_value(AUTHORIZATION, definitive_value);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -342,9 +342,9 @@ RequestParsing::_request_content_length_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if(request.get_headers().key_exists(TRANSFER_ENCODING))
-		return FAILURE;
+		return (FAILURE);
 	if (!Syntax::str_is_num(content_length_str))
-		return FAILURE;
+		return (FAILURE);
 	definitive_value.push_back(content_length_str);
 	request.get_headers().set_value(CONTENT_LENGTH, definitive_value);
 	return (SUCCESS);
@@ -367,9 +367,9 @@ RequestParsing::_request_content_type_parser(Request &request) {
 	}
 	if (!Syntax::is_accepted_value<Syntax::mime_type_entry_t>(mime_type,
 		Syntax::mime_types_tab, TOTAL_MIME_TYPES))
-		return FAILURE;
+		return (FAILURE);
 	request.get_headers().set_value(CONTENT_TYPE, content_type_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 bool
@@ -382,9 +382,9 @@ RequestParsing::is_valid_http_date(const std::string& date_str) {
 	while(++i < 3) {
 		strptime_ret = strptime(date_str.c_str(), HTTP_date_fmt[i].c_str(), &timeval);
 		if (strptime_ret && (*strptime_ret == '\0' || *strptime_ret == 'G'))
-			return true;
+			return (true);
 	}
-	return false;
+	return (false);
 }
 
 /* _date_handler :
@@ -401,10 +401,10 @@ RequestParsing::_request_date_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if (!is_valid_http_date(unparsed_header_value))
-		return FAILURE;
+		return (FAILURE);
 	definitive_value.push_back(unparsed_header_value);
 	request.get_headers().set_value(DATE, definitive_value);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -414,11 +414,10 @@ RequestParsing::_request_host_parser(Request &request) {
 	std::list<std::string> definitive_value;
 
 	if (unparsed_header_value.find_first_of(WHITESPACES) != std::string::npos)
-		return FAILURE;
+		return (FAILURE);
 	compounds = Syntax::split(unparsed_header_value, ":");
 	if (compounds.size() > 2)
-		return FAILURE;
-
+		return (FAILURE);
 	definitive_value.push_back(compounds[0]);// host name
 	if (compounds.size() == 2)
 		definitive_value.push_back(compounds[1]); //port
@@ -432,10 +431,10 @@ RequestParsing::_request_referer_parser(Request &request) {
 	URI_form_t uri_form = Syntax::get_URI_form(unparsed_header_value);
 
 	if (uri_form != ABSOLUTE_URI && uri_form != PARTIAL_URI)
-		return FAILURE;
+		return (FAILURE);
 	request.get_headers().set_value(REFERER,
 		std::list<std::string>(1, unparsed_header_value));
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -446,9 +445,9 @@ RequestParsing::_request_transfer_encoding_parser(Request &request) {
 	for(std::list<std::string>::iterator it = encoding_types_list.begin();
 		it != encoding_types_list.end(); it++)
 		if (!Syntax::is_accepted_value(*it, Syntax::encoding_types_tab, TOTAL_ENCODING_TYPES))
-			return FAILURE;
+			return (FAILURE);
 	request.get_headers().set_value(TRANSFER_ENCODING, encoding_types_list);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -460,7 +459,7 @@ RequestParsing::_request_user_agent_parser(Request &request) {
 	for(size_t i = 0; i < compounds.size(); i++)
 		definitive_value.push_back(compounds[i]);
 	request.get_headers().set_value(USER_AGENT, definitive_value);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -475,13 +474,13 @@ RequestParsing::_process_request_headers(Client &client, Request &request) {
 	};
 	if (!request.get_headers().key_exists(HOST)
 			|| _request_host_parser(request) == FAILURE)
-		return FAILURE;
+		return (FAILURE);
 	_pick_virtual_server(client, request);
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
 		if (Syntax::request_headers_tab[i].header_index != HOST
 			&& headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
 			if ((*handler_functions[i])(request) == FAILURE)
-				return FAILURE;
+				return (FAILURE);
 		}
 	}
 	return SUCCESS;
