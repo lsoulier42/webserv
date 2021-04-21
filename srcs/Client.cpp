@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:20:07 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 18:25:33 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,12 +21,14 @@ Client::Client(void) :
 	_sd(),
 	_fd(),
 	_cgi_fd(),
+	_file_write_fd(),
 	_addr(),
 	_socket_len(),
 	_virtual_servers(),
 	_input_str(),
 	_output_str(),
 	_cgi_output_str(),
+	_file_write_str(),
 	_exchanges(),
 	_closing(false),
 	_connection_refused(false) {}
@@ -36,12 +38,14 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	_sd(sd),
 	_fd(),
 	_cgi_fd(),
+	_file_write_fd(),
 	_addr(addr),
 	_socket_len(socket_len),
 	_virtual_servers(virtual_servers),
 	_input_str(),
 	_output_str(),
 	_cgi_output_str(),
+	_file_write_str(),
 	_exchanges(),
 	_closing(false),
 	_connection_refused(connection_refused) {}
@@ -50,12 +54,14 @@ Client::Client(const Client &x) :
 	_sd(x._sd),
 	_fd(x._fd),
 	_cgi_fd(x._cgi_fd),
+	_file_write_fd(x._file_write_fd),
 	_addr(x._addr),
 	_socket_len(x._socket_len),
 	_virtual_servers(x._virtual_servers),
 	_input_str(x._input_str),
 	_output_str(x._output_str),
 	_cgi_output_str(x._output_str),
+	_file_write_str(x._file_write_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing),
 	_connection_refused(x._connection_refused) {}
@@ -66,10 +72,12 @@ Client
 &Client::operator=(const Client &x) {
 	_fd = x._fd;
 	_cgi_fd = x._cgi_fd;
+	_file_write_fd = x._file_write_fd;
 	_exchanges = x._exchanges;
 	_input_str = x._input_str;
 	_output_str = x._output_str;
 	_cgi_output_str = x._cgi_output_str;
+	_file_write_str = x._file_write_str;
 	_closing = x._closing;
 	_connection_refused = x._connection_refused;
 	return (*this);
@@ -88,6 +96,11 @@ Client::get_fd(void) const {
 int
 Client::get_cgi_fd(void) const {
 	return (_cgi_fd);
+}
+
+int
+Client::get_file_write_fd(void) const {
+	return (_file_write_fd);
 }
 
 
@@ -167,6 +180,8 @@ Client::_process(exchange_t &exchange) {
 		return (_process_cgi(exchange));
 	if (request.get_request_line().get_method() == GET)
 		return (_process_GET(exchange));
+	if (request.get_request_line().get_method() == PUT)
+		return (_process_PUT(exchange));
 	return (FAILURE);
 }
 
@@ -361,6 +376,61 @@ Client::_process_GET(exchange_t &exchange) {
 	return (_open_file_to_read(response.get_target_path()));
 }
 
+
+/* processing elements needed for performing the PUT request: creating/opening the file demanded
+through URI. Actual writing will take place in Client::write_file function which will be called in
+WebServer::write_socks function */
+int
+Client::_process_PUT(exchange_t &exchange) {
+	Request		&request(exchange.first);
+	Response	&response(exchange.second);
+
+	std::string path(_build_resource_path(request));
+	path_type_t path_type = Syntax::get_path_type(path);
+
+	/* we do not support creating a directory through put */
+	if (path_type == DIRECTORY) {
+		response.get_status_line().set_status_code(NOT_FOUND);
+		return (_process_error(exchange));
+	}
+	response.set_target_path(path);
+	/* if the path is invalid, it means there are no file, thus we try to create the file*/ 	
+	if (path_type == INVALID_PATH) {
+		/* setting as non blocking, not using open_file_to_read or modifying it as would create to many 
+		options for just a few lines */
+		_file_write_fd = open(response.get_target_path().c_str(), O_CREAT|O_WRONLY|O_NONBLOCK, 0666);
+		if (_file_write_fd < 0) {
+			std::cerr << "error during opening a file :";
+			std::cerr << strerror(errno) << std::endl;
+			response.get_status_line().set_status_code(NOT_FOUND);
+			return (_process_error(exchange));
+		}
+		response.get_status_line().set_status_code(CREATED);
+		return (_file_write_fd);
+	}
+	else { // path_type == REGULAR_FILE
+		_file_write_fd = open(response.get_target_path().c_str(), O_WRONLY|O_NONBLOCK, 0666);	
+		if (_file_write_fd < 0) {
+			std::cerr << "error during opening a file :";
+			std::cerr << strerror(errno) << std::endl;
+			response.get_status_line().set_status_code(NOT_FOUND);
+			return (_process_error(exchange));
+		}
+		/* If the target resource does have a current representation and that representation is successfully
+		modified in accordance with the state of the enclosed representation, then the origin server must send 
+		either a 200 (OK) or a 204 (No Content) response to indicate successful completion of the request. */
+		if (request.get_body().length() > 0) {
+			response.get_status_line().set_status_code(OK);
+			_file_write_str = request.get_body();
+		}
+		else {
+			response.get_status_line().set_status_code(NO_CONTENT);
+			_file_write_str.clear();
+		}
+		return (_file_write_fd);
+	}
+}
+
 void
 Client::_generate_error_page(exchange_t &exchange) {
 	Response& response = exchange.second;
@@ -474,6 +544,8 @@ Client::_collect_cgi_header(CGIResponse &cgi_response) {
 	_cgi_output_str.erase(0, end_header + 1);
 }
 
+/* cchenot : function name can be a bit misleading, here we read the file through _fd processed by _process_GET;
+file is read to build _out_put_str to be sent to client as part of HTTP response */
 int
 Client::read_file(void) {
 	exchange_t	&exchange(_exchanges.front());
@@ -495,6 +567,33 @@ Client::read_file(void) {
 	}
 	buffer[ret] = '\0';
 	response.set_body(response.get_body() + std::string(buffer));
+	return (SUCCESS);
+}
+
+int
+Client::write_file(void) {
+	exchange_t	&exchange(_exchanges.front());
+	int			ret;
+	std::string	tmp_str(_file_write_str, 0, _buffer_size);
+
+	const		char* buffer = tmp_str.c_str();
+
+	ret = write(_file_write_fd, buffer, _buffer_size);
+	if (ret < 0) {
+		close(_file_write_fd);
+		return (FAILURE);
+	}
+	if (ret == 0) {
+		close(_file_write_fd);
+		_file_write_fd = 0;
+		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
+			return (_process_error(exchange));
+		return (_build_output_str(exchange));
+	}
+	if (_file_write_str.length() > _buffer_size)
+		_file_write_str = _file_write_str.substr(_buffer_size);
+	else
+		_file_write_str.clear();
 	return (SUCCESS);
 }
 
