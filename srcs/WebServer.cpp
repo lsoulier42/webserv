@@ -3,18 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   WebServer.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/16 22:14:38 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 19:59:13 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "WebServer.hpp"
 #include "ResponseHandling.hpp"
-
-bool
-WebServer::verbose = false;
 
 WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
 	_highest_socket(0), _exit(false) {
@@ -126,6 +123,8 @@ WebServer::set_non_blocking(int file_descriptor) {
 	}
 }
 
+/* function to build/set READ and WRITE fds that select() will use. Clears all at the beginning and
+start rebuilding one by one on each. Is called on each routine while loop instance. */
 void
 WebServer::_build_select_list() {
 	FD_ZERO(&_sockets_list[READ]);
@@ -147,6 +146,11 @@ WebServer::_build_select_list() {
 			FD_SET(it->get_cgi_fd(), &_sockets_list[READ]);
 			if (it->get_cgi_fd() > _highest_socket)
 				_highest_socket = it->get_cgi_fd();
+		}
+		if (it->get_file_write_fd() > 0) {
+			FD_SET(it->get_file_write_fd(), &_sockets_list[WRITE]);
+			if (it->get_file_write_fd() > _highest_socket)
+				_highest_socket = it->get_file_write_fd();
 		}
   }
 }
@@ -223,6 +227,10 @@ WebServer::_write_socks() {
 		}
 		else
 			it++;
+	}
+	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end(); it++) {
+		if (FD_ISSET(it->get_file_write_fd(), &_sockets_list[WRITE]))
+			it->write_file();
 	}
 }
 

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:18:04 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 16:10:59 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,11 +59,13 @@ class Client {
 		int get_sd(void) const;
 		int get_fd(void) const;
 		int get_cgi_fd(void) const;
+		int get_file_write_fd(void) const;
 		
 		int read_socket(void) throw (ClientError);
 		int write_socket(void) throw(std::bad_alloc, ClientError);
 		int read_file(void) throw(ClientError);
 		int read_cgi(void);
+		int	write_file(void);
 
 		class ClientError : public std::exception {
 			public:
@@ -87,12 +89,14 @@ class Client {
 		const int _sd;
 		int _fd;
 		int _cgi_fd;
+		int	_file_write_fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
 		ByteArray _input;
 		ByteArray _output;
 		std::string _cgi_output_str;
+		std::string _file_write_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
 		bool _connection_refused;
@@ -112,6 +116,7 @@ class Client {
 
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
+		int	_process_PUT(exchange_t &exchange);
 		int _process_cgi(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
