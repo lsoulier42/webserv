@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/02 15:32:15 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/06 20:07:01 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 20:32:02 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,9 +77,8 @@ Server::_create_socket_descriptor() {
 		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	if (WebServer::verbose) {
-		std::cout << "Server socket successfully created at file descriptor " << _server_sd << std::endl;
-	}
+	DEBUG_COUT("Server socket successfully created at file descriptor " << _server_sd);
+
 }
 
 void
@@ -91,9 +90,7 @@ Server::_change_socket_options() {
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
-	if (WebServer::verbose) {
-		std::cout << "Socket options changes successfully on file descriptor " << _server_sd << std::endl;
-	}
+	DEBUG_COUT("Socket options changes successfully on file descriptor " << _server_sd);
 }
 
 void
@@ -110,10 +107,8 @@ Server::_bind_socket() {
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
-	if (WebServer::verbose) {
-		std::cout << "Server with file descriptor " << _server_sd;
-		std::cout << " has been successfully bind on port: " << port << std::endl;
-	}
+	DEBUG_COUT("Server with file descriptor " <<  _server_sd);
+	DEBUG_COUT(" has been successfully bind on port: " << port);
 }
 
 void
@@ -124,8 +119,5 @@ Server::_set_listen_mode() const {
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
-	if (WebServer::verbose) {
-		std::cout << "Server with file descriptor " << _server_sd;
-		std::cout << " has been successfully set in listen mode" << std::endl;
-	}
+	DEBUG_COUT("Server with file descriptor " << _server_sd << " has been successfully set in listen mode");
 }

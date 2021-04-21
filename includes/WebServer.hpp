@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:39:02 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/08 21:52:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 19:59:20 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@
 # include "Client.hpp"
 # include "VirtualServer.hpp"
 # include "ConfigParsing.hpp"
+# include "Debugger.hpp"
 
 # define DEFAULT_MAX_CONNECTION 10
 # define READ 0
@@ -48,8 +49,6 @@ class WebServer {
 		void setup_servers();
 		void routine();
 		static void set_non_blocking(int file_descriptor);
-
-		static bool verbose;
 
 	private:
 		WebServer(const WebServer& src);

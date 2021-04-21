@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ResponseHandling.cpp                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/19 17:53:17 by louise           ###   ########.fr       */
+/*   Updated: 2021/04/21 16:48:38 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -323,13 +323,17 @@ ResponseHandling::_response_last_modified_handler(Client::exchange_t &exchange) 
 
 int
 ResponseHandling::_response_location_handler(Client::exchange_t &exchange) {
-	Response& response = exchange.second;
+	Response&	response = exchange.second;
+	Request&	request = exchange.first;
 	int status_code = response.get_status_line().get_status_code();
 
-	if (Syntax::is_redirection_code(Syntax::status_codes_tab[status_code].code_int)
-		|| status_code == CREATED) {
-		//TODO: need handler for POST method
+	if (request.get_request_line().get_method() == PUT ||
+		request.get_request_line().get_method() == POST) {
+		if (status_code == OK || status_code == CREATED || status_code == 204) {
+			response.get_headers().insert(CONTENT_LOCATION, request.get_headers().get_unparsed_value(CONTENT_LOCATION));
+		}
 	}
+
 	return SUCCESS;
 }
 
