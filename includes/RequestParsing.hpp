@@ -29,23 +29,22 @@ class RequestParsing {
 		static bool is_valid_language_tag(const std::string& language_tag);
 		static bool is_valid_http_date(const std::string& date_str);
 
-
 	private:
 		static void _failure(Client &client, Client::exchange_t &exchange, status_code_t status_code);
-		static bool _request_line_received(const Request &request, const std::string &input_str);
-		static bool _header_received(const Request &request, const std::string &input_str);
-		static bool _headers_received(const Request &request, const std::string &input_str);
-		static bool _body_received(const Request &request, const std::string &input_str);
-		static bool _trailer_received(const Request &request, const std::string &input_str);
-		static bool _trailers_received(const Request &request, const std::string &input_str);
+		static bool _request_line_received(const Request &request, const ByteArray &input_str);
+		static bool _header_received(const Request &request, const ByteArray &input_str);
+		static bool _headers_received(const Request &request, const ByteArray &input_str);
+		static bool _body_received(const Request &request, const ByteArray &input_str);
+		static bool _trailer_received(const Request &request, const ByteArray &input_str);
+		static bool _trailers_received(const Request &request, const ByteArray &input_str);
 		static bool _transfer_encoding_chunked(const Request &request);
 		static bool _body_expected(const Request &request);
 		static bool _trailer_expected(const Request &request);
-		static int _collect_request_line_elements(Request &request, std::string &input_str);
-		static void _collect_header(Request &request, std::string &input_str);
+		static int _collect_request_line_elements(Request &request, ByteArray &input_str);
+		static void _collect_header(Request &request, ByteArray &input_str);
 		static int _check_headers(Client &client, Request &request);
-		static int _check_trailer(Request &request, std::string &input_str);
-		static int _collect_body(Request &request, std::string &input_str);
+		static int _check_trailer(Request &request, ByteArray &input_str);
+		static int _collect_body(Request &request, ByteArray &input_str);
 		static void _pick_virtual_server(Client &client, Request &request);
 		static void _pick_location(Request &request);
 		static int _process_request_headers(Client &client, Request &request);

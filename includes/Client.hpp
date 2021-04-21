@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 09:43:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 23:52:53 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,11 +60,28 @@ class Client {
 		int get_sd(void) const;
 		int get_fd(void) const;
 		int get_cgi_fd(void) const;
+		int get_file_write_fd(void) const;
 		
-		int read_socket(void);
-		int write_socket(void);
-		int read_file(void);
+		int read_socket(void) throw (ClientError);
+		int write_socket(void) throw(ClientError);
+		int read_file(void) throw(ClientError);
 		int read_cgi(void);
+		int	write_file(void) throw(ClientError);
+
+		class ClientError : public std::exception {
+			public:
+				ClientError(status_code_t error_code) throw() :
+					_error_code(error_code) {}
+				virtual ~ClientError() throw() {}
+				virtual const char* what() const throw() {
+					return (Syntax::status_codes_tab[_error_code].reason_phrase.c_str());
+				}
+				status_code_t get_error_code() const throw() {
+					return (_error_code);
+				}
+			private:
+				status_code_t _error_code;
+		};
 
 	private:
 
@@ -73,12 +90,14 @@ class Client {
 		const int _sd;
 		int _fd;
 		int _cgi_fd;
+		int	_file_write_fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
-		std::string _input_str;
-		std::string _output_str;
-		std::string _cgi_output_str;
+		ByteArray _input;
+		ByteArray _output;
+		std::string _cgi_output_str; //needs changing
+		ByteArray _file_write_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
 		bool _connection_refused;
@@ -95,29 +114,31 @@ class Client {
 		 */
 		int _process_connection_refused();
 		int _process(exchange_t &exchange);
+
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
 		int _handle_cgi(exchange_t &exchange);
+		int	_process_PUT(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
-		int _build_output_str(exchange_t &exchange);
-		void _generate_error_page(exchange_t &exchange);
+		int _build_output(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 
-		/* Autoindex
+	/* Autoindex
 		 *
 		 *
 		 *
 		 */
 		int	_generate_autoindex(exchange_t &exchange);
-		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, const std::string& target_path, bool is_dir);
+		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, exchange_t& exchange, bool is_dir);
 		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
 			const std::set<std::string>& file_names);
+		std::string _format_directory_name(const std::string& directory_name);
     
-    /* CGI
-     *
-     */ 
+		/* CGI
+		 *
+		 */
     
 		bool _is_cgi_related(const Request &request) const;
 		std::string _build_cgi_script_path(const Request &request) const;

@@ -27,6 +27,7 @@ class ResponseHandling {
 
 		static int process_response_headers(Client::exchange_t &exchange);
 		static void generate_basic_headers(Client::exchange_t &exchange);
+		static std::string get_current_HTTP_date(void);
 
 	private:
 		ResponseHandling(const ResponseHandling& src);
@@ -44,9 +45,8 @@ class ResponseHandling {
 		static int _response_server_handler(Client::exchange_t &exchange);
 		static int _response_transfer_encoding_handler(Client::exchange_t &exchange);
 		static int _response_www_authenticate_handler(Client::exchange_t &exchange);
-
 		static void _pick_content_type(Client::exchange_t &exchange);
-		static std::string get_current_HTTP_date(void);
+
 		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, method_t method);
 		static std::string _html_content_language_parser(const Response& response);
 		static std::string _xml_content_language_parser(const Response& response);

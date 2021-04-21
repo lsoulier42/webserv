@@ -13,9 +13,13 @@
 #include "ResponseHandling.hpp"
 #include "RequestParsing.hpp"
 
-ResponseHandling::ResponseHandling() {}
+ResponseHandling::ResponseHandling() {
 
-ResponseHandling::~ResponseHandling() {}
+}
+
+ResponseHandling::~ResponseHandling() {
+
+}
 
 void
 ResponseHandling::_pick_content_type(Client::exchange_t &exchange) {
@@ -59,8 +63,7 @@ ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 
 bool
 ResponseHandling::_is_allowed_method(const std::list<std::string>& allowed_methods, method_t method) {
-	for(std::list<std::string>::const_iterator it = allowed_methods.begin();
-		it != allowed_methods.end(); it++) {
+	for(std::list<std::string>::const_iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
 		if (*it == Syntax::method_tab[method].name)
 			return true;
 	}
@@ -91,7 +94,7 @@ ResponseHandling::_response_allow_handler(Client::exchange_t &exchange) {
 std::string
 ResponseHandling::_html_content_language_parser(const Response& response) {
 	std::string content_language_str, line_tag;
-	const std::string& body = response.get_body();
+	std::string body(response.get_body().c_str(), response.get_body().size());
 	size_t html_tag_pos, end_html_tag_pos, lang_pos, end_lang_pos;
 
 	html_tag_pos = body.find("<html");
@@ -118,7 +121,7 @@ ResponseHandling::_html_content_language_parser(const Response& response) {
 std::string
 ResponseHandling::_xml_content_language_parser(const Response& response) {
 	std::string content_language_str, line_tag;
-	const std::string& body = response.get_body();
+	std::string body(response.get_body().c_str(), response.get_body().size());
 	size_t lang_pos, end_lang_pos;
 
 	lang_pos = body.find("xml:lang=\"");
@@ -194,9 +197,8 @@ ResponseHandling::_response_content_location_handler(Client::exchange_t &exchang
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	location_str(request_target.substr(0, request_target.find('?')));
 
-	if (response.get_status_line().get_status_code() >= BAD_REQUEST)
-		return SUCCESS;
-	response.get_headers().insert(CONTENT_LOCATION, location_str);
+	if (response.get_status_line().get_status_code() < BAD_REQUEST)
+		response.get_headers().insert(CONTENT_LOCATION, location_str);
 	return SUCCESS;
 }
 
@@ -204,7 +206,8 @@ bool
 ResponseHandling::_is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets) {
 	if (allowed_charsets.empty())
 		return true;
-	for (std::list<std::string>::const_iterator it = allowed_charsets.begin(); it != allowed_charsets.end(); it++) {
+	for (std::list<std::string>::const_iterator it = allowed_charsets.begin();
+		it != allowed_charsets.end(); it++) {
 		if (*it == "*")
 			return true;
 		if (charset_found.find(Syntax::str_to_lower(*it)) != std::string::npos)
@@ -215,7 +218,7 @@ ResponseHandling::_is_accepted_charset(const std::string& charset_found, const s
 
 std::string
 ResponseHandling::_html_charset_parser(const Response& response) {
-	const std::string& body = response.get_body();
+	std::string body(response.get_body().c_str(), response.get_body().size());
 	std::string header_bloc, charset, meta_tag("<meta charset=\"") ;
 	size_t header_bloc_begin, header_bloc_end, meta_bloc_begin, meta_bloc_end;
 
@@ -240,7 +243,7 @@ ResponseHandling::_html_charset_parser(const Response& response) {
 
 std::string
 ResponseHandling::_xml_charset_parser(const Response& response) {
-	const std::string& body = response.get_body();
+	std::string body(response.get_body().c_str(), response.get_body().size());
 	std::string xml_tag, encoding, charset;
 	size_t xml_tag_begin, xml_tag_end, encoding_begin, encoding_end;
 
@@ -283,7 +286,7 @@ ResponseHandling::_response_content_type_handler(Client::exchange_t &exchange) {
 		content_type += "; charset=" + charset;
 	}
 	response.get_headers().insert(CONTENT_TYPE, content_type);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 std::string
@@ -295,7 +298,7 @@ ResponseHandling::get_current_HTTP_date(void) {
 	gettimeofday(&tv, NULL);
 	date = localtime(&(tv.tv_sec));
 	strftime(buff, sizeof(buff), "%a, %d %b %Y %T GMT+02", date);
-	return std::string(buff);
+	return (std::string(buff));
 }
 
 int
@@ -303,7 +306,7 @@ ResponseHandling::_response_date_handler(Client::exchange_t &exchange) {
 	Response& response = exchange.second;
 
 	response.get_headers().insert(DATE, get_current_HTTP_date());
-	return 1;
+	return (SUCCESS);
 }
 
 int
@@ -318,19 +321,22 @@ ResponseHandling::_response_last_modified_handler(Client::exchange_t &exchange) 
 		strftime(time_buf, sizeof(time_buf), "%a, %d %b %Y %T GMT+02", date);
 		response.get_headers().insert(LAST_MODIFIED, std::string(time_buf));
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
 ResponseHandling::_response_location_handler(Client::exchange_t &exchange) {
-	Response& response = exchange.second;
+	Response&	response = exchange.second;
+	Request&	request = exchange.first;
 	int status_code = response.get_status_line().get_status_code();
 
-	if (Syntax::is_redirection_code(Syntax::status_codes_tab[status_code].code_int)
-		|| status_code == CREATED) {
-		//TODO: need handler for POST method
+	if (request.get_request_line().get_method() == PUT ||
+		request.get_request_line().get_method() == POST) {
+		if (status_code == OK || status_code == CREATED || status_code == 204) {
+			response.get_headers().insert(CONTENT_LOCATION, request.get_headers().get_unparsed_value(CONTENT_LOCATION));
+		}
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -342,15 +348,15 @@ ResponseHandling::_response_retry_after_handler(Client::exchange_t &exchange) {
 		ss << DELAY_RETRY_AFTER;
 		response.get_headers().insert(RETRY_AFTER, ss.str());
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
 ResponseHandling::_response_server_handler(Client::exchange_t &exchange) {
 	Response& response = exchange.second;
 
-	response.get_headers().insert(SERVER, "webserv/1.0");
-	return SUCCESS;
+	response.get_headers().insert(SERVER, PROGRAM_VERSION);
+	return (SUCCESS);
 }
 
 int
@@ -358,7 +364,7 @@ ResponseHandling::_response_transfer_encoding_handler(Client::exchange_t &exchan
 	Response &response = exchange.second;
 
 	response.get_headers().insert(TRANSFER_ENCODING, Syntax::encoding_types_tab[IDENTITY].name);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -369,7 +375,7 @@ ResponseHandling::_response_www_authenticate_handler(Client::exchange_t &exchang
 
 	if (status_code == UNAUTHORIZED && request.get_headers().key_exists(AUTHORIZATION))
 		response.get_headers().insert(WWW_AUTHENTICATE, request.get_headers().get_value(AUTHORIZATION).front());
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 void
@@ -378,7 +384,7 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	status_code_t error_code = response.get_status_line().get_status_code();
 	std::stringstream ss;
 
-	ss << response.get_body().length();
+	ss << response.get_body().size();
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
 	response.get_headers().insert(CONTENT_TYPE, "text/html");

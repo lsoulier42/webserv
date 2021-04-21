@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:39:02 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/08 21:52:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 19:59:20 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,11 +27,13 @@
 # include <fstream>
 # include <ios>
 # include <set>
+# include <sstream>
 
 # include "Server.hpp"
 # include "Client.hpp"
 # include "VirtualServer.hpp"
 # include "ConfigParsing.hpp"
+# include "Debugger.hpp"
 
 # define DEFAULT_MAX_CONNECTION 10
 # define READ 0
@@ -49,8 +51,6 @@ class WebServer {
 		void routine();
 		static void set_non_blocking(int file_descriptor);
 
-		static bool verbose;
-
 	private:
 		WebServer(const WebServer& src);
 		WebServer& operator=(const WebServer& rhs);
@@ -60,6 +60,8 @@ class WebServer {
 		void _read_socks();
 		void _close_sockets();
 		void _write_socks();
+		void _process_internal_server_error(const Client& client);
+		void _close_error(std::list<Client>::iterator& it, const Client::ClientError& e);
 
 		std::ifstream _config_file;
 		std::list<Server> _servers;

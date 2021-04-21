@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:19:23 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/20 16:26:54 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 23:54:03 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,11 +14,11 @@
 # define CGIMETAVARIABLES_HPP
 
 #include <string>
-#include <stdlib.h>
-#include <string.h>
 #include <sstream>
 #include <sys/socket.h>
 #include <netinet/in.h> 
+#include <cstdlib>
+#include <cstring>
 #include "Syntax.hpp"
 #include "Request.hpp"
 

@@ -12,7 +12,10 @@
 
 #ifndef SYNTAX_HPP
 # define SYNTAX_HPP
+# include <iostream>
 # include <string>
+# include <sstream>
+# include <cstring>
 # include <list>
 # include <vector>
 # include <map>
@@ -20,6 +23,7 @@
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <unistd.h>
+# include "ByteArray.hpp"
 
 # define WHITESPACES " \n\r\t\f\v"
 # define TOTAL_REQUEST_HEADERS 10
@@ -27,6 +31,8 @@
 # define SUCCESS 1
 # define FAILURE 0
 # define DELAY_RETRY_AFTER 10
+# define PROGRAM_VERSION "webserv/1.0"
+# define OUR_HTTP_VERSION "HTTP/1.1"
 
 enum path_type_t {
 	REGULAR_FILE,
@@ -322,6 +328,10 @@ class Syntax {
 		static URI_form_t get_URI_form(const std::string& uri_str);
 		static path_type_t get_path_type(const std::string &path);
 
+		static std::string body_error_code(status_code_t error_code);
+		static std::string format_status_line(const std::string& http_version, status_code_t status_code);
+		static std::string format_header_field(header_name_t header_code, const std::string& header_value);
+
 		template<typename T>
 		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {
 			if (value == "*")
@@ -332,6 +342,10 @@ class Syntax {
 			}
 			return false;
 		}
+
+		static char *buffer_dup(const char* buffer, size_t n);
+		static char *buffer_append(char* dest, const char* buffer, size_t dest_size, size_t buffer_size);
+		static char *buffer_pop_front(char* buffer, size_t buffer_size, size_t size_to_erase);
 
 	private:
 		Syntax();

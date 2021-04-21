@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 10:12:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 23:50:04 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,18 +16,20 @@
 #include "WebServer.hpp"
 #include <wait.h>
 
-const size_t	Client::_buffer_size(2);
+const size_t	Client::_buffer_size(8192);
 
 Client::Client(void) :
 	_sd(),
 	_fd(),
 	_cgi_fd(),
+	_file_write_fd(),
 	_addr(),
 	_socket_len(),
 	_virtual_servers(),
-	_input_str(),
-	_output_str(),
+	_input(),
+	_output(),
 	_cgi_output_str(),
+	_file_write_str(),
 	_exchanges(),
 	_closing(false),
 	_connection_refused(false) {}
@@ -37,12 +39,14 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	_sd(sd),
 	_fd(),
 	_cgi_fd(),
+	_file_write_fd(),
 	_addr(addr),
 	_socket_len(socket_len),
 	_virtual_servers(virtual_servers),
-	_input_str(),
-	_output_str(),
+	_input(),
+	_output(),
 	_cgi_output_str(),
+	_file_write_str(),
 	_exchanges(),
 	_closing(false),
 	_connection_refused(connection_refused) {}
@@ -51,28 +55,36 @@ Client::Client(const Client &x) :
 	_sd(x._sd),
 	_fd(x._fd),
 	_cgi_fd(x._cgi_fd),
+	_file_write_fd(x._file_write_fd),
 	_addr(x._addr),
 	_socket_len(x._socket_len),
 	_virtual_servers(x._virtual_servers),
-	_input_str(x._input_str),
-	_output_str(x._output_str),
-	_cgi_output_str(x._output_str),
+	_input(x._input),
+	_output(x._output),
+	_cgi_output_str(x._cgi_output_str),
+	_file_write_str(x._file_write_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing),
 	_connection_refused(x._connection_refused) {}
 
-Client::~Client(void) {}
+Client::~Client(void) {
+
+}
 
 Client
 &Client::operator=(const Client &x) {
-	_fd = x._fd;
-	_cgi_fd = x._cgi_fd;
-	_exchanges = x._exchanges;
-	_input_str = x._input_str;
-	_output_str = x._output_str;
-	_cgi_output_str = x._cgi_output_str;
-	_closing = x._closing;
-	_connection_refused = x._connection_refused;
+	if (this != &x) {
+		_fd = x._fd;
+		_cgi_fd = x._cgi_fd;
+		_file_write_fd = x._file_write_fd;
+		_exchanges = x._exchanges;
+		_input = x._input;
+		_output = x._output;
+		_cgi_output_str = x._cgi_output_str;
+		_file_write_str = x._file_write_str;
+		_closing = x._closing;
+		_connection_refused = x._connection_refused;
+	}
 	return (*this);
 }
 
@@ -91,6 +103,11 @@ Client::get_cgi_fd(void) const {
 	return (_cgi_fd);
 }
 
+int
+Client::get_file_write_fd(void) const {
+	return (_file_write_fd);
+}
+
 /*
  * REQUEST RECEPTION
  */
@@ -98,7 +115,7 @@ Client::get_cgi_fd(void) const {
 int
 Client::_process_connection_refused() {
 	exchange_t refused_exchange = std::make_pair(Request(*this), Response());
-	refused_exchange.second.get_status_line().set_http_version("HTTP/1.1");
+	refused_exchange.second.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	refused_exchange.second.get_status_line().set_status_code(SERVICE_UNAVAILABLE);
 	refused_exchange.first.set_compromising(true);
 	_closing = true;
@@ -107,21 +124,20 @@ Client::_process_connection_refused() {
 }
 
 int
-Client::read_socket(void) {
-	char	buffer[_buffer_size + 1];
+Client::read_socket(void) throw (ClientError) {
+	char	buffer[_buffer_size];
 	int		ret;
 
 	if (_connection_refused)
-		return (_process_connection_refused());
+		return(_process_connection_refused());
 	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
 		if (0 == ret)
-			std::cout << "the client closed the connection." << std::endl;
+			std::cerr << "the client closed the connection." << std::endl;
 		else
 			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
-		return (FAILURE);
+		throw (ClientError(INTERNAL_SERVER_ERROR));
 	}
-	buffer[ret] = '\0';
-	_input_str += std::string(buffer);
+	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
@@ -129,22 +145,19 @@ Client::read_socket(void) {
 }
 
 int
-Client::write_socket(void) {
-	exchange_t	&exchange = _exchanges.front();
-	Request		&request(exchange.first);
-	size_t		to_write, output_size = _output_str.size();
+Client::write_socket(void) throw(ClientError) {
+	size_t		to_write, output_size = _output.size();
 	ssize_t 	write_return;
 
 	if (output_size == 0)
-		return SUCCESS;
+		return (SUCCESS);
 	to_write = output_size > _buffer_size ? _buffer_size : output_size;
-	write_return = write(_sd, _output_str.c_str(), to_write);
-	if (write_return == -1)
-		return FAILURE;
-	_output_str.erase(0, write_return);
-	if (_output_str.empty()) {
-		if (request.get_compromising())
-			return (FAILURE);
+	write_return = write(_sd, _output.c_str(), to_write);
+	_output.pop_front(write_return);
+	if (_output.empty()) {
+		status_code_t status_code = _exchanges.front().second.get_status_line().get_status_code();
+		if (status_code >= BAD_REQUEST)
+			throw (ClientError(status_code));
 		_exchanges.pop_front();
 	}
 	return (SUCCESS);
@@ -160,24 +173,25 @@ Client::_process(exchange_t &exchange) {
 	Response	&response(exchange.second);
 
 	request.set_status(Request::REQUEST_PROCESSED);
-	response.get_status_line().set_http_version("HTTP/1.1");
+	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
 		return (_process_error(exchange));
 	if (_is_cgi_related(request))
 		return (_handle_cgi(exchange));
 	if (request.get_request_line().get_method() == GET)
 		return (_process_GET(exchange));
+	if (request.get_request_line().get_method() == PUT)
+		return (_process_PUT(exchange));
 	return (FAILURE);
 }
 
 
 std::string
 Client::_format_index_path(const std::string& dir_path, const std::string& index_file) {
-	std::string definite_path = dir_path;
+	std::string definite_path;
 	std::string definite_index_file = index_file;
 
-	if (*(--dir_path.end()) != '/')
-		definite_path += "/";
+	definite_path = _format_directory_name(dir_path);
 	if (*index_file.begin() == '/')
 		definite_index_file = index_file.substr(1);
 	return definite_path + definite_index_file;
@@ -200,9 +214,9 @@ Client::_get_default_index(exchange_t &exchange) {
 		}
 	}
 	if (Syntax::get_path_type(definite_path) == INVALID_PATH)
-		return FAILURE;
+		return (FAILURE);
 	response.set_target_path(definite_path);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 std::string
@@ -219,31 +233,40 @@ Client::_format_autoindex_page(exchange_t& exchange, const std::set<std::string>
 	ss << "<h1>Index of " << dir_name << "</h1><hr><pre>";
 	ss << "<table><tr><th>Name</th><th>Last modification</th><th>Size</th></tr>";
 	for (std::set<std::string>::iterator it = directory_names.begin(); it != directory_names.end(); it++)
-		_format_autoindex_entry(ss, *it, target_path, true);
+		_format_autoindex_entry(ss, *it, exchange, true);
 	for (std::set<std::string>::iterator it = file_names.begin(); it != file_names.end(); it++)
-		_format_autoindex_entry(ss, *it, target_path, false);
+		_format_autoindex_entry(ss, *it, exchange, false);
 	ss << "</table></pre><hr></body>" << std::endl << "</html>" << std::endl;
 	return ss.str();
 }
 
+std::string
+Client::_format_directory_name(const std::string& directory_name) {
+	std::string new_dir_name = directory_name;
+	if (*--new_dir_name.end() != '/')
+		new_dir_name += "/";
+	return new_dir_name;
+}
+
 void
 Client::_format_autoindex_entry(std::stringstream& ss, const std::string& filename,
-	const std::string& target_path, bool is_dir) {
-	std::string		definite_filename, fullpath, size_str;
+	exchange_t& exchange, bool is_dir) {
+	std::string		definite_filename, fullpath;
+	std::string		request_target = exchange.first.get_request_line().get_request_target();
 	struct stat		stat_buf;
 	char 			time_buf[64];
 	time_t			last_modification;
 	struct tm		*tm;
 
-	fullpath = target_path + filename;
-	if (stat(fullpath.c_str(), &stat_buf) == -1) {
+	fullpath = _format_directory_name(exchange.second.get_target_path()) + filename;
+	if (stat(fullpath.c_str(), &stat_buf) == -1)
 		return;
-	}
 	last_modification = stat_buf.st_mtim.tv_sec;
 	tm = localtime(&last_modification);
 	strftime(time_buf, sizeof(time_buf), "%d-%b-%Y %H:%M", tm);
-	definite_filename = is_dir ? filename + "/" : filename;
-	ss << "<tr><td><a href=\"" << definite_filename << "\">";
+	definite_filename = is_dir ? _format_directory_name(filename) : filename;
+	request_target = _format_directory_name(request_target);
+	ss << "<tr><td><a href=\"" << request_target + filename << "\">";
 	ss << definite_filename << "</a></td>";
 	ss << "<td>--" << time_buf << "--</td>";
 	ss << "<td>";
@@ -261,11 +284,10 @@ Client::_generate_autoindex(exchange_t &exchange) {
 	std::set<std::string> directory_names, file_names;
 	struct dirent	*file_listing;
 
-
 	directory = opendir(response.get_target_path().c_str());
 	if (!directory) {
 		response.get_status_line().set_status_code(FORBIDDEN);
-		return FAILURE;
+		return (FAILURE);
 	}
 	while ((file_listing = readdir(directory))) {
 		if (file_listing->d_type == DT_DIR
@@ -276,10 +298,10 @@ Client::_generate_autoindex(exchange_t &exchange) {
 		else if (file_listing->d_type == DT_REG)
 			file_names.insert(file_listing->d_name);
 	}
-	response.set_body(_format_autoindex_page(exchange, directory_names, file_names));
+	response.set_body(ByteArray(_format_autoindex_page(exchange, directory_names, file_names)));
 	ResponseHandling::generate_basic_headers(exchange);
 	closedir(directory);
-	return (_build_output_str(exchange));
+	return (_build_output(exchange));
 }
 
 int
@@ -307,30 +329,66 @@ Client::_process_GET(exchange_t &exchange) {
 	return (_open_file_to_read(response.get_target_path()));
 }
 
-void
-Client::_generate_error_page(exchange_t &exchange) {
-	Response& response = exchange.second;
-	status_code_t error_code = response.get_status_line().get_status_code();
-	std::stringstream ss;
 
-	ss << "<html>" << std::endl << "<head>" << std::endl;
-	ss << "<title>Error " << Syntax::status_codes_tab[error_code].code_str;
-	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
-	ss << "</title>" << std::endl << "</head>" << std::endl;
-	ss << "<body bgcolor=\"white\">" << std::endl << "<center>" << std::endl;
-	ss << "<h1>Error " << Syntax::status_codes_tab[error_code].code_str;
-	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase;
-	ss << "</h1>" << std::endl << "</center>" << std::endl;
-	ss << "<hr><center>webserv/1.0</center>" << std::endl;
-	ss << "</body>" << std::endl << "</html>" << std::endl;
-	response.set_body(ss.str());
-	ResponseHandling::generate_basic_headers(exchange);
+/* processing elements needed for performing the PUT request: creating/opening the file demanded
+through URI. Actual writing will take place in Client::write_file function which will be called in
+WebServer::write_socks function */
+int
+Client::_process_PUT(exchange_t &exchange) {
+	Request		&request(exchange.first);
+	Response	&response(exchange.second);
+
+	std::string path(_build_resource_path(request));
+	path_type_t path_type = Syntax::get_path_type(path);
+
+	/* we do not support creating a directory through put */
+	if (path_type == DIRECTORY) {
+		response.get_status_line().set_status_code(NOT_FOUND);
+		return (_process_error(exchange));
+	}
+	response.set_target_path(path);
+	/* if the path is invalid, it means there are no file, thus we try to create the file*/
+	if (path_type == INVALID_PATH) {
+		/* setting as non blocking, not using open_file_to_read or modifying it as would create to many
+		options for just a few lines */
+		_file_write_fd = open(response.get_target_path().c_str(), O_CREAT|O_WRONLY|O_NONBLOCK, 0666);
+		if (_file_write_fd < 0) {
+			std::cerr << "error during opening a file :";
+			std::cerr << strerror(errno) << std::endl;
+			response.get_status_line().set_status_code(NOT_FOUND);
+			return (_process_error(exchange));
+		}
+		response.get_status_line().set_status_code(CREATED);
+		return (_file_write_fd);
+	}
+	else { // path_type == REGULAR_FILE
+		_file_write_fd = open(response.get_target_path().c_str(), O_WRONLY|O_NONBLOCK, 0666);
+		if (_file_write_fd < 0) {
+			std::cerr << "error during opening a file :";
+			std::cerr << strerror(errno) << std::endl;
+			response.get_status_line().set_status_code(NOT_FOUND);
+			return (_process_error(exchange));
+		}
+		/* If the target resource does have a current representation and that representation is successfully
+		modified in accordance with the state of the enclosed representation, then the origin server must send
+		either a 200 (OK) or a 204 (No Content) response to indicate successful completion of the request. */
+		if (!request.get_body().empty()) {
+			response.get_status_line().set_status_code(OK);
+			_file_write_str = request.get_body();
+		}
+		else {
+			response.get_status_line().set_status_code(NO_CONTENT);
+			_file_write_str.clear();
+		}
+		return (_file_write_fd);
+	}
 }
 
 int
 Client::_process_error(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
+	status_code_t error_code = response.get_status_line().get_status_code();
 	std::string error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
@@ -339,16 +397,16 @@ Client::_process_error(exchange_t &exchange) {
 	if (!request.get_location())
 		request.set_location(&request.get_virtual_server()->get_locations().back());
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
-		if (response.get_status_line().get_status_code() == *it) {
+		if (error_code == *it) {
 			error_page_path = request.get_virtual_server()->get_error_page_path();
 			response.set_target_path(error_page_path);
 			return(_open_file_to_read(error_page_path));
 		}
 	}
-	_generate_error_page(exchange);
-	return (_build_output_str(exchange));
+	response.set_body(ByteArray(Syntax::body_error_code(error_code)));
+	ResponseHandling::generate_basic_headers(exchange);
+	return(_build_output(exchange));
 }
-
 
 std::string
 Client::_build_resource_path(Request &request) {
@@ -370,51 +428,71 @@ Client::_open_file_to_read(const std::string &path) {
 	return (SUCCESS);
 }
 
+/* cchenot : function name can be a bit misleading, here we read the file through _fd processed by _process_GET;
+file is read to build _out_put_str to be sent to client as part of HTTP response */
 int
-Client::read_file(void) {
+Client::read_file(void) throw(ClientError) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
-	char		buffer[_buffer_size + 1];
+	char		buffer[_buffer_size];
 	int			ret;
 
 	ret = read(_fd, buffer, _buffer_size);
 	if (ret < 0) {
 		close(_fd);
-		return (FAILURE);
+		throw(ClientError(INTERNAL_SERVER_ERROR));
 	}
 	if (ret == 0) {
 		close(_fd);
 		_fd = 0;
 		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 			return (_process_error(exchange));
-		return (_build_output_str(exchange));
+		return (_build_output(exchange));
 	}
-	buffer[ret] = '\0';
-	response.set_body(response.get_body() + std::string(buffer));
+	response.set_body(response.get_body() + ByteArray(buffer, ret));
 	return (SUCCESS);
 }
 
 int
-Client::_build_output_str(exchange_t &exchange) {
+Client::write_file(void) throw(ClientError) {
+	exchange_t	&exchange(_exchanges.front());
+	size_t		to_write, file_write_size = _file_write_str.size();
+	ssize_t 	write_return;
+
+	if (file_write_size == 0)
+		return (SUCCESS);
+	to_write = file_write_size > _buffer_size ? _buffer_size : file_write_size;
+	write_return = write(_file_write_fd, _file_write_str.c_str(), to_write);
+	if (write_return < 0) {
+		close(_file_write_fd);
+		throw(ClientError(INTERNAL_SERVER_ERROR));
+	}
+	_file_write_str.pop_front(write_return);
+	if (_file_write_str.empty()) {
+		close(_file_write_fd);
+		_file_write_fd = 0;
+		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
+			return (_process_error(exchange));
+		return (_build_output(exchange));
+	}
+	return (SUCCESS);
+}
+
+int
+Client::_build_output(exchange_t &exchange) {
 	Response	&response(exchange.second);
+	Response::StatusLine status_line = response.get_status_line();
 	AHTTPMessage::HTTPHeaders& headers = response.get_headers();
 
-	_output_str.clear();
-	_output_str += response.get_status_line().get_http_version();
-	_output_str += " ";
-	_output_str += Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str;
-	_output_str += " ";
-	_output_str += Syntax::status_codes_tab[response.get_status_line().get_status_code()].reason_phrase;
-	_output_str += "\r\n";
+	_output = ByteArray(Syntax::format_status_line(status_line.get_http_version(), status_line.get_status_code()));
 	for(size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (headers.key_exists(Syntax::response_headers_tab[i].header_index)) {
-			_output_str += Syntax::response_headers_tab[i].name + ": ";
-			_output_str += headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index);
-			_output_str += "\r\n";
+			_output += Syntax::format_header_field(Syntax::response_headers_tab[i].header_index,
+				headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index));
 		}
 	}
-	_output_str += "\r\n";
-	_output_str += response.get_body();
+	_output += "\r\n";
+	_output += response.get_body();
 	return (SUCCESS);
 }
 

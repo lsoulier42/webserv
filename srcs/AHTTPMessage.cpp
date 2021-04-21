@@ -16,16 +16,20 @@ AHTTPMessage::AHTTPMessage(void) :
 	_headers(),
 	_body() {}
 
-AHTTPMessage::AHTTPMessage(const AHTTPMessage &x) :
-	_headers(x._headers),
-	_body(x._body) {}
+AHTTPMessage::AHTTPMessage(const AHTTPMessage &x) throw(std::bad_alloc) {
+	*this = x;
+}
 
-AHTTPMessage::~AHTTPMessage(void) {}
+AHTTPMessage::~AHTTPMessage(void) {
+
+}
 
 AHTTPMessage
-&AHTTPMessage::operator=(const AHTTPMessage &x) {
-	_headers = x._headers;
-	_body = x._body;
+&AHTTPMessage::operator=(const AHTTPMessage &x) throw(std::bad_alloc) {
+	if (this != &x) {
+		_headers = x._headers;
+		_body = x._body;
+	}
 	return (*this);
 }
 
@@ -39,13 +43,13 @@ AHTTPMessage::HTTPHeaders
 	return (_headers);
 }
 
-const std::string
-&AHTTPMessage::get_body(void) const {
+const ByteArray&
+AHTTPMessage::get_body(void) const {
 	return (_body);
 }
 
 void
-AHTTPMessage::set_body(const std::string &body) {
+AHTTPMessage::set_body(const ByteArray& body) {
 	_body = body;
 }
 
