@@ -84,6 +84,7 @@ Client
 		_closing = x._closing;
 		_connection_refused = x._connection_refused;
 	}
+	return (*this);
 }
 
 int
@@ -425,7 +426,7 @@ Client::_process_PUT(exchange_t &exchange) {
 		/* If the target resource does have a current representation and that representation is successfully
 		modified in accordance with the state of the enclosed representation, then the origin server must send
 		either a 200 (OK) or a 204 (No Content) response to indicate successful completion of the request. */
-		if (request.get_body().size() > 0) {
+		if (!request.get_body().empty()) {
 			response.get_status_line().set_status_code(OK);
 			_file_write_str = request.get_body();
 		}
@@ -557,29 +558,27 @@ Client::read_file(void) throw(ClientError) {
 }
 
 int
-Client::write_file(void) {
+Client::write_file(void) throw(ClientError) {
 	exchange_t	&exchange(_exchanges.front());
-	int			ret;
-	std::string	tmp_str(_file_write_str, 0, _buffer_size);
+	size_t		to_write, file_write_size = _file_write_str.size();
+	ssize_t 	write_return;
 
-	const		char* buffer = tmp_str.c_str();
-
-	ret = write(_file_write_fd, buffer, _buffer_size);
-	if (ret < 0) {
+	if (file_write_size == 0)
+		return (SUCCESS);
+	to_write = file_write_size > _buffer_size ? _buffer_size : file_write_size;
+	write_return = write(_file_write_fd, _file_write_str.c_str(), to_write);
+	if (write_return < 0) {
 		close(_file_write_fd);
-		return (FAILURE);
+		throw(ClientError(INTERNAL_SERVER_ERROR));
 	}
-	if (ret == 0) {
+	_file_write_str.pop_front(write_return);
+	if (_file_write_str.empty()) {
 		close(_file_write_fd);
 		_file_write_fd = 0;
 		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 			return (_process_error(exchange));
 		return (_build_output(exchange));
 	}
-	if (_file_write_str.length() > _buffer_size)
-		_file_write_str = _file_write_str.substr(_buffer_size);
-	else
-		_file_write_str.clear();
 	return (SUCCESS);
 }
 

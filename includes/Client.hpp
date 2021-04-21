@@ -54,7 +54,7 @@ class Client {
 			const std::list<const VirtualServer*> &virtual_servers, bool connection_refused);
 		Client(const Client &x);
 		~Client(void);
-		Client &operator=(const Client &x) throw(std::bad_alloc);
+		Client &operator=(const Client &x);
 
 		int get_sd(void) const;
 		int get_fd(void) const;
@@ -62,10 +62,10 @@ class Client {
 		int get_file_write_fd(void) const;
 		
 		int read_socket(void) throw (ClientError);
-		int write_socket(void) throw(std::bad_alloc, ClientError);
+		int write_socket(void) throw(ClientError);
 		int read_file(void) throw(ClientError);
 		int read_cgi(void);
-		int	write_file(void);
+		int	write_file(void) throw(ClientError);
 
 		class ClientError : public std::exception {
 			public:
@@ -95,8 +95,8 @@ class Client {
 		const std::list<const VirtualServer*> _virtual_servers;
 		ByteArray _input;
 		ByteArray _output;
-		std::string _cgi_output_str;
-		std::string _file_write_str;
+		std::string _cgi_output_str; //needs changing
+		ByteArray _file_write_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
 		bool _connection_refused;
