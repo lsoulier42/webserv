@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/20 18:28:31 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 04:04:16 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include "RequestParsing.hpp"
 #include "ResponseHandling.hpp"
 #include "WebServer.hpp"
+#include <wait.h>
 
 const size_t	Client::_buffer_size(2);
 
@@ -464,9 +465,10 @@ Client::_handle_cgi(exchange_t &exchange) {
 
 	strcpy(arg0, arg0_str.c_str());
 	strcpy(arg1, arg1_str.c_str());
-	char	*args[2];
+	char	*args[0];
 	args[0] = arg0;
 	args[1] = arg1;
+	args[2] = 0;
 	pipe(req_pipe);
 	pipe(res_pipe);
 	if (-1 == (pid = _create_cgi_child_process()))
@@ -479,12 +481,17 @@ Client::_handle_cgi(exchange_t &exchange) {
 		chdir(request.get_location()->get_root().c_str());
 		if (0 > execve(request.get_location()->get_cgi_path().c_str(), args, mv.get_tab()))
 			perror("execve");
-		return (FAILURE);
+		close(req_pipe[0]);
+		close(res_pipe[1]);
+		exit(EXIT_FAILURE);
 	}
+	delete[] arg0;
+	delete[] arg1;
 	close(req_pipe[0]);
 	close(res_pipe[1]);
 	write(req_pipe[1], request.get_body().c_str(), request.get_body().size());
 	close(req_pipe[1]);
+	waitpid(-1, NULL, 0);
 	_cgi_fd = res_pipe[0];
 	return (SUCCESS);
 }
@@ -510,6 +517,7 @@ Client::read_cgi(void) {
 	_cgi_output_str += buffer;
 	return (SUCCESS);
 }
+
 
 int
 Client::_cgi_output_str_parsing(void) {
