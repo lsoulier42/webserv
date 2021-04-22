@@ -58,28 +58,27 @@ RequestParsing::_failure(Client &client, Client::exchange_t &exchange, status_co
 
 bool
 RequestParsing::_request_line_received(const Request &request, const ByteArray &input) {
-	return (request.get_status() == Request::START && std::string::npos != input.find("\r\n"));
+	return (request.get_status() == Request::START && ByteArray::npos != input.find("\r\n"));
 }
 
 bool
 RequestParsing::_header_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::REQUEST_LINE_RECEIVED
 			&& !_headers_received(request, input)
-			&& std::string::npos != input.find("\r\n"));
+			&& ByteArray::npos != input.find("\r\n"));
 }
 
 bool
 RequestParsing::_headers_received(const Request &request, const ByteArray &input) {
-	std::string input_str(input.c_str(), input.size());
 	return (request.get_status() == Request::REQUEST_LINE_RECEIVED
-			&& !input_str.compare(0, 2, "\r\n"));
+			&& !input.compare(0, 2, "\r\n"));
 }
 
 bool
 RequestParsing::_body_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::HEADERS_RECEIVED
 			&& ((_transfer_encoding_chunked(request)
-					&& input.find("0\r\n\r\n") != std::string::npos)
+					&& input.find("0\r\n\r\n") != ByteArray::npos)
 				|| (request.get_headers().key_exists(CONTENT_LENGTH)
 					&& input.size() >= static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())))));
 }
@@ -88,15 +87,14 @@ bool
 RequestParsing::_trailer_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::BODY_RECEIVED
 			&& !_trailers_received(request, input)
-			&& std::string::npos != input.find("\r\n"));
+			&& ByteArray::npos != input.find("\r\n"));
 }
 
 //TODO:: pas du tout comme ca qu'on repere la fin des trailers, provisoire, pour test
 bool
 RequestParsing::_trailers_received(const Request &request, const ByteArray &input) {
-	std::string input_str(input.c_str(), input.size());
 	return (request.get_status() == Request::BODY_RECEIVED
-			&& !input_str.compare(0, 2, "\r\n"));
+			&& !input.compare(0, 2, "\r\n"));
 }
 
 bool
@@ -155,7 +153,7 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 	size_t				end_header(input.find("\r\n"));
 	header_t			current_header;
 
-	if (std::string::npos != (col = input.find_first_of(':'))) {
+	if (ByteArray::npos != (col = input.find_first_of(':'))) {
 		current_header.name = input.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(input.substr(col + 1, (end_header - col - 1)));
 		request.get_headers().insert(current_header);
@@ -182,15 +180,43 @@ RequestParsing::_check_trailer(Request &request, ByteArray &input) {
 	return (SUCCESS);
 }
 
+ByteArray
+RequestParsing::_decode_chunked(const ByteArray& input) {
+	size_t end_l, line_nb = 0, next_line_len = -1;
+	std::stringstream ss;
+	ByteArray parsed_input = input, to_return, next_line_len_str;
+
+	while (next_line_len > 0) {
+		if (line_nb % 2 == 0) {
+			end_l = parsed_input.find("\r\n");
+			next_line_len_str = parsed_input.sub_byte_array(0, end_l);
+			ss.clear();
+			ss << std::hex << next_line_len_str;
+			ss >> next_line_len;
+		} else {
+			to_return += parsed_input.sub_byte_array(0, next_line_len);
+			end_l = next_line_len;
+		}
+		parsed_input.pop_front(end_l + 2);
+		line_nb++;
+	}
+	return (to_return);
+}
+
+
 int
 RequestParsing::_collect_body(Request &request, ByteArray &input) {
 	size_t		body_length(0);
 
-	if (_transfer_encoding_chunked(request))
+	if (_transfer_encoding_chunked(request)) {
 		body_length = input.find("0\r\n\r\n") + 5;
-	else if (request.get_headers().key_exists(CONTENT_LENGTH))
-		body_length = static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
-	request.set_body(ByteArray(input.substr(0, body_length).c_str()));
+		request.set_body(_decode_chunked(input));
+	}
+	else if (request.get_headers().key_exists(CONTENT_LENGTH)) {
+		body_length = static_cast<unsigned long>(std::atol(
+			request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
+		request.set_body(ByteArray(input.substr(0, body_length).c_str()));
+	}
 	input.pop_front(body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);
