@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/22 15:19:39 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/22 20:07:36 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -366,7 +366,8 @@ ResponseHandling::_response_www_authenticate_handler(Client::exchange_t &exchang
 
 void
 ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
-	Response& response = exchange.second;
+	Response&	response = exchange.second;
+	Request&	request = exchange.first;
 	status_code_t error_code = response.get_status_line().get_status_code();
 	std::stringstream ss;
 
@@ -374,7 +375,10 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
 	response.get_headers().insert(CONTENT_TYPE, "text/html");
-	response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	if (request.get_request_line().get_method() == HEAD)
+		response.get_headers().insert(CONTENT_LENGTH, "0");
+	else
+		response.get_headers().insert(CONTENT_LENGTH, ss.str());
 	if (error_code == METHOD_NOT_ALLOWED)
 		_response_allow_handler(exchange);
 	if (error_code == FORBIDDEN)

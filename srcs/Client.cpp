@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 18:31:04 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/22 19:58:54 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -754,6 +754,7 @@ Client::_collect_cgi_header(CGIResponse &cgi_response) {
 
 int
 Client::_process_HEAD(exchange_t &exchange) {
+	DEBUG_COUT("entered _process_Head");
 	return (_process_GET(exchange));
 }
 
