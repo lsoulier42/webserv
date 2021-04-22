@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 20:26:37 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/22 21:04:03 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -457,7 +457,9 @@ Client::_process_error(exchange_t &exchange) {
 	std::string error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
-	DEBUG_COUT("_process_error entered");
+	DEBUG_COUT(std::endl << "_process_error entered");
+	DEBUG_COUT("---> Error status code sent: " << 
+	Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str);
 	response.get_headers().clear();
 	if (!request.get_location())
 		request.set_location(&request.get_virtual_server()->get_locations().back());
