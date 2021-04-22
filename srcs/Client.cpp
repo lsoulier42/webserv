@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 07:41:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 11:29:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -581,6 +581,8 @@ Client::_handle_cgi(exchange_t &exchange) {
 	_cgi_input = request.get_body();
 	_cgi_input_fd = req_pipe[1];
 	_cgi_output_fd = res_pipe[0];
+	WebServer::set_non_blocking(_cgi_input_fd);
+	WebServer::set_non_blocking(_cgi_output_fd);
 	return (SUCCESS);
 }
 
@@ -665,17 +667,17 @@ Client::_cgi_output_parsing(void) {
 
 int
 Client::_build_response_from_cgi_response(const CGIResponse &cgi_response) {
-	exchange_t	exchange(_exchanges.front());
-	Response	response(exchange.second);
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+	if (cgi_response.get_headers().key_exists(CGI_STATUS))
+		response.get_status_line().set_status_code(static_cast<status_code_t>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_STATUS).c_str())));
+	else
+		response.get_status_line().set_status_code(OK);
 	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
 	response.set_body(cgi_response.get_body());
-	std::cout << "HEEEEEEEERE" << std::endl;
-	cgi_response.get_headers().render();
-	std::cout << cgi_response.get_body() << std::endl;
-	std::cout << "THEEEEEEEERE" << std::endl;
-	response.get_headers().render();
-	std::cout << response.get_body() << std::endl;
+	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
+		return (_process_error(exchange));
 	return (_build_output(exchange));
 }
 
