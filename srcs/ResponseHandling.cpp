@@ -49,9 +49,9 @@ ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 		&ResponseHandling::_response_content_language_handler, &ResponseHandling::_response_content_length_handler,
 		&ResponseHandling::_response_content_location_handler, &ResponseHandling::_response_content_type_handler,
 		&ResponseHandling::_response_date_handler, &ResponseHandling::_response_last_modified_handler,
-		&ResponseHandling::_response_location_handler, &ResponseHandling::_response_location_handler,
-		&ResponseHandling::_response_retry_after_handler, &ResponseHandling::_response_server_handler,
-		&ResponseHandling::_response_transfer_encoding_handler, &ResponseHandling::_response_www_authenticate_handler};
+		&ResponseHandling::_response_location_handler, &ResponseHandling::_response_retry_after_handler,
+		&ResponseHandling::_response_server_handler, &ResponseHandling::_response_transfer_encoding_handler,
+		&ResponseHandling::_response_www_authenticate_handler};
 
 	_pick_content_type(exchange);
 	for (size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
