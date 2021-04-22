@@ -75,8 +75,6 @@ Syntax::server_instructions_tab[] = {
 	{LISTEN, "listen"},
 	{SERVER_NAME, "server_name"},
 	{ERROR_PAGE, "error_page"},
-	{CLIENT_MAX_BODY_SIZE, "client_max_body_size"},
-	{UPLOAD_DIR, "upload_dir"},
 	{LOCATION_INSTRUCTION, "location"}
 };
 
@@ -86,7 +84,9 @@ Syntax::location_instructions_tab[] = {
 	{METHODS, "methods"},
 	{INDEX, "index"},
 	{CGI, "cgi"},
-	{AUTOINDEX, "autoindex"}
+	{AUTOINDEX, "autoindex"},
+	{CLIENT_MAX_BODY_SIZE, "client_max_body_size"},
+	{UPLOAD_DIR, "upload_dir"},
 };
 
 const Syntax::header_tab_entry_t

@@ -12,7 +12,7 @@
 
 #include "VirtualServer.hpp"
 
-VirtualServer::VirtualServer() : _client_max_body_size(DEFAULT_MAX_BODY_SIZE) {
+VirtualServer::VirtualServer()  {
 
 }
 
@@ -27,8 +27,6 @@ VirtualServer::operator=(const VirtualServer& rhs) {
 		_ip_addr = rhs._ip_addr;
 		_port_str = rhs._port_str;
 		_port = rhs._port;
-		_client_max_body_size = rhs._client_max_body_size;
-		_upload_dir = rhs._upload_dir;
 		_error_page_codes = rhs._error_page_codes;
 		_error_page_path = rhs._error_page_path;
 		_locations = rhs._locations;
@@ -99,16 +97,6 @@ VirtualServer::set_error_page_path(const std::string& errorPagePath) {
 	_error_page_path = errorPagePath;
 }
 
-unsigned long
-VirtualServer::get_client_max_body_size() const {
-	return _client_max_body_size;
-}
-
-void
-VirtualServer::set_client_max_body_size(unsigned long clientMaxBodySize) {
-	_client_max_body_size = clientMaxBodySize;
-}
-
 const std::list<Location>&
 VirtualServer::get_locations() const {
 	return _locations;
@@ -117,16 +105,6 @@ VirtualServer::get_locations() const {
 void
 VirtualServer::add_location(const Location &location) {
 	_locations.push_back(location);
-}
-
-std::string
-VirtualServer::get_upload_dir() const {
-	return _upload_dir;
-}
-
-void
-VirtualServer::set_upload_dir(const std::string &uploadDir) {
-	_upload_dir = uploadDir;
 }
 
 std::list<const VirtualServer*>
@@ -139,4 +117,9 @@ VirtualServer::build_virtual_server_list(const std::list<VirtualServer>& virtual
 			return_list.push_back(it.operator->());
 	}
 	return return_list;
+}
+
+std::list<Location>&
+VirtualServer::get_locations() {
+	return _locations;
 }

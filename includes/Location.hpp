@@ -17,6 +17,8 @@
 # include <vector>
 # include <list>
 
+# define DEFAULT_MAX_BODY_SIZE 8192
+
 class Location {
 	public:
 		Location();
@@ -38,7 +40,11 @@ class Location {
 		void set_cgi_path(const std::string &cgiPath);
 		bool is_autoindex() const;
 		void set_autoindex(bool autoindex);
-//		static void pick_location(Request &request);
+		unsigned long get_client_max_body_size() const;
+		void set_client_max_body_size(unsigned long clientMaxBodySize);
+		std::string get_upload_dir() const;
+		void set_upload_dir(const std::string &uploadDir);
+
 
 	private:
 		std::string _path;
@@ -48,5 +54,7 @@ class Location {
 		std::string _cgi_extension;
 		std::string _cgi_path;
 		bool _autoindex;
+		unsigned long _client_max_body_size;
+		std::string _upload_dir;
 };
 #endif
