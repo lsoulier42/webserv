@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 11:29:05 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 15:39:57 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include "RequestParsing.hpp"
 #include "ResponseHandling.hpp"
 #include "WebServer.hpp"
-#include <wait.h>
+#include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
 const size_t	Client::_buffer_size(8192);
 
@@ -352,6 +352,7 @@ Client::_process_PUT(exchange_t &exchange) {
 	std::string path(_build_resource_path(request));
 	path_type_t path_type = Syntax::get_path_type(path);
 
+	DEBUG_COUT("process put entered");
 	/* we do not support creating a directory through put */
 	if (path_type == DIRECTORY) {
 		response.get_status_line().set_status_code(NOT_FOUND);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ByteArray.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/21 14:51:46 by louise            #+#    #+#             */
-/*   Updated: 2021/04/21 14:51:46 by louise           ###   ########.fr       */
+/*   Updated: 2021/04/22 15:33:40 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,12 @@
 # include <algorithm>
 # include <iostream>
 # include <stdexcept>
+
+/* memrchr used for rfind not implemented in MAC_OS */
+# ifdef __APPLE__
+void *
+memrchr(const void *s, int c, size_t n);
+# endif
 
 class ByteArray {
 	public:

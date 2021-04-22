@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 07:34:47 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 15:15:15 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,10 @@
 # include "CGIMetaVariables.hpp"
 # include "CGIResponse.hpp"
 # include "Path.hpp"
+
+# ifdef __APPLE__
+#  define st_mtim st_mtimespec
+# endif
 
 class RequestParsing;
 class ResponseHandling;

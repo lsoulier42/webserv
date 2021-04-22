@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigParsing.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/15 20:59:19 by louise            #+#    #+#             */
-/*   Updated: 2021/04/20 11:46:31 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 15:36:14 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -329,8 +329,9 @@ ConfigParsing::parse_root(const std::vector<std::string>& tokens, Location& loca
 	if (tokens.size() != 2)
 		return (invalid_number_arguments(1, tokens.size() - 1, tokens[0], usage));
 	path = tokens[1];
-	if (path[0] != '/')
-		return wrong_path_format(tokens[0], usage);
+	/* removing need for absolute path in root */
+//	if (path[0] != '/')
+//		return wrong_path_format(tokens[0], usage);
 	if (!check_instruction_path(path, tokens[0], usage))
 		return FAILURE;
 	location.set_root(path);
