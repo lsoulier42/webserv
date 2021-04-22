@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 17:57:30 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/22 18:31:04 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -410,7 +410,7 @@ Client::_process_POST(exchange_t &exchange) {
 
 	DEBUG_COUT("process post entered");
 	if (path_type == DIRECTORY) {
-		response.get_status_line().set_status_code(METHOD_NOT_ALLOWED);
+		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
 	response.set_target_path(path);
@@ -444,7 +444,7 @@ Client::_process_POST(exchange_t &exchange) {
 			_file_write_str = request.get_body();
 		}
 		else {
-			response.get_status_line().set_status_code(OK);
+			response.get_status_line().set_status_code(NO_CONTENT);
 			_file_write_str.clear();
 		}
 		return (_file_write_fd);
