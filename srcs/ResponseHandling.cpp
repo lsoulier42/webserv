@@ -61,15 +61,6 @@ ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 	return SUCCESS;
 }
 
-bool
-ResponseHandling::_is_allowed_method(const std::list<std::string>& allowed_methods, method_t method) {
-	for(std::list<std::string>::const_iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
-		if (*it == Syntax::method_tab[method].name)
-			return true;
-	}
-	return false;
-}
-
 int
 ResponseHandling::_response_allow_handler(Client::exchange_t &exchange) {
 	Request &request = exchange.first;
@@ -77,11 +68,7 @@ ResponseHandling::_response_allow_handler(Client::exchange_t &exchange) {
 	std::string method_output;
 	std::list<std::string> allowed_methods = request.get_location()->get_methods();
 
-	if (!allowed_methods.empty() && response.get_status_line().get_status_code() < BAD_REQUEST) {
-		if (!_is_allowed_method(allowed_methods, request.get_request_line().get_method())) {
-			response.get_status_line().set_status_code(METHOD_NOT_ALLOWED);
-			return FAILURE;
-		}
+	if (!allowed_methods.empty() || response.get_status_line().get_status_code() == METHOD_NOT_ALLOWED) {
 		for (std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
 			method_output += *it + ", ";
 		}
@@ -388,6 +375,8 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	_response_date_handler(exchange);
 	response.get_headers().insert(CONTENT_TYPE, "text/html");
 	response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	if (error_code == METHOD_NOT_ALLOWED)
+		_response_allow_handler(exchange);
 	if (error_code == FORBIDDEN)
 		_response_www_authenticate_handler(exchange);
 	if (error_code == SERVICE_UNAVAILABLE)
