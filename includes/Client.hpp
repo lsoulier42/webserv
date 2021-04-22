@@ -68,7 +68,7 @@ class Client {
 		int get_cgi_output_fd(void) const;
 		int get_file_write_fd(void) const;
 		
-		int read_socket(void) throw (ClientError);
+		int read_socket(void);
 		int write_socket(void) throw(ClientError);
 		int read_file(void) throw(ClientError);
 		int read_cgi_output(void);
@@ -125,10 +125,16 @@ class Client {
 		int _process(exchange_t &exchange);
 
 		int _process_error(exchange_t &exchange);
-		int _process_GET(exchange_t &exchange);
 		int _handle_cgi(exchange_t &exchange);
-		int	_process_PUT(exchange_t &exchange);
+		int _process_GET(exchange_t &exchange);
+		int _process_HEAD(exchange_t &exchange);
 		int _process_POST(exchange_t &exchange);
+		int	_process_PUT(exchange_t &exchange);
+		int	_process_DELETE(exchange_t &exchange);
+		int	_process_CONNECT(exchange_t &exchange);
+		int	_process_OPTIONS(exchange_t &exchange);
+		int	_process_TRACE(exchange_t &exchange);
+
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_output(exchange_t &exchange);

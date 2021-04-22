@@ -61,7 +61,7 @@ class RequestParsing {
 		static int _request_user_agent_parser(Request &request);
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
-
+		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, const std::string& method);
 };
 
 #endif

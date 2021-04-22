@@ -182,6 +182,10 @@ WebServer::_read_socks() {
 				it->read_socket();
 				it++;
 			} catch (Client::ClientError& e) {
+				/* TODO: refacto error, voir quelles reponses ferment la connexion
+				 * je m'en occupe demain (louise)
+				 *
+				 */
 				this->_close_error(it, e);
 			}
 		}
