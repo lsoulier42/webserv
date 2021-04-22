@@ -3,14 +3,33 @@
 /*                                                        :::      ::::::::   */
 /*   ByteArray.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/21 14:51:36 by louise            #+#    #+#             */
-/*   Updated: 2021/04/21 14:51:37 by louise           ###   ########.fr       */
+/*   Updated: 2021/04/22 15:33:51 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ByteArray.hpp"
+
+/* memrchr used for rfind not implemented in MAC_OS */
+#ifdef __APPLE__
+void *
+memrchr(const void *s, int c, size_t n)
+{
+    const unsigned char *cp;
+
+    if (n != 0) {
+	cp = (unsigned char *)s + n;
+	do {
+	    if (*(--cp) == (unsigned char)c)
+		return (void *)cp;
+	} while (--n != 0);
+    }
+    return (void *)0;
+}
+#endif
+
 
 const ByteArray::size_type
 ByteArray::npos = -1;

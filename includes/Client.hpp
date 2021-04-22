@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 07:34:47 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 17:23:41 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,10 @@
 # include "CGIMetaVariables.hpp"
 # include "CGIResponse.hpp"
 # include "Path.hpp"
+
+# ifdef __APPLE__
+#  define st_mtim st_mtimespec
+# endif
 
 class RequestParsing;
 class ResponseHandling;
@@ -124,6 +128,7 @@ class Client {
 		int _process_GET(exchange_t &exchange);
 		int _handle_cgi(exchange_t &exchange);
 		int	_process_PUT(exchange_t &exchange);
+		int _process_POST(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_output(exchange_t &exchange);
