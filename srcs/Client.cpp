@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 06:39:22 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 07:41:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -610,29 +610,6 @@ Client::write_cgi_input(void) {
 }
 
 int
-Client::read_file(void) throw(ClientError) {
-	exchange_t	&exchange(_exchanges.front());
-	Response	&response(exchange.second);
-	char		buffer[_buffer_size];
-	int			ret;
-
-	ret = read(_fd, buffer, _buffer_size);
-	if (ret < 0) {
-		close(_fd);
-		throw(ClientError(INTERNAL_SERVER_ERROR));
-	}
-	if (ret == 0) {
-		close(_fd);
-		_fd = 0;
-		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
-			return (_process_error(exchange));
-		return (_build_output(exchange));
-	}
-	response.set_body(response.get_body() + ByteArray(buffer, ret));
-	return (SUCCESS);
-}
-
-int
 Client::read_cgi_output(void) {
 	char		buffer[_buffer_size];
 	ssize_t		ret;
@@ -677,14 +654,29 @@ int
 Client::_cgi_output_parsing(void) {
 	CGIResponse	cgi_response;
 
-	while (std::string::npos != _cgi_output_str.find("\n")
-			&& _cgi_output.compare(0, 1, "\n"))
+	while (ByteArray::npos != _cgi_output.find("\n")
+			&& _cgi_output[0] != '\n')
 		_collect_cgi_header(cgi_response);
 	_cgi_output.pop_front(_cgi_output.find("\n") + 1);
 	cgi_response.set_body(_cgi_output);
 	_cgi_output.clear();
+	return (_build_response_from_cgi_response(cgi_response));
+}
+
+int
+Client::_build_response_from_cgi_response(const CGIResponse &cgi_response) {
+	exchange_t	exchange(_exchanges.front());
+	Response	response(exchange.second);
+	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
+		response.get_headers().insert(*it);
+	response.set_body(cgi_response.get_body());
+	std::cout << "HEEEEEEEERE" << std::endl;
 	cgi_response.get_headers().render();
-	return (SUCCESS);
+	std::cout << cgi_response.get_body() << std::endl;
+	std::cout << "THEEEEEEEERE" << std::endl;
+	response.get_headers().render();
+	std::cout << response.get_body() << std::endl;
+	return (_build_output(exchange));
 }
 
 void
@@ -693,7 +685,7 @@ Client::_collect_cgi_header(CGIResponse &cgi_response) {
 	size_t				end_header(_cgi_output.find("\n"));
 	header_t			current_header;
 
-	if (std::string::npos != (col = _cgi_output.find_first_of(':'))) {
+	if (ByteArray::npos != (col = _cgi_output.find_first_of(':'))) {
 		current_header.name = _cgi_output.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output.substr(col + 1, (end_header - col - 1)));
 		cgi_response.get_headers().insert(current_header);

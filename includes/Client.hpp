@@ -6,7 +6,7 @@
 /*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 06:30:45 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 07:34:47 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,7 +148,8 @@ class Client {
 		bool _is_cgi_related(const Request &request) const;
 		std::string _build_cgi_script_path(const Request &request) const;
 		int _create_cgi_child_process(void);
-		int _cgi_output_str_parsing(void);
+		int _cgi_output_parsing(void);
+		int _build_response_from_cgi_response(const CGIResponse &cgi_response);
 		void _collect_cgi_header(CGIResponse &cgi_response);
 		bool _is_document_response(const CGIResponse &cgi_response) const;
 		bool _is_local_redirect_response(const CGIResponse &cgi_response) const;
