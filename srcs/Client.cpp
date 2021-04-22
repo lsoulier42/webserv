@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 23:50:04 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 06:39:22 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,14 +21,16 @@ const size_t	Client::_buffer_size(8192);
 Client::Client(void) :
 	_sd(),
 	_fd(),
-	_cgi_fd(),
+	_cgi_input_fd(),
+	_cgi_output_fd(),
 	_file_write_fd(),
 	_addr(),
 	_socket_len(),
 	_virtual_servers(),
 	_input(),
 	_output(),
-	_cgi_output_str(),
+	_cgi_input(),
+	_cgi_output(),
 	_file_write_str(),
 	_exchanges(),
 	_closing(false),
@@ -38,14 +40,16 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	const std::list<const VirtualServer*> &virtual_servers, bool connection_refused) :
 	_sd(sd),
 	_fd(),
-	_cgi_fd(),
+	_cgi_input_fd(),
+	_cgi_output_fd(),
 	_file_write_fd(),
 	_addr(addr),
 	_socket_len(socket_len),
 	_virtual_servers(virtual_servers),
 	_input(),
 	_output(),
-	_cgi_output_str(),
+	_cgi_input(),
+	_cgi_output(),
 	_file_write_str(),
 	_exchanges(),
 	_closing(false),
@@ -54,33 +58,35 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 Client::Client(const Client &x) :
 	_sd(x._sd),
 	_fd(x._fd),
-	_cgi_fd(x._cgi_fd),
+	_cgi_input_fd(x._cgi_input_fd),
+	_cgi_output_fd(x._cgi_output_fd),
 	_file_write_fd(x._file_write_fd),
 	_addr(x._addr),
 	_socket_len(x._socket_len),
 	_virtual_servers(x._virtual_servers),
 	_input(x._input),
 	_output(x._output),
-	_cgi_output_str(x._cgi_output_str),
+	_cgi_input(x._cgi_input),
+	_cgi_output(x._cgi_output),
 	_file_write_str(x._file_write_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing),
 	_connection_refused(x._connection_refused) {}
 
-Client::~Client(void) {
-
-}
+Client::~Client(void) {}
 
 Client
 &Client::operator=(const Client &x) {
 	if (this != &x) {
 		_fd = x._fd;
-		_cgi_fd = x._cgi_fd;
+		_cgi_input_fd = x._cgi_input_fd;
+		_cgi_output_fd = x._cgi_output_fd;
 		_file_write_fd = x._file_write_fd;
 		_exchanges = x._exchanges;
 		_input = x._input;
 		_output = x._output;
-		_cgi_output_str = x._cgi_output_str;
+		_cgi_input = x._cgi_input;
+		_cgi_output = x._cgi_output;
 		_file_write_str = x._file_write_str;
 		_closing = x._closing;
 		_connection_refused = x._connection_refused;
@@ -99,8 +105,13 @@ Client::get_fd(void) const {
 }
 
 int
-Client::get_cgi_fd(void) const {
-	return (_cgi_fd);
+Client::get_cgi_input_fd(void) const {
+	return (_cgi_input_fd);
+}
+
+int
+Client::get_cgi_output_fd(void) const {
+	return (_cgi_output_fd);
 }
 
 int
@@ -567,32 +578,76 @@ Client::_handle_cgi(exchange_t &exchange) {
 	delete[] arg1;
 	close(req_pipe[0]);
 	close(res_pipe[1]);
-	write(req_pipe[1], request.get_body().c_str(), request.get_body().size());
-	close(req_pipe[1]);
-	waitpid(-1, NULL, 0);
-	_cgi_fd = res_pipe[0];
+	_cgi_input = request.get_body();
+	_cgi_input_fd = req_pipe[1];
+	_cgi_output_fd = res_pipe[0];
 	return (SUCCESS);
 }
 
 int
-Client::read_cgi(void) {
-	char		buffer[_buffer_size + 1];
+Client::write_cgi_input(void) {
+	size_t		buffer_size(std::min(_buffer_size, _cgi_input.size()));
+	ssize_t		ret;
+
+	if (_cgi_input.empty()) {
+		close(_cgi_input_fd);
+		_cgi_input_fd = 0;
+		return (SUCCESS);
+	}
+	ret = write(_cgi_input_fd, _cgi_input.c_str(), buffer_size);
+	if (ret < 0) {
+		close(_cgi_input_fd);
+		_cgi_input_fd = 0;
+		return (FAILURE);
+	}
+	_cgi_input.pop_front(ret);
+	if (ret == 0) {
+		close(_cgi_input_fd);
+		_cgi_input_fd = 0;
+		waitpid(-1, NULL, 0);
+	}
+	return (SUCCESS);
+}
+
+int
+Client::read_file(void) throw(ClientError) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+	char		buffer[_buffer_size];
 	int			ret;
 
-	ret = read(_cgi_fd, buffer, _buffer_size);
+	ret = read(_fd, buffer, _buffer_size);
 	if (ret < 0) {
-		close(_cgi_fd);
+		close(_fd);
+		throw(ClientError(INTERNAL_SERVER_ERROR));
+	}
+	if (ret == 0) {
+		close(_fd);
+		_fd = 0;
+		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
+			return (_process_error(exchange));
+		return (_build_output(exchange));
+	}
+	response.set_body(response.get_body() + ByteArray(buffer, ret));
+	return (SUCCESS);
+}
+
+int
+Client::read_cgi_output(void) {
+	char		buffer[_buffer_size];
+	ssize_t		ret;
+
+	ret = read(_cgi_output_fd, buffer, _buffer_size);
+	if (ret < 0) {
+		close(_cgi_output_fd);
 		return (FAILURE);
 	}
 	if (ret == 0) {
-		close(_cgi_fd);
-		_cgi_fd = 0;
-		std::cout << "end of file" << std::endl;
-		return (_cgi_output_str_parsing());
+		close(_cgi_output_fd);
+		_cgi_output_fd = 0;
+		return (_cgi_output_parsing());
 	}
-	buffer[ret] = '\0';
-	std::cout << buffer;
-	_cgi_output_str += buffer;
+	_cgi_output = (_cgi_output + ByteArray(buffer, ret));
 	return (SUCCESS);
 }
 
@@ -619,15 +674,15 @@ Client::_is_client_redirect_response(const CGIResponse &cgi_response) const {
 }
 
 int
-Client::_cgi_output_str_parsing(void) {
+Client::_cgi_output_parsing(void) {
 	CGIResponse	cgi_response;
 
 	while (std::string::npos != _cgi_output_str.find("\n")
-			&& _cgi_output_str.compare(0, 1, "\n"))
+			&& _cgi_output.compare(0, 1, "\n"))
 		_collect_cgi_header(cgi_response);
-	_cgi_output_str.erase(0, _cgi_output_str.find("\n") + 1);
-	cgi_response.set_body(_cgi_output_str);
-	_cgi_output_str.clear();
+	_cgi_output.pop_front(_cgi_output.find("\n") + 1);
+	cgi_response.set_body(_cgi_output);
+	_cgi_output.clear();
 	cgi_response.get_headers().render();
 	return (SUCCESS);
 }
@@ -635,13 +690,13 @@ Client::_cgi_output_str_parsing(void) {
 void
 Client::_collect_cgi_header(CGIResponse &cgi_response) {
 	size_t				col(0);
-	size_t				end_header(_cgi_output_str.find("\n"));
+	size_t				end_header(_cgi_output.find("\n"));
 	header_t			current_header;
 
-	if (std::string::npos != (col = _cgi_output_str.find_first_of(':'))) {
-		current_header.name = _cgi_output_str.substr(0, col);
-		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output_str.substr(col + 1, (end_header - col - 1)));
+	if (std::string::npos != (col = _cgi_output.find_first_of(':'))) {
+		current_header.name = _cgi_output.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output.substr(col + 1, (end_header - col - 1)));
 		cgi_response.get_headers().insert(current_header);
 	}
-	_cgi_output_str.erase(0, end_header + 1);
+	_cgi_output.pop_front(end_header + 1);
 }

@@ -6,7 +6,7 @@
 /*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/21 23:51:45 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 05:44:36 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -142,10 +142,15 @@ WebServer::_build_select_list() {
 			if (it->get_fd() > _highest_socket)
 				_highest_socket = it->get_fd();
 		}
-		if (it->get_cgi_fd() != 0 && it->get_cgi_fd()) {
-			FD_SET(it->get_cgi_fd(), &_sockets_list[READ]);
-			if (it->get_cgi_fd() > _highest_socket)
-				_highest_socket = it->get_cgi_fd();
+		if (it->get_cgi_output_fd() != 0) {
+			FD_SET(it->get_cgi_output_fd(), &_sockets_list[READ]);
+			if (it->get_cgi_output_fd() > _highest_socket)
+				_highest_socket = it->get_cgi_output_fd();
+		}
+		if (it->get_cgi_input_fd() != 0) {
+			FD_SET(it->get_cgi_input_fd(), &_sockets_list[WRITE]);
+			if (it->get_cgi_input_fd() > _highest_socket)
+				_highest_socket = it->get_cgi_input_fd();
 		}
 		if (it->get_file_write_fd() > 0) {
 			FD_SET(it->get_file_write_fd(), &_sockets_list[WRITE]);
@@ -194,8 +199,8 @@ WebServer::_read_socks() {
 		}
 	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
-		if (FD_ISSET(it->get_cgi_fd(), &_sockets_list[READ]))
-			it->read_cgi();
+		if (FD_ISSET(it->get_cgi_output_fd(), &_sockets_list[READ]))
+			it->read_cgi_output();
 }
 
 void
@@ -228,10 +233,12 @@ WebServer::_write_socks() {
 		else
 			it++;
 	}
-	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end(); it++) {
+	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end(); it++)
 		if (FD_ISSET(it->get_file_write_fd(), &_sockets_list[WRITE]))
 			it->write_file();
-	}
+	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
+		if (FD_ISSET(it->get_cgi_input_fd(), &_sockets_list[WRITE]))
+			it->write_cgi_input();
 }
 
 int

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/21 07:15:40 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 02:44:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 03:35:23 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,34 +42,11 @@ Path::is_mark_char(const char c) {
 }
 
 bool
-Path::is_unreserved_char(const char c) {
-	return (is_alphanum_char(c) || is_mark_char(c));
-}
-
-bool
 Path::is_hex_char(const char c) {
 	return (is_digit_char(c)
 			|| (c >= 'a' && c <= 'f')
 			|| (c >= 'A' && c <= 'F'));
 }
-
-/*
-bool
-Path::patate_reserved(const char c) {
-	return (c == ';'
-			|| c == '/'
-			|| c == '?'
-			|| c == ':'
-			|| c == '@'
-			|| c == '&'
-			|| c == '='
-			|| c == '+'
-			|| c == '$'
-			|| c == ','
-			|| c == '['
-			|| c == ']');
-}
-*/
 
 bool
 Path::is_escaped_char(const std::string &path, size_t index) {
@@ -78,6 +55,11 @@ Path::is_escaped_char(const std::string &path, size_t index) {
 	if (!is_hex_char(path[index + 1]) || !is_hex_char(path[index + 2]))
 		return (false);
 	return (true);
+}
+
+bool
+Path::is_unreserved_char(const char c) {
+	return (is_alphanum_char(c) || is_mark_char(c));
 }
 
 bool
@@ -129,7 +111,7 @@ Path::is_reserved_reg_name_char(const char c) {
 }
 
 bool
-Path::is_uric_no_slash_char(const std::string &path, size_t index) {
+Path::is_uri_no_slash_char(const std::string &path, size_t index) {
 	return (is_unreserved_char(path[index])
 			|| is_escaped_char(path, index)
 			|| path[index] == ';'
@@ -148,9 +130,9 @@ bool
 Path::is_path_segment(const std::string &path) {
 	size_t index(0);
 	while (index < path.size()) {
-		if (is_unreserved_path_char(path[index]) || is_reserved_path_char(path[index]))
+		if (is_unreserved_char(path[index]) || is_reserved_path_char(path[index]))
 			index++;
-		else if (is_escaped_path_char(path, index))
+		else if (is_escaped_char(path, index))
 			index += 3;
 		else
 			return (false);
@@ -194,6 +176,7 @@ Path::is_query_string(const std::string &path) {
 //media type dependent
 bool
 Path::is_fragment(const std::string &path) {
+	(void)path;
 	return (true);
 }
 
@@ -220,7 +203,7 @@ Path::is_user_info(const std::string &path) {
 		if (is_unreserved_char(path[index]) 
 				|| is_reserved_user_info_char(path[index]))
 			index++;
-		else if (is_escaped_path_char(path, index))
+		else if (is_escaped_char(path, index))
 			index += 3;
 		else
 			return (false);
@@ -304,7 +287,7 @@ Path::is_reg_name(const std::string &path) {
 		if (is_unreserved_char(path[index])
 				|| is_reserved_reg_name_char(path[index]))
 			index++;
-		else if (is_escaped_path_char(path, index))
+		else if (is_escaped_char(path, index))
 			index += 3;
 		else
 			return (false);

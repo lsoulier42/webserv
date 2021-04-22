@@ -6,7 +6,7 @@
 /*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 23:52:53 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 06:30:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@
 # include "VirtualServer.hpp"
 # include "CGIMetaVariables.hpp"
 # include "CGIResponse.hpp"
+# include "Path.hpp"
 
 class RequestParsing;
 class ResponseHandling;
@@ -59,13 +60,15 @@ class Client {
 
 		int get_sd(void) const;
 		int get_fd(void) const;
-		int get_cgi_fd(void) const;
+		int get_cgi_input_fd(void) const;
+		int get_cgi_output_fd(void) const;
 		int get_file_write_fd(void) const;
 		
 		int read_socket(void) throw (ClientError);
 		int write_socket(void) throw(ClientError);
 		int read_file(void) throw(ClientError);
-		int read_cgi(void);
+		int read_cgi_output(void);
+		int write_cgi_input(void);
 		int	write_file(void) throw(ClientError);
 
 		class ClientError : public std::exception {
@@ -89,14 +92,16 @@ class Client {
 
 		const int _sd;
 		int _fd;
-		int _cgi_fd;
+		int _cgi_input_fd;
+		int _cgi_output_fd;
 		int	_file_write_fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
 		ByteArray _input;
 		ByteArray _output;
-		std::string _cgi_output_str; //needs changing
+		ByteArray _cgi_input;
+		ByteArray _cgi_output;
 		ByteArray _file_write_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
