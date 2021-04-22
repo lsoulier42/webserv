@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 17:57:30 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/22 21:21:26 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -408,7 +408,7 @@ Client::_process_POST(exchange_t &exchange) {
 
 	DEBUG_COUT("process POST entered");
 	if (path_type == DIRECTORY) {
-		response.get_status_line().set_status_code(METHOD_NOT_ALLOWED);
+		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
 	response.set_target_path(path);
@@ -442,7 +442,7 @@ Client::_process_POST(exchange_t &exchange) {
 			_file_write_str = request.get_body();
 		}
 		else {
-			response.get_status_line().set_status_code(OK);
+			response.get_status_line().set_status_code(NO_CONTENT);
 			_file_write_str.clear();
 		}
 		return (_file_write_fd);
@@ -457,6 +457,9 @@ Client::_process_error(exchange_t &exchange) {
 	std::string error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
+	DEBUG_COUT(std::endl << "_process_error entered");
+	DEBUG_COUT("---> Error status code sent: " << 
+	Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str);
 	response.get_headers().clear();
 	if (!request.get_location())
 		request.set_location(&request.get_virtual_server()->get_locations().back());
@@ -754,6 +757,7 @@ Client::_collect_cgi_header(CGIResponse &cgi_response) {
 
 int
 Client::_process_HEAD(exchange_t &exchange) {
+	DEBUG_COUT("entered _process_Head");
 	return (_process_GET(exchange));
 }
 
