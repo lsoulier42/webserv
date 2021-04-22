@@ -6,11 +6,12 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/05 12:25:50 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/16 01:40:53 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 11:03:22 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
+#include "Client.hpp"
 
 Request::Request(void) :
 	AHTTPMessage(),
@@ -18,15 +19,17 @@ Request::Request(void) :
 	_request_line(),
 	_compromising(false),
 	_virtual_server(),
-	_location() {}
+	_location(),
+	_client_addr() {}
 
-Request::Request(const VirtualServer *virtual_server) :
+Request::Request(const Client &client) :
 	AHTTPMessage(),
 	_status(START),
 	_request_line(),
 	_compromising(false),
-	_virtual_server(virtual_server),
-	_location(&(virtual_server->get_locations().back())) {}
+	_virtual_server(client._virtual_servers.front()),
+	_location(&(client._virtual_servers.front()->get_locations().back())),
+	_client_addr(client._addr) {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
@@ -34,7 +37,8 @@ Request::Request(const Request &x) :
 	_request_line(x._request_line),
 	_compromising(x._compromising),
 	_virtual_server(x._virtual_server),
-	_location(x._location) {}
+	_location(x._location),
+	_client_addr(x._client_addr) {}
 
 Request::~Request(void) {}
 
@@ -71,6 +75,11 @@ Request::get_compromising(void) const {
 
 const VirtualServer* Request::get_virtual_server() const {
 	return _virtual_server;
+}
+
+const struct sockaddr
+&Request::get_client_addr(void) const {
+	return (_client_addr);
 }
 
 void

@@ -6,7 +6,7 @@
 /*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/19 17:53:17 by louise           ###   ########.fr       */
+/*   Updated: 2021/04/22 11:39:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -330,12 +330,11 @@ ResponseHandling::_response_location_handler(Client::exchange_t &exchange) {
 	Request&	request = exchange.first;
 	int status_code = response.get_status_line().get_status_code();
 
-	if (request.get_request_line().get_method() == PUT ||
-		request.get_request_line().get_method() == POST) {
-		if (status_code == OK || status_code == CREATED || status_code == 204) {
+	if ((request.get_request_line().get_method() == PUT
+				|| request.get_request_line().get_method() == POST)
+			&& (status_code == OK || status_code == CREATED || status_code == 204)
+			&& request.get_headers().key_exists(CONTENT_LOCATION))
 			response.get_headers().insert(CONTENT_LOCATION, request.get_headers().get_unparsed_value(CONTENT_LOCATION));
-		}
-	}
 	return (SUCCESS);
 }
 

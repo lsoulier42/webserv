@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:24:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 07:17:18 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ RequestParsing::parsing(Client &client) {
 	
 	while (!client._closing && !input.empty()) {
 		if (client._exchanges.empty() || client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
-			client._exchanges.push_back(std::make_pair(Request(client._virtual_servers.front()), Response()));
+			client._exchanges.push_back(std::make_pair(Request(client), Response()));
 		Client::exchange_t	&current_exchange(client._exchanges.back());
 		Request				&request(current_exchange.first);
 		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input))) {
@@ -58,14 +58,14 @@ RequestParsing::_failure(Client &client, Client::exchange_t &exchange, status_co
 
 bool
 RequestParsing::_request_line_received(const Request &request, const ByteArray &input) {
-	return (request.get_status() == Request::START && std::string::npos != input.find("\r\n"));
+	return (request.get_status() == Request::START && ByteArray::npos != input.find("\r\n"));
 }
 
 bool
 RequestParsing::_header_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::REQUEST_LINE_RECEIVED
 			&& !_headers_received(request, input)
-			&& std::string::npos != input.find("\r\n"));
+			&& ByteArray::npos != input.find("\r\n"));
 }
 
 bool
@@ -79,7 +79,7 @@ bool
 RequestParsing::_body_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::HEADERS_RECEIVED
 			&& ((_transfer_encoding_chunked(request)
-					&& input.find("0\r\n\r\n") != std::string::npos)
+					&& input.find("0\r\n\r\n") != ByteArray::npos)
 				|| (request.get_headers().key_exists(CONTENT_LENGTH)
 					&& input.size() >= static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())))));
 }
@@ -88,7 +88,7 @@ bool
 RequestParsing::_trailer_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::BODY_RECEIVED
 			&& !_trailers_received(request, input)
-			&& std::string::npos != input.find("\r\n"));
+			&& ByteArray::npos != input.find("\r\n"));
 }
 
 //TODO:: pas du tout comme ca qu'on repere la fin des trailers, provisoire, pour test
@@ -155,7 +155,7 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 	size_t				end_header(input.find("\r\n"));
 	header_t			current_header;
 
-	if (std::string::npos != (col = input.find_first_of(':'))) {
+	if (ByteArray::npos != (col = input.find_first_of(':'))) {
 		current_header.name = input.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(input.substr(col + 1, (end_header - col - 1)));
 		request.get_headers().insert(current_header);

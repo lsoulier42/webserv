@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:19:23 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/16 20:26:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 23:54:03 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,9 @@
 # define CGIMETAVARIABLES_HPP
 
 #include <string>
+#include <sstream>
+#include <sys/socket.h>
+#include <netinet/in.h> 
 #include <cstdlib>
 #include <cstring>
 #include "Syntax.hpp"
@@ -53,6 +56,7 @@ class CGIMetaVariables {
 		static char *_build_server_port(const Request &request) throw(std::bad_alloc);
 		static char *_build_server_protocol(const Request &request) throw(std::bad_alloc);
 		static char *_build_server_software(const Request &request) throw(std::bad_alloc);
+		static char *_build_redirect_status(const Request &request) throw(std::bad_alloc);
 
 		static const size_t _size;
 		static const _mv_builder_t _builder_tab[];
@@ -73,6 +77,7 @@ class CGIMetaVariables {
 		static const std::string _server_port;
 		static const std::string _server_protocol;
 		static const std::string _server_software;
+		static const std::string _redirect_status;
 
 		char **_tab;
 

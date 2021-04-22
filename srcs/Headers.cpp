@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 05:07:54 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 23:59:58 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/21 06:53:35 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -220,6 +220,14 @@ Headers::end(void) {
 Headers::const_iterator
 Headers::end(void) const {
 	return (const_iterator(_finish));
+}
+
+size_t
+Headers::size(void) const {
+	size_t	size(0);
+	for (const_iterator it(begin()) ; it != end() ; it++)
+		size++;
+	return (size);
 }
 
 bool

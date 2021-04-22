@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 13:20:07 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 11:29:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,20 +14,23 @@
 #include "RequestParsing.hpp"
 #include "ResponseHandling.hpp"
 #include "WebServer.hpp"
+#include <wait.h>
 
 const size_t	Client::_buffer_size(8192);
 
 Client::Client(void) :
 	_sd(),
 	_fd(),
-	_cgi_fd(),
+	_cgi_input_fd(),
+	_cgi_output_fd(),
 	_file_write_fd(),
 	_addr(),
 	_socket_len(),
 	_virtual_servers(),
 	_input(),
 	_output(),
-	_cgi_output_str(),
+	_cgi_input(),
+	_cgi_output(),
 	_file_write_str(),
 	_exchanges(),
 	_closing(false),
@@ -37,14 +40,16 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	const std::list<const VirtualServer*> &virtual_servers, bool connection_refused) :
 	_sd(sd),
 	_fd(),
-	_cgi_fd(),
+	_cgi_input_fd(),
+	_cgi_output_fd(),
 	_file_write_fd(),
 	_addr(addr),
 	_socket_len(socket_len),
 	_virtual_servers(virtual_servers),
 	_input(),
 	_output(),
-	_cgi_output_str(),
+	_cgi_input(),
+	_cgi_output(),
 	_file_write_str(),
 	_exchanges(),
 	_closing(false),
@@ -53,33 +58,35 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 Client::Client(const Client &x) :
 	_sd(x._sd),
 	_fd(x._fd),
-	_cgi_fd(x._cgi_fd),
+	_cgi_input_fd(x._cgi_input_fd),
+	_cgi_output_fd(x._cgi_output_fd),
 	_file_write_fd(x._file_write_fd),
 	_addr(x._addr),
 	_socket_len(x._socket_len),
 	_virtual_servers(x._virtual_servers),
 	_input(x._input),
 	_output(x._output),
-	_cgi_output_str(x._cgi_output_str),
+	_cgi_input(x._cgi_input),
+	_cgi_output(x._cgi_output),
 	_file_write_str(x._file_write_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing),
 	_connection_refused(x._connection_refused) {}
 
-Client::~Client(void) {
-
-}
+Client::~Client(void) {}
 
 Client
 &Client::operator=(const Client &x) {
 	if (this != &x) {
 		_fd = x._fd;
-		_cgi_fd = x._cgi_fd;
+		_cgi_input_fd = x._cgi_input_fd;
+		_cgi_output_fd = x._cgi_output_fd;
 		_file_write_fd = x._file_write_fd;
 		_exchanges = x._exchanges;
 		_input = x._input;
 		_output = x._output;
-		_cgi_output_str = x._cgi_output_str;
+		_cgi_input = x._cgi_input;
+		_cgi_output = x._cgi_output;
 		_file_write_str = x._file_write_str;
 		_closing = x._closing;
 		_connection_refused = x._connection_refused;
@@ -98,8 +105,13 @@ Client::get_fd(void) const {
 }
 
 int
-Client::get_cgi_fd(void) const {
-	return (_cgi_fd);
+Client::get_cgi_input_fd(void) const {
+	return (_cgi_input_fd);
+}
+
+int
+Client::get_cgi_output_fd(void) const {
+	return (_cgi_output_fd);
 }
 
 int
@@ -107,14 +119,13 @@ Client::get_file_write_fd(void) const {
 	return (_file_write_fd);
 }
 
-
 /*
  * REQUEST RECEPTION
  */
 
 int
 Client::_process_connection_refused() {
-	exchange_t refused_exchange = std::make_pair(Request(_virtual_servers.front()), Response());
+	exchange_t refused_exchange = std::make_pair(Request(*this), Response());
 	refused_exchange.second.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	refused_exchange.second.get_status_line().set_status_code(SERVICE_UNAVAILABLE);
 	refused_exchange.first.set_compromising(true);
@@ -177,7 +188,7 @@ Client::_process(exchange_t &exchange) {
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
 		return (_process_error(exchange));
 	if (_is_cgi_related(request))
-		return (_process_cgi(exchange));
+		return (_handle_cgi(exchange));
 	if (request.get_request_line().get_method() == GET)
 		return (_process_GET(exchange));
 	if (request.get_request_line().get_method() == PUT)
@@ -304,60 +315,6 @@ Client::_generate_autoindex(exchange_t &exchange) {
 	return (_build_output(exchange));
 }
 
-bool
-Client::_is_cgi_related(const Request &request) const {
-	std::string	path(_build_cgi_script_path(request));
-	return (path.find('.') != std::string::npos
-				&& path.substr(path.rfind('.')) == request.get_location()->get_cgi_extension());
-}
-
-std::string
-Client::_build_cgi_script_path(const Request &request) const {
-	std::string	request_target(request.get_request_line().get_request_target());
-	std::string	cgi_extension(request.get_location()->get_cgi_extension());
-	std::string	path(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
-	return (request.get_location()->get_cgi_path() + path);
-}
-
-int
-Client::_create_cgi_child_process(void) {
-	pid_t	pid;
-
-	pid = fork();
-	while (pid == -1 && errno == EAGAIN)
-		pid = fork();
-	return (pid);
-}
-
-int
-Client::_process_cgi(exchange_t &exchange) {
-	Request				&request(exchange.first);
-	CGIMetaVariables	mv(request);
-	pid_t				pid;
-	int					req_pipe[2];
-	int					res_pipe[2];
-	pipe(req_pipe);
-	pipe(res_pipe);
-	std::cout << "PROCESS CGI" << std::endl;
-	if (-1 == (pid = _create_cgi_child_process()))
-		return (FAILURE);
-	if (!pid) {
-		close(req_pipe[1]);
-		close(res_pipe[0]);
-		dup2(req_pipe[0], STDIN_FILENO);
-		dup2(res_pipe[1], STDOUT_FILENO);
-		if (0 > execve(_build_cgi_script_path(request).c_str(), mv.get_tab(), mv.get_tab()))
-			perror("execve");
-		return (FAILURE);
-	}
-	close(req_pipe[0]);
-	close(res_pipe[1]);
-	write(req_pipe[1], request.get_body().c_str(), request.get_body().size());
-	close(req_pipe[1]);
-	_cgi_fd = res_pipe[0];
-	return (SUCCESS);
-}
-
 int
 Client::_process_GET(exchange_t &exchange) {
 	Request		&request(exchange.first);
@@ -482,56 +439,6 @@ Client::_open_file_to_read(const std::string &path) {
 	return (SUCCESS);
 }
 
-int
-Client::read_cgi(void) {
-	char		buffer[_buffer_size + 1];
-	int			ret;
-
-	ret = read(_cgi_fd, buffer, _buffer_size);
-	if (ret < 0) {
-		close(_cgi_fd);
-		return (FAILURE);
-	}
-	if (ret == 0) {
-		close(_cgi_fd);
-		_cgi_fd = 0;
-		std::cout << "end of file" << std::endl;
-		return (_cgi_output_str_parsing());
-	}
-	buffer[ret] = '\0';
-	std::cout << buffer;
-	_cgi_output_str += buffer;
-	return (SUCCESS);
-}
-
-int
-Client::_cgi_output_str_parsing(void) {
-	CGIResponse	cgi_response;
-
-	while (std::string::npos != _cgi_output_str.find('\n')
-			&& _cgi_output_str.compare(0, 1, "\n"))
-		_collect_cgi_header(cgi_response);
-	_cgi_output_str.erase(0, _cgi_output_str.find('\n') + 1);
-	cgi_response.set_body(_cgi_output_str);
-	_cgi_output_str.clear();
-	cgi_response.get_headers().render();
-	return (SUCCESS);
-}
-
-void
-Client::_collect_cgi_header(CGIResponse &cgi_response) {
-	size_t				col(0);
-	size_t				end_header(_cgi_output_str.find('\n'));
-	header_t			current_header;
-
-	if (std::string::npos != (col = _cgi_output_str.find_first_of(':'))) {
-		current_header.name = _cgi_output_str.substr(0, col);
-		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output_str.substr(col + 1, (end_header - col - 1)));
-		cgi_response.get_headers().insert(current_header);
-	}
-	_cgi_output_str.erase(0, end_header + 1);
-}
-
 /* cchenot : function name can be a bit misleading, here we read the file through _fd processed by _process_GET;
 file is read to build _out_put_str to be sent to client as part of HTTP response */
 int
@@ -606,4 +513,184 @@ Client::_send_debug_str(const std::string& str) const {
 	size_t size = to_send.size();
 
 	send(_sd, to_send.c_str(), size, 0);
+}
+
+bool
+Client::_is_cgi_related(const Request &request) const {
+	std::string	path(_build_cgi_script_path(request));
+	return (path.find(".") != std::string::npos
+				&& path.substr(path.rfind(".")) == request.get_location()->get_cgi_extension());
+}
+
+std::string
+Client::_build_cgi_script_path(const Request &request) const {
+	std::string	request_target(request.get_request_line().get_request_target());
+	std::string	cgi_extension(request.get_location()->get_cgi_extension());
+	std::string	path(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
+	return (request.get_location()->get_root() + path);
+}
+
+int
+Client::_create_cgi_child_process(void) {
+	pid_t	pid;
+
+	pid = fork();
+	while (pid == -1 && errno == EAGAIN)
+		pid = fork();
+	return (pid);
+}
+
+int
+Client::_handle_cgi(exchange_t &exchange) {
+	Request				&request(exchange.first);
+	CGIMetaVariables	mv(request);
+	pid_t				pid;
+	int					req_pipe[2];
+	int					res_pipe[2];
+	std::string			arg0_str(request.get_location()->get_cgi_path());
+	std::string			arg1_str(_build_cgi_script_path(request));
+	char				*arg0(new char[arg0_str.size() + 1]);
+	char				*arg1(new char[arg1_str.size() + 1]);
+
+	strcpy(arg0, arg0_str.c_str());
+	strcpy(arg1, arg1_str.c_str());
+	char	*args[0];
+	args[0] = arg0;
+	args[1] = arg1;
+	args[2] = 0;
+	pipe(req_pipe);
+	pipe(res_pipe);
+	if (-1 == (pid = _create_cgi_child_process()))
+		return (FAILURE);
+	if (!pid) {
+		close(req_pipe[1]);
+		close(res_pipe[0]);
+		dup2(req_pipe[0], STDIN_FILENO);
+		dup2(res_pipe[1], STDOUT_FILENO);
+		chdir(request.get_location()->get_root().c_str());
+		if (0 > execve(request.get_location()->get_cgi_path().c_str(), args, mv.get_tab()))
+			perror("execve");
+		close(req_pipe[0]);
+		close(res_pipe[1]);
+		exit(EXIT_FAILURE);
+	}
+	delete[] arg0;
+	delete[] arg1;
+	close(req_pipe[0]);
+	close(res_pipe[1]);
+	_cgi_input = request.get_body();
+	_cgi_input_fd = req_pipe[1];
+	_cgi_output_fd = res_pipe[0];
+	WebServer::set_non_blocking(_cgi_input_fd);
+	WebServer::set_non_blocking(_cgi_output_fd);
+	return (SUCCESS);
+}
+
+int
+Client::write_cgi_input(void) {
+	size_t		buffer_size(std::min(_buffer_size, _cgi_input.size()));
+	ssize_t		ret;
+
+	if (_cgi_input.empty()) {
+		close(_cgi_input_fd);
+		_cgi_input_fd = 0;
+		return (SUCCESS);
+	}
+	ret = write(_cgi_input_fd, _cgi_input.c_str(), buffer_size);
+	if (ret < 0) {
+		close(_cgi_input_fd);
+		_cgi_input_fd = 0;
+		return (FAILURE);
+	}
+	_cgi_input.pop_front(ret);
+	if (ret == 0) {
+		close(_cgi_input_fd);
+		_cgi_input_fd = 0;
+		waitpid(-1, NULL, 0);
+	}
+	return (SUCCESS);
+}
+
+int
+Client::read_cgi_output(void) {
+	char		buffer[_buffer_size];
+	ssize_t		ret;
+
+	ret = read(_cgi_output_fd, buffer, _buffer_size);
+	if (ret < 0) {
+		close(_cgi_output_fd);
+		return (FAILURE);
+	}
+	if (ret == 0) {
+		close(_cgi_output_fd);
+		_cgi_output_fd = 0;
+		return (_cgi_output_parsing());
+	}
+	_cgi_output = (_cgi_output + ByteArray(buffer, ret));
+	return (SUCCESS);
+}
+
+bool
+Client::_is_document_response(const CGIResponse &cgi_response) const {
+	return (cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE)
+			&& !cgi_response.get_body().empty());
+}
+
+bool
+Client::_is_local_redirect_response(const CGIResponse &cgi_response) const {
+	return (cgi_response.get_body().empty()
+			&& cgi_response.get_headers().key_exists(CGI_LOCATION)
+			&& Path::is_local_path_query(cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
+			&& cgi_response.get_headers().size() == 1);
+}
+
+bool
+Client::_is_client_redirect_response(const CGIResponse &cgi_response) const {
+	return (cgi_response.get_body().empty()
+			&& cgi_response.get_headers().key_exists(CGI_LOCATION)
+			&& Path::is_fragment_uri(cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
+			&& cgi_response.get_headers().size() == 1);
+}
+
+int
+Client::_cgi_output_parsing(void) {
+	CGIResponse	cgi_response;
+
+	while (ByteArray::npos != _cgi_output.find("\n")
+			&& _cgi_output[0] != '\n')
+		_collect_cgi_header(cgi_response);
+	_cgi_output.pop_front(_cgi_output.find("\n") + 1);
+	cgi_response.set_body(_cgi_output);
+	_cgi_output.clear();
+	return (_build_response_from_cgi_response(cgi_response));
+}
+
+int
+Client::_build_response_from_cgi_response(const CGIResponse &cgi_response) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+	if (cgi_response.get_headers().key_exists(CGI_STATUS))
+		response.get_status_line().set_status_code(static_cast<status_code_t>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_STATUS).c_str())));
+	else
+		response.get_status_line().set_status_code(OK);
+	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
+		response.get_headers().insert(*it);
+	response.set_body(cgi_response.get_body());
+	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
+		return (_process_error(exchange));
+	return (_build_output(exchange));
+}
+
+void
+Client::_collect_cgi_header(CGIResponse &cgi_response) {
+	size_t				col(0);
+	size_t				end_header(_cgi_output.find("\n"));
+	header_t			current_header;
+
+	if (ByteArray::npos != (col = _cgi_output.find_first_of(':'))) {
+		current_header.name = _cgi_output.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output.substr(col + 1, (end_header - col - 1)));
+		cgi_response.get_headers().insert(current_header);
+	}
+	_cgi_output.pop_front(end_header + 1);
 }

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:39:01 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/19 03:26:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/22 06:55:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,13 +39,13 @@ const CGIResponse::CGIHeaders
 	return (_headers);
 }
 
-const std::string
+const ByteArray
 &CGIResponse::get_body(void) const {
 	return (_body);
 }
 
 void
-CGIResponse::set_body(const std::string &body) {
+CGIResponse::set_body(const ByteArray &body) {
 	_body = body;
 }
 

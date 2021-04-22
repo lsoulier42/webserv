@@ -6,7 +6,7 @@
 /*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/15 19:32:37 by louise            #+#    #+#             */
-/*   Updated: 2021/04/16 23:04:01 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 11:52:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@ VirtualServer::operator=(const VirtualServer& rhs) {
 	if (this != &rhs) {
 		_server_names = rhs._server_names;
 		_ip_addr = rhs._ip_addr;
+		_port_str = rhs._port_str;
 		_port = rhs._port;
 		_client_max_body_size = rhs._client_max_body_size;
 		_upload_dir = rhs._upload_dir;
@@ -49,9 +50,19 @@ VirtualServer::set_ip_addr(const std::string& ipAddr) {
 	_ip_addr = ipAddr;
 }
 
+const std::string
+&VirtualServer::get_port_str(void) const {
+	return (_port_str);
+}
+
 int
 VirtualServer::get_port() const {
 	return _port;
+}
+
+void
+VirtualServer::set_port_str(const std::string &port_str) {
+	_port_str = port_str;
 }
 
 void

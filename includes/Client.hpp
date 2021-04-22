@@ -6,7 +6,7 @@
 /*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 16:10:59 by cchenot          ###   ########.fr       */
+/*   Updated: 2021/04/22 07:34:47 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@
 # include "VirtualServer.hpp"
 # include "CGIMetaVariables.hpp"
 # include "CGIResponse.hpp"
+# include "Path.hpp"
 
 class RequestParsing;
 class ResponseHandling;
@@ -44,6 +45,7 @@ class ResponseHandling;
 class Client {
 
 	friend class RequestParsing;
+	friend class Request;
 
 	public:
 
@@ -58,13 +60,15 @@ class Client {
 
 		int get_sd(void) const;
 		int get_fd(void) const;
-		int get_cgi_fd(void) const;
+		int get_cgi_input_fd(void) const;
+		int get_cgi_output_fd(void) const;
 		int get_file_write_fd(void) const;
 		
 		int read_socket(void) throw (ClientError);
 		int write_socket(void) throw(ClientError);
 		int read_file(void) throw(ClientError);
-		int read_cgi(void);
+		int read_cgi_output(void);
+		int write_cgi_input(void);
 		int	write_file(void) throw(ClientError);
 
 		class ClientError : public std::exception {
@@ -88,14 +92,16 @@ class Client {
 
 		const int _sd;
 		int _fd;
-		int _cgi_fd;
+		int _cgi_input_fd;
+		int _cgi_output_fd;
 		int	_file_write_fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
 		ByteArray _input;
 		ByteArray _output;
-		std::string _cgi_output_str; //needs changing
+		ByteArray _cgi_input;
+		ByteArray _cgi_output;
 		ByteArray _file_write_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
@@ -116,8 +122,8 @@ class Client {
 
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
+		int _handle_cgi(exchange_t &exchange);
 		int	_process_PUT(exchange_t &exchange);
-		int _process_cgi(exchange_t &exchange);
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_output(exchange_t &exchange);
@@ -142,8 +148,12 @@ class Client {
 		bool _is_cgi_related(const Request &request) const;
 		std::string _build_cgi_script_path(const Request &request) const;
 		int _create_cgi_child_process(void);
-		int _cgi_output_str_parsing(void);
+		int _cgi_output_parsing(void);
+		int _build_response_from_cgi_response(const CGIResponse &cgi_response);
 		void _collect_cgi_header(CGIResponse &cgi_response);
+		bool _is_document_response(const CGIResponse &cgi_response) const;
+		bool _is_local_redirect_response(const CGIResponse &cgi_response) const;
+		bool _is_client_redirect_response(const CGIResponse &cgi_response) const;
 
 };
 

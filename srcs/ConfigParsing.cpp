@@ -6,7 +6,7 @@
 /*   By: louise <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/15 20:59:19 by louise            #+#    #+#             */
-/*   Updated: 2021/04/16 07:28:05 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/20 11:46:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -235,6 +235,7 @@ ConfigParsing::parse_listen(const std::vector<std::string>& tokens, VirtualServe
 	}
 	virtual_server.set_ip_addr(ip_addr);
 	virtual_server.set_port(port_nb);
+	virtual_server.set_port_str(port);
 	return SUCCESS;
 }
 
