@@ -70,8 +70,9 @@ RequestParsing::_header_received(const Request &request, const ByteArray &input)
 
 bool
 RequestParsing::_headers_received(const Request &request, const ByteArray &input) {
+	std::string input_str(input.c_str(), input.size());
 	return (request.get_status() == Request::REQUEST_LINE_RECEIVED
-			&& !input.compare(0, 2, "\r\n"));
+			&& !input_str.compare(0, 2, "\r\n"));
 }
 
 bool
@@ -93,8 +94,9 @@ RequestParsing::_trailer_received(const Request &request, const ByteArray &input
 //TODO:: pas du tout comme ca qu'on repere la fin des trailers, provisoire, pour test
 bool
 RequestParsing::_trailers_received(const Request &request, const ByteArray &input) {
+	std::string input_str(input.c_str(), input.size());
 	return (request.get_status() == Request::BODY_RECEIVED
-			&& !input.compare(0, 2, "\r\n"));
+			&& !input_str.compare(0, 2, "\r\n"));
 }
 
 bool
@@ -131,8 +133,6 @@ RequestParsing::_collect_request_line_elements(Request &request, ByteArray &inpu
 	}
 	if (!Syntax::is_accepted_value(rl_elements[0], Syntax::method_tab, DEFAULT_METHOD))
 		return (NOT_IMPLEMENTED);
-	if (rl_elements[1][0] != '/')
-		return (BAD_REQUEST);
 	std::vector<std::string> http_elements = Syntax::split(rl_elements[2], "/");
 	if (http_elements.size() != 2 || http_elements[0] != "HTTP")
 		return (BAD_REQUEST);
