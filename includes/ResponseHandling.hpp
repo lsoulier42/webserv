@@ -47,7 +47,6 @@ class ResponseHandling {
 		static int _response_www_authenticate_handler(Client::exchange_t &exchange);
 		static void _pick_content_type(Client::exchange_t &exchange);
 
-		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, method_t method);
 		static std::string _html_content_language_parser(const Response& response);
 		static std::string _xml_content_language_parser(const Response& response);
 		static bool _is_accepted_language(const std::string& language_found, const std::list<std::string>& allowed_languages);

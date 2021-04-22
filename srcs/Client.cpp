@@ -135,7 +135,7 @@ Client::_process_connection_refused() {
 }
 
 int
-Client::read_socket(void) throw (ClientError) {
+Client::read_socket(void) {
 	char	buffer[_buffer_size];
 	int		ret;
 
@@ -146,7 +146,7 @@ Client::read_socket(void) throw (ClientError) {
 			std::cerr << "the client closed the connection." << std::endl;
 		else
 			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
-		throw (ClientError(INTERNAL_SERVER_ERROR));
+		return (SUCCESS);
 	}
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
@@ -182,6 +182,10 @@ int
 Client::_process(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
+	int (Client::*process_functions[])(exchange_t &exchange) = {&Client::_process_GET,
+		&Client::_process_HEAD, &Client::_process_POST, &Client::_process_PUT,
+		&Client::_process_DELETE, &Client::_process_CONNECT,
+		&Client::_process_OPTIONS, &Client::_process_TRACE};
 
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
@@ -189,14 +193,7 @@ Client::_process(exchange_t &exchange) {
 		return (_process_error(exchange));
 	if (_is_cgi_related(request))
 		return (_handle_cgi(exchange));
-	if (request.get_request_line().get_method() == GET || 
-		request.get_request_line().get_method() == HEAD)
-		return (_process_GET(exchange));
-	if (request.get_request_line().get_method() == PUT)
-		return (_process_PUT(exchange));
-	if (request.get_request_line().get_method() == POST)
-		return (_process_POST(exchange));
-	return (FAILURE);
+	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
 }
 
 
@@ -242,7 +239,7 @@ Client::_format_autoindex_page(exchange_t& exchange, const std::set<std::string>
 	std::string		dir_name(request_target.substr(0, request_target.find('?')));
 
 	ss << "<html>" << std::endl << "<head>" << std::endl;
-	ss << "<title>Index of </title></head>" << std::endl;
+	ss << "<title>Index of " << dir_name << " </title></head>" << std::endl;
 	ss << "<body bgcolor=\"white\">" << std::endl;
 	ss << "<h1>Index of " << dir_name << "</h1><hr><pre>";
 	ss << "<table><tr><th>Name</th><th>Last modification</th><th>Size</th></tr>";
@@ -303,6 +300,7 @@ Client::_generate_autoindex(exchange_t &exchange) {
 		response.get_status_line().set_status_code(FORBIDDEN);
 		return (FAILURE);
 	}
+	response.get_status_line().set_status_code(OK);
 	while ((file_listing = readdir(directory))) {
 		if (file_listing->d_type == DT_DIR
 			&& strcmp(file_listing->d_name, ".") == 0)
@@ -355,7 +353,7 @@ Client::_process_PUT(exchange_t &exchange) {
 	std::string path(_build_resource_path(request));
 	path_type_t path_type = Syntax::get_path_type(path);
 
-	DEBUG_COUT("process put entered");
+	DEBUG_COUT("process PUT entered");
 	/* we do not support creating a directory through put */
 	if (path_type == DIRECTORY) {
 		response.get_status_line().set_status_code(NOT_FOUND);
@@ -408,7 +406,7 @@ Client::_process_POST(exchange_t &exchange) {
 	std::string path(_build_resource_path(request));
 	path_type_t path_type = Syntax::get_path_type(path);
 
-	DEBUG_COUT("process post entered");
+	DEBUG_COUT("process POST entered");
 	if (path_type == DIRECTORY) {
 		response.get_status_line().set_status_code(METHOD_NOT_ALLOWED);
 		return (_process_error(exchange));
@@ -459,7 +457,6 @@ Client::_process_error(exchange_t &exchange) {
 	std::string error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
-	request.get_headers().clear();
 	response.get_headers().clear();
 	if (!request.get_location())
 		request.set_location(&request.get_virtual_server()->get_locations().back());
@@ -549,6 +546,7 @@ Client::write_file(void) throw(ClientError) {
 
 int
 Client::_build_output(exchange_t &exchange) {
+	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 	Response::StatusLine status_line = response.get_status_line();
 	AHTTPMessage::HTTPHeaders& headers = response.get_headers();
@@ -561,7 +559,8 @@ Client::_build_output(exchange_t &exchange) {
 		}
 	}
 	_output += "\r\n";
-	_output += response.get_body();
+	if (request.get_request_line().get_method() != HEAD)
+		_output += response.get_body();
 	return (SUCCESS);
 }
 
@@ -751,4 +750,33 @@ Client::_collect_cgi_header(CGIResponse &cgi_response) {
 		cgi_response.get_headers().insert(current_header);
 	}
 	_cgi_output.pop_front(end_header + 1);
+}
+
+int
+Client::_process_HEAD(exchange_t &exchange) {
+	return (_process_GET(exchange));
+}
+
+int
+Client::_process_DELETE(exchange_t &exchange) {
+	(void)exchange;
+	return (SUCCESS);
+}
+
+int
+Client::_process_CONNECT(exchange_t &exchange) {
+	(void)exchange;
+	return (SUCCESS);
+}
+
+int
+Client::_process_OPTIONS(exchange_t &exchange) {
+	(void)exchange;
+	return (SUCCESS);
+}
+
+int
+Client::_process_TRACE(exchange_t &exchange) {
+	(void)exchange;
+	return (SUCCESS);
 }

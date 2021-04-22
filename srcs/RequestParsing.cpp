@@ -122,10 +122,20 @@ RequestParsing::_trailer_expected(const Request &request) {
 	return ((request.get_headers().key_exists(TRAILER)));
 }
 
+bool
+RequestParsing::_is_allowed_method(const std::list<std::string>& allowed_methods, const std::string& method) {
+	for(std::list<std::string>::const_iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
+		if (*it == method)
+			return true;
+	}
+	return false;
+}
+
 int
 RequestParsing::_collect_request_line_elements(Request &request, ByteArray &input) {
 	size_t						end_rl(input.find("\r\n"));
 	std::vector<std::string> 	rl_elements = Syntax::split(input.substr(0, end_rl), " ");
+	std::list<std::string>		allowed_methods;
 
 	if (rl_elements.size() != 3) {
 		input.pop_front(end_rl + 2);
@@ -144,6 +154,11 @@ RequestParsing::_collect_request_line_elements(Request &request, ByteArray &inpu
 	input.pop_front(end_rl + 2);
 	request.set_status(Request::REQUEST_LINE_RECEIVED);
 	_pick_location(request);
+	if (request.get_location()) {
+		allowed_methods = request.get_location()->get_methods();
+		if (!_is_allowed_method(allowed_methods, rl_elements[0]))
+			return (METHOD_NOT_ALLOWED);
+	}
 	return (SUCCESS);
 }
 
