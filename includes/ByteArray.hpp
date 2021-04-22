@@ -103,6 +103,10 @@ class ByteArray {
 		std::string substr(size_type pos, size_type len = npos) throw(std::out_of_range);
 		ByteArray sub_byte_array(size_type pos, size_type len = npos) throw(std::out_of_range);
 
+		int compare( size_type pos1, size_type count1, const std::string& str ) const throw(std::out_of_range);
+		bool starts_with( const std::string& str ) const;
+		bool ends_with( const std::string& str ) const;
+
 		static const size_type npos;
 
 	private:

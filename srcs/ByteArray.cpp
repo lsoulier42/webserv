@@ -477,3 +477,21 @@ operator<<(std::ostream& o, const ByteArray& src) {
 		o << src[i];
 	return o;
 }
+
+int
+ByteArray::compare( size_type pos1, size_type count1, const std::string& str ) const throw(std::out_of_range) {
+	if (pos1 + count1 > size())
+		throw (std::out_of_range("pos1 + count1 > size"));
+	return (memcmp(str.c_str(), this->c_str() + pos1, count1));
+}
+
+bool
+ByteArray::starts_with( const std::string& str ) const {
+	return (memcmp(str.c_str(), this->c_str(), str.size()));
+}
+
+bool
+ByteArray::ends_with( const std::string& str ) const {
+	size_t str_size = str.size();
+	return (memcmp(str.c_str(), this->c_str() + size() - str_size, str_size));
+}
