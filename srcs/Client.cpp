@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 21:21:26 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/23 08:31:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,10 +148,13 @@ Client::read_socket(void) {
 		_closing = true;
 		return (FAILURE);
 	}
+	std::cout << ByteArray(buffer, ret);
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
-	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
+	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
+		std::cout << "there is a request ready to be processed : " << Syntax::method_tab[_exchanges.front().first.get_request_line().get_method()].name << std::endl;
 		return (_process(_exchanges.front()));
+	}
 	return (SUCCESS);
 }
 
@@ -166,6 +169,7 @@ Client::write_socket(void) {
 	write_return = write(_sd, _output.c_str(), to_write);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
+		std::cout << "THE EXCHANGE HAS BEEN DISCARD" << std::endl;
 		_exchanges.pop_front();
 		if (_closing)
 			return (FAILURE);
@@ -186,6 +190,9 @@ Client::_process(exchange_t &exchange) {
 		&Client::_process_DELETE, &Client::_process_CONNECT,
 		&Client::_process_OPTIONS, &Client::_process_TRACE};
 
+	std::cout << std::endl << "request processed :" << std::endl;
+	std::cout << request.get_body() << std::endl;
+	request.get_headers().render();
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
