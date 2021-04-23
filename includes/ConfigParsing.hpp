@@ -47,14 +47,14 @@ class ConfigParsing {
 	static int parse_listen(const std::vector<std::string>& tokens, VirtualServer& virtual_server);
 	static int parse_server_name(const std::vector<std::string>& tokens, VirtualServer& virtual_server);
 	static int parse_error_page(const std::vector<std::string>& tokens, VirtualServer& virtual_server);
-	static int parse_client_max_body_size(const std::vector<std::string>& tokens, VirtualServer& virtual_server);
-	static int parse_upload_dir(const std::vector<std::string>& tokens, VirtualServer& virtual_server);
 
 	static int parse_root(const std::vector<std::string>& tokens, Location& location);
 	static int parse_methods(const std::vector<std::string>& tokens, Location& location);
 	static int parse_index(const std::vector<std::string>& tokens, Location& location);
 	static int parse_cgi(const std::vector<std::string>& tokens, Location& location);
 	static int parse_autoindex(const std::vector<std::string>& tokens, Location& location);
+	static int parse_client_max_body_size(const std::vector<std::string>& tokens, Location& location);
+	static int parse_upload_dir(const std::vector<std::string>& tokens, Location& location);
 
 	static int bracket_not_found(const std::string& line_buffer, const std::string& context, t_bracket_type type);
 	static int mandatory_instruction_not_found(const std::string& instruction);
@@ -77,6 +77,7 @@ class ConfigParsing {
 		VirtualServer& virtual_server, std::set<server_instruction_t>& instructions_filled);
 	static int location_instructions_handler(std::vector<std::string>& tokens,
 		Location& location, std::set<location_instruction_t>& instructions_filled);
+	static void set_default_instructions_locations(std::list<Location>& locations);
 
 	private:
 		ConfigParsing();

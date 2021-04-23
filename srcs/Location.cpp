@@ -12,7 +12,7 @@
 
 #include "Location.hpp"
 
-Location::Location() : _autoindex(false) {
+Location::Location() : _autoindex(false), _client_max_body_size(DEFAULT_MAX_BODY_SIZE) {
 
 }
 
@@ -30,6 +30,8 @@ Location::operator=(const Location& rhs) {
 		_methods = rhs._methods;
 		_cgi_path = rhs._cgi_path;
 		_cgi_extension = rhs._cgi_extension;
+		_client_max_body_size = rhs._client_max_body_size;
+		_upload_dir = rhs._upload_dir;
 	}
 	return *this;
 }
@@ -110,4 +112,24 @@ Location::is_autoindex() const {
 void
 Location::set_autoindex(bool autoindex) {
 	_autoindex = autoindex;
+}
+
+unsigned long
+Location::get_client_max_body_size() const {
+	return _client_max_body_size;
+}
+
+void
+Location::set_client_max_body_size(unsigned long clientMaxBodySize) {
+	_client_max_body_size = clientMaxBodySize;
+}
+
+std::string
+Location::get_upload_dir() const {
+	return _upload_dir;
+}
+
+void
+Location::set_upload_dir(const std::string &uploadDir) {
+	_upload_dir = uploadDir;
 }

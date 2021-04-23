@@ -74,8 +74,7 @@ int
 ConfigParsing::server_instruction_handler(std::vector<std::string>& tokens,
 	VirtualServer& virtual_server, std::set<server_instruction_t>& instructions_filled) {
 	int (*instructions_functions[])(const std::vector<std::string>&, VirtualServer&) = {
-		&parse_listen, &parse_server_name, &parse_error_page,
-		&parse_client_max_body_size, &parse_upload_dir};
+		&parse_listen, &parse_server_name, &parse_error_page };
 
 	for(size_t i = LISTEN; i < TOTAL_SERVER_INSTRUCTIONS - 1; i++) {
 		if (Syntax::server_instructions_tab[i].name == tokens[INSTRUCTION_TOKEN]) {
@@ -97,7 +96,7 @@ int
 ConfigParsing::location_instructions_handler(std::vector<std::string>& tokens,
 	Location& location, std::set<location_instruction_t>& instructions_filled) {
 	int (*instructions_functions[TOTAL_LOCATION_INSTRUCTIONS])(const std::vector<std::string>&, Location&) =
-		{ &parse_root, &parse_methods, &parse_index, &parse_cgi, &parse_autoindex };
+		{ &parse_root, &parse_methods, &parse_index, &parse_cgi, &parse_autoindex, &parse_client_max_body_size, &parse_upload_dir };
 
 	for(int i = 0; i < TOTAL_LOCATION_INSTRUCTIONS; i++) {
 		if (Syntax::location_instructions_tab[i].name == tokens[INSTRUCTION_TOKEN]) {
@@ -111,8 +110,32 @@ ConfigParsing::location_instructions_handler(std::vector<std::string>& tokens,
 			break;
 		}
 	}
-	std::cout << "THERE" << location.get_cgi_extension() << std::endl;
 	return SUCCESS;
+}
+
+void
+ConfigParsing::set_default_instructions_locations(std::list<Location>& locations) {
+	Location& default_location = locations.back();
+
+	for(std::list<Location>::iterator it = locations.begin(); it != --locations.end(); it++) {
+		if (it->get_root().empty())
+			it->set_root(default_location.get_root());
+		if (it->get_cgi_path().empty())
+			it->set_cgi_path(default_location.get_cgi_path());
+		if (it->get_cgi_extension().empty())
+			it->set_cgi_extension(default_location.get_cgi_extension());
+		if (!it->is_autoindex() && default_location.is_autoindex())
+			it->set_autoindex(true);
+		if (it->get_methods().empty())
+			it->set_methods(default_location.get_methods());
+		if (it->get_index().empty())
+			it->set_index(default_location.get_index());
+		if (it->get_client_max_body_size() == DEFAULT_MAX_BODY_SIZE
+			&& default_location.get_client_max_body_size() != DEFAULT_MAX_BODY_SIZE)
+			it->set_client_max_body_size(DEFAULT_MAX_BODY_SIZE);
+		if (it->get_upload_dir().empty())
+			it->set_upload_dir(default_location.get_upload_dir());
+	}
 }
 
 int
@@ -149,6 +172,7 @@ ConfigParsing::check_server_bloc(std::ifstream& config_file, std::list<VirtualSe
 			return unknown_instruction(tokens[INSTRUCTION_TOKEN], "server");
 	}
 	new_virtual_server.add_location(default_location);
+	set_default_instructions_locations(new_virtual_server.get_locations());
 	if (!closing_bracket)
 		return(bracket_not_found(tokens[INSTRUCTION_TOKEN], "server", CLOSING_BRACKET));
 	if (instructions_filled.find(LISTEN) == instructions_filled.end())
@@ -193,11 +217,10 @@ ConfigParsing::check_location_bloc(std::ifstream& config_file,
 				return FAILURE;
 		}
 		else
-			return unknown_instruction(tokens[INSTRUCTION_TOKEN], "location");
+			return unknown_instruction(location_tokens[INSTRUCTION_TOKEN], "location");
 	}
 	if (!closing_bracket)
 		return(bracket_not_found(location_tokens[INSTRUCTION_TOKEN], "server", OPENING_BRACKET));
-	std::cout << "OVER THERE" << new_location.get_cgi_extension() << std::endl;
 	virtual_server.add_location(new_location);
 	return SUCCESS;
 }
@@ -290,7 +313,7 @@ ConfigParsing::parse_error_page(const std::vector<std::string>& tokens, VirtualS
 }
 
 int
-ConfigParsing::parse_client_max_body_size(const std::vector<std::string>& tokens, VirtualServer& virtual_server) {
+ConfigParsing::parse_client_max_body_size(const std::vector<std::string>& tokens, Location& location) {
 	unsigned long client_max_body_size;
 	std::string usage("Usage: 'client_max_body_size <positive, non null, numerical value>;'");
 
@@ -304,11 +327,11 @@ ConfigParsing::parse_client_max_body_size(const std::vector<std::string>& tokens
 		std::cerr << usage << std::endl;
 		return FAILURE;
 	}
-	virtual_server.set_client_max_body_size(client_max_body_size);
+	location.set_client_max_body_size(client_max_body_size);
 	return SUCCESS;
 }
 int
-ConfigParsing::parse_upload_dir(const std::vector<std::string>& tokens, VirtualServer& virtual_server) {
+ConfigParsing::parse_upload_dir(const std::vector<std::string>& tokens, Location& location) {
 	std::string usage("Usage: 'upload_dir [/absolute/or/relative/path];'");
 	std::string path;
 
@@ -317,7 +340,7 @@ ConfigParsing::parse_upload_dir(const std::vector<std::string>& tokens, VirtualS
 	path = tokens[1];
 	if (!check_instruction_path(path, tokens[0], usage))
 		return FAILURE;
-	virtual_server.set_upload_dir(path);
+	location.set_upload_dir(path);
 	return SUCCESS;
 }
 
@@ -379,7 +402,6 @@ ConfigParsing::parse_index(const std::vector<std::string>& tokens, Location& loc
 
 int
 ConfigParsing::parse_cgi(const std::vector<std::string>& tokens, Location& location) {
-	std::cout << "HERE" << std::endl;
 	std::string usage("Usage: 'cgi [*.<ext>] [/absolute/or/relative/path];'");
 	std::string cgi_file_ext, cgi_path;
 
@@ -428,7 +450,7 @@ ConfigParsing::mandatory_instruction_not_found(const std::string& instruction) {
 int
 ConfigParsing::unknown_instruction(const std::string& token, const std::string& context) {
 	std::cerr << "Unknown instruction `" << token;
-	std::cerr<< " in " << context << " context." << std::endl;
+	std::cerr<< "' in " << context << " context." << std::endl;
 	return FAILURE;
 }
 

@@ -19,7 +19,7 @@
 # include "Location.hpp"
 # include "Syntax.hpp"
 
-# define DEFAULT_MAX_BODY_SIZE 8192
+
 
 class VirtualServer {
 	public:
@@ -40,12 +40,9 @@ class VirtualServer {
 		void set_error_page_codes(const std::list<status_code_t>& errorPageCodes);
 		const std::string &get_error_page_path() const;
 		void set_error_page_path(const std::string& errorPagePath);
-		unsigned long get_client_max_body_size() const;
-		void set_client_max_body_size(unsigned long clientMaxBodySize);
+		std::list<Location>& get_locations();
 		const std::list<Location>& get_locations() const;
 		void add_location(const Location& location);
-		std::string get_upload_dir() const;
-		void set_upload_dir(const std::string &uploadDir);
 
 		static std::list<const VirtualServer*> build_virtual_server_list(const std::list<VirtualServer>& virtual_servers,
 			const VirtualServer* default_server);
@@ -57,8 +54,7 @@ class VirtualServer {
 		std::list<std::string> _server_names;
 		std::list<status_code_t> _error_page_codes;
 		std::string _error_page_path;
-		unsigned long _client_max_body_size;
 		std::list<Location> _locations;
-		std::string _upload_dir;
+
 };
 #endif

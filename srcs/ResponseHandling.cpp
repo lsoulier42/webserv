@@ -167,7 +167,7 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 	std::stringstream ss;
 
 	if (stat(response.get_target_path().c_str(), &buf) != -1) {
-		if (buf.st_size > static_cast<long>(request.get_virtual_server()->get_client_max_body_size())) {
+		if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
 			response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
 			return FAILURE;
 		}
@@ -375,7 +375,8 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
 	response.get_headers().insert(CONTENT_TYPE, "text/html");
-	if (request.get_request_line().get_method() == HEAD)
+	if (request.get_request_line().get_method() == HEAD
+		&& error_code == METHOD_NOT_ALLOWED) //this condition cannot be verified on nginx
 		response.get_headers().insert(CONTENT_LENGTH, "0");
 	else
 		response.get_headers().insert(CONTENT_LENGTH, ss.str());
