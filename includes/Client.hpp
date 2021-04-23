@@ -69,26 +69,11 @@ class Client {
 		int get_file_write_fd(void) const;
 		
 		int read_socket(void);
-		int write_socket(void) throw(ClientError);
-		int read_file(void) throw(ClientError);
+		int write_socket(void);
+		int read_file(void);
 		int read_cgi_output(void);
 		int write_cgi_input(void);
-		int	write_file(void) throw(ClientError);
-
-		class ClientError : public std::exception {
-			public:
-				ClientError(status_code_t error_code) throw() :
-					_error_code(error_code) {}
-				virtual ~ClientError() throw() {}
-				virtual const char* what() const throw() {
-					return (Syntax::status_codes_tab[_error_code].reason_phrase.c_str());
-				}
-				status_code_t get_error_code() const throw() {
-					return (_error_code);
-				}
-			private:
-				status_code_t _error_code;
-		};
+		int	write_file(void);
 
 	private:
 
@@ -141,7 +126,7 @@ class Client {
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 
-	/* Autoindex
+		/* Autoindex
 		 *
 		 *
 		 *
@@ -150,7 +135,7 @@ class Client {
 		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, exchange_t& exchange, bool is_dir);
 		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
 			const std::set<std::string>& file_names);
-		std::string _format_directory_name(const std::string& directory_name);
+
     
 		/* CGI
 		 *

@@ -128,7 +128,6 @@ Client::_process_connection_refused() {
 	exchange_t refused_exchange = std::make_pair(Request(*this), Response());
 	refused_exchange.second.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	refused_exchange.second.get_status_line().set_status_code(SERVICE_UNAVAILABLE);
-	refused_exchange.first.set_compromising(true);
 	_closing = true;
 	_process_error(refused_exchange);
 	return (FAILURE);
@@ -146,7 +145,8 @@ Client::read_socket(void) {
 			std::cerr << "the client closed the connection." << std::endl;
 		else
 			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
-		return (SUCCESS);
+		_closing = true;
+		return (FAILURE);
 	}
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
@@ -156,7 +156,7 @@ Client::read_socket(void) {
 }
 
 int
-Client::write_socket(void) throw(ClientError) {
+Client::write_socket(void) {
 	size_t		to_write, output_size = _output.size();
 	ssize_t 	write_return;
 
@@ -166,10 +166,9 @@ Client::write_socket(void) throw(ClientError) {
 	write_return = write(_sd, _output.c_str(), to_write);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
-		status_code_t status_code = _exchanges.front().second.get_status_line().get_status_code();
-		if (status_code >= BAD_REQUEST)
-			throw (ClientError(status_code));
 		_exchanges.pop_front();
+		if (_closing)
+			return (FAILURE);
 	}
 	return (SUCCESS);
 }
@@ -199,10 +198,10 @@ Client::_process(exchange_t &exchange) {
 
 std::string
 Client::_format_index_path(const std::string& dir_path, const std::string& index_file) {
-	std::string definite_path;
+	std::string definite_path = dir_path;
 	std::string definite_index_file = index_file;
 
-	definite_path = _format_directory_name(dir_path);
+	Syntax::format_directory_name(definite_path);
 	if (*index_file.begin() == '/')
 		definite_index_file = index_file.substr(1);
 	return definite_path + definite_index_file;
@@ -251,32 +250,28 @@ Client::_format_autoindex_page(exchange_t& exchange, const std::set<std::string>
 	return ss.str();
 }
 
-std::string
-Client::_format_directory_name(const std::string& directory_name) {
-	std::string new_dir_name = directory_name;
-	if (*--new_dir_name.end() != '/')
-		new_dir_name += "/";
-	return new_dir_name;
-}
 
 void
 Client::_format_autoindex_entry(std::stringstream& ss, const std::string& filename,
 	exchange_t& exchange, bool is_dir) {
-	std::string		definite_filename, fullpath;
+	std::string		definite_filename, fullpath, target_path = exchange.second.get_target_path();
 	std::string		request_target = exchange.first.get_request_line().get_request_target();
 	struct stat		stat_buf;
 	char 			time_buf[64];
 	time_t			last_modification;
 	struct tm		*tm;
 
-	fullpath = _format_directory_name(exchange.second.get_target_path()) + filename;
+	Syntax::format_directory_name(target_path);
+	fullpath = target_path + filename;
 	if (stat(fullpath.c_str(), &stat_buf) == -1)
 		return;
 	last_modification = stat_buf.st_mtim.tv_sec;
 	tm = localtime(&last_modification);
 	strftime(time_buf, sizeof(time_buf), "%d-%b-%Y %H:%M", tm);
-	definite_filename = is_dir ? _format_directory_name(filename) : filename;
-	request_target = _format_directory_name(request_target);
+	definite_filename = filename;
+	if (is_dir)
+		Syntax::format_directory_name(definite_filename);
+	Syntax::format_directory_name(request_target);
 	ss << "<tr><td><a href=\"" << request_target + filename << "\">";
 	ss << definite_filename << "</a></td>";
 	ss << "<td>--" << time_buf << "--</td>";
@@ -478,10 +473,14 @@ Client::_process_error(exchange_t &exchange) {
 std::string
 Client::_build_resource_path(Request &request) {
 	std::string	request_target(request.get_request_line().get_request_target());
-	std::string	absolute_path(request_target.substr(0, request_target.find('?')));
 	std::string	location_root(request.get_location()->get_root());
+	std::string location_path(request.get_location()->get_path());
 
-	return (location_root + absolute_path);
+	request_target = request_target.substr(0, request_target.find('?'));
+	request_target.erase(0, location_path.size());
+	Syntax::format_directory_name(location_root);
+	Syntax::trail_begining_backslash(request_target);
+	return (location_root + request_target);
 }
 
 int
@@ -498,7 +497,7 @@ Client::_open_file_to_read(const std::string &path) {
 /* cchenot : function name can be a bit misleading, here we read the file through _fd processed by _process_GET;
 file is read to build _out_put_str to be sent to client as part of HTTP response */
 int
-Client::read_file(void) throw(ClientError) {
+Client::read_file(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
@@ -508,7 +507,8 @@ Client::read_file(void) throw(ClientError) {
 	ret = read(_fd, buffer, _buffer_size);
 	if (ret < 0) {
 		close(_fd);
-		throw(ClientError(INTERNAL_SERVER_ERROR));
+		_closing = true;
+		return (FAILURE);
 	}
 	if (ret == 0) {
 		close(_fd);
@@ -523,7 +523,7 @@ Client::read_file(void) throw(ClientError) {
 }
 
 int
-Client::write_file(void) throw(ClientError) {
+Client::write_file(void) {
 	exchange_t	&exchange(_exchanges.front());
 	size_t		to_write, file_write_size = _file_write_str.size();
 	ssize_t 	write_return;
@@ -534,7 +534,8 @@ Client::write_file(void) throw(ClientError) {
 	write_return = write(_file_write_fd, _file_write_str.c_str(), to_write);
 	if (write_return < 0) {
 		close(_file_write_fd);
-		throw(ClientError(INTERNAL_SERVER_ERROR));
+		_closing = true;
+		return (FAILURE);
 	}
 	_file_write_str.pop_front(write_return);
 	if (_file_write_str.empty()) {

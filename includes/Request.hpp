@@ -69,14 +69,12 @@ class Request : public AHTTPMessage {
 		request_status_t get_status(void) const;
 		RequestLine &get_request_line(void);
 		const RequestLine &get_request_line(void) const;
-		bool get_compromising(void) const;
 		const VirtualServer* get_virtual_server() const;
 		const Location* get_location() const;
 		const struct sockaddr &get_client_addr(void) const;
 		void set_location(const Location* location);
 
 		void set_status(request_status_t status);
-		void set_compromising(bool compromising);
 		void set_virtual_server(const VirtualServer* virtual_server);
 
 		void reset(void);
@@ -85,7 +83,6 @@ class Request : public AHTTPMessage {
 
 		request_status_t _status;
 		RequestLine _request_line;
-		bool _compromising;
 		const VirtualServer* _virtual_server;
 		const Location*	_location;
 		const struct sockaddr _client_addr;

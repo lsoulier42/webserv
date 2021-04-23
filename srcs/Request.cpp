@@ -17,7 +17,6 @@ Request::Request(void) :
 	AHTTPMessage(),
 	_status(START),
 	_request_line(),
-	_compromising(false),
 	_virtual_server(),
 	_location(),
 	_client_addr() {}
@@ -26,7 +25,6 @@ Request::Request(const Client &client) :
 	AHTTPMessage(),
 	_status(START),
 	_request_line(),
-	_compromising(false),
 	_virtual_server(client._virtual_servers.front()),
 	_location(&(client._virtual_servers.front()->get_locations().back())),
 	_client_addr(client._addr) {}
@@ -35,7 +33,6 @@ Request::Request(const Request &x) :
 	AHTTPMessage(x),
 	_status(x._status),
 	_request_line(x._request_line),
-	_compromising(x._compromising),
 	_virtual_server(x._virtual_server),
 	_location(x._location),
 	_client_addr(x._client_addr) {}
@@ -47,7 +44,6 @@ Request
 	AHTTPMessage::operator=(x);
 	_status = x._status;
 	_request_line = x._request_line;
-	_compromising = x._compromising;
 	_virtual_server = x._virtual_server;
 	_location = x._location;
 	return (*this);
@@ -68,11 +64,6 @@ const Request::RequestLine
 	return (_request_line);
 }
 
-bool
-Request::get_compromising(void) const {
-	return (_compromising);
-}
-
 const VirtualServer* Request::get_virtual_server() const {
 	return _virtual_server;
 }
@@ -85,11 +76,6 @@ const struct sockaddr
 void
 Request::set_status(request_status_t status) {
 	_status = status;
-}
-
-void
-Request::set_compromising(bool compromising) {
-	_compromising = compromising;
 }
 
 void Request::set_virtual_server(const VirtualServer* virtual_server) {
