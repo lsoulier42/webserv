@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 12:53:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/23 12:57:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -337,7 +337,7 @@ Client::_process_GET(exchange_t &exchange) {
 		if (_get_default_index(exchange) == FAILURE) {
 			if (request.get_location()->is_autoindex())
 				return (_generate_autoindex(exchange));
-			response.get_status_line().set_status_code(FORBIDDEN);
+			response.get_status_line().set_status_code(NOT_FOUND);
 			return (_process_error(exchange));
 		}
 	}
