@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ResponseHandling.cpp                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/22 20:51:20 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/23 16:01:50 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,6 +166,11 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 	struct stat buf;
 	std::stringstream ss;
 
+    if (request.get_request_line().get_method() == PUT) {
+        ss << response.get_body().size();
+		response.get_headers().insert(CONTENT_LENGTH, ss.str());
+		return SUCCESS;
+	}
 	if (stat(response.get_target_path().c_str(), &buf) != -1) {
 		if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
 			response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
@@ -176,6 +181,7 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 	}
 	return SUCCESS;
 }
+
 
 int
 ResponseHandling::_response_content_location_handler(Client::exchange_t &exchange) {

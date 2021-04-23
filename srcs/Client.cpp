@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 12:57:45 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/23 16:28:47 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,7 +148,6 @@ Client::read_socket(void) {
 		_closing = true;
 		return (FAILURE);
 	}
-	std::cout << ByteArray(buffer, ret);
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
@@ -353,6 +352,8 @@ int
 Client::_process_PUT(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
+	ByteArray resource_created("Resource created.");
+	ByteArray resource_updated("Resource updated.");
 
 	std::string path(_build_resource_path(request));
 	path_type_t path_type = Syntax::get_path_type(path);
@@ -364,8 +365,17 @@ Client::_process_PUT(exchange_t &exchange) {
 		return (_process_error(exchange));
 	}
 	response.set_target_path(path);
-	/* if the path is invalid, it means there are no file, thus we try to create the file*/
-	if (path_type == INVALID_PATH) {
+	_file_write_str = request.get_body();
+	if (path_type == REGULAR_FILE) {
+		if (!request.get_body().empty()) {
+			response.get_status_line().set_status_code(OK);
+		}
+		else {
+			response.get_status_line().set_status_code(NO_CONTENT);
+			_file_write_str.clear();
+		}
+	}
+	else if (path_type == INVALID_PATH) {
 		/* setting as non blocking, not using open_file_to_read or modifying it as would create to many
 		options for just a few lines */
 		_file_write_fd = open(response.get_target_path().c_str(), O_CREAT|O_WRONLY|O_NONBLOCK, 0666);
@@ -376,9 +386,12 @@ Client::_process_PUT(exchange_t &exchange) {
 			return (_process_error(exchange));
 		}
 		response.get_status_line().set_status_code(CREATED);
-		return (_file_write_fd);
+		response.set_body(resource_created);
+		close (_file_write_fd);
+		DEBUG_COUT("---> PUT, file created");
 	}
-	else { // path_type == REGULAR_FILE
+	path_type = Syntax::get_path_type(path);
+	if (path_type == REGULAR_FILE) {
 		_file_write_fd = open(response.get_target_path().c_str(), O_WRONLY|O_NONBLOCK, 0666);
 		if (_file_write_fd < 0) {
 			std::cerr << "error during opening a file :";
@@ -389,15 +402,13 @@ Client::_process_PUT(exchange_t &exchange) {
 		/* If the target resource does have a current representation and that representation is successfully
 		modified in accordance with the state of the enclosed representation, then the origin server must send
 		either a 200 (OK) or a 204 (No Content) response to indicate successful completion of the request. */
-		if (!request.get_body().empty()) {
-			response.get_status_line().set_status_code(OK);
-			_file_write_str = request.get_body();
-		}
-		else {
-			response.get_status_line().set_status_code(NO_CONTENT);
-			_file_write_str.clear();
-		}
+		response.set_body(resource_updated);
+		DEBUG_COUT("---> PUT, file updated");
 		return (_file_write_fd);
+	}
+	else {
+		response.get_status_line().set_status_code(NOT_FOUND);
+		return (_process_error(exchange));
 	}
 }
 
@@ -409,6 +420,8 @@ Client::_process_POST(exchange_t &exchange) {
 
 	std::string path(_build_resource_path(request));
 	path_type_t path_type = Syntax::get_path_type(path);
+	ByteArray resource_created("Resource created.");
+	ByteArray resource_updated("Resource updated.");
 
 	DEBUG_COUT("process POST entered");
 	if (path_type == DIRECTORY) {
@@ -428,6 +441,7 @@ Client::_process_POST(exchange_t &exchange) {
 			return (_process_error(exchange));
 		}
 		response.get_status_line().set_status_code(CREATED);
+		response.set_body(resource_created);
 		return (_file_write_fd);
 	}
 	else { // path_type == REGULAR_FILE
@@ -449,6 +463,7 @@ Client::_process_POST(exchange_t &exchange) {
 			response.get_status_line().set_status_code(NO_CONTENT);
 			_file_write_str.clear();
 		}
+		response.set_body(resource_updated);
 		return (_file_write_fd);
 	}
 }
@@ -552,6 +567,7 @@ Client::write_file(void) {
 		_file_write_fd = 0;
 		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 			return (_process_error(exchange));
+		DEBUG_COUT("---> write_file : building output");
 		return (_build_output(exchange));
 	}
 	return (SUCCESS);
