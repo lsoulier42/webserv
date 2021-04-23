@@ -13,6 +13,9 @@
 #include "Request.hpp"
 #include "Client.hpp"
 
+#include "Request.hpp"
+#include "Client.hpp"
+
 Request::Request(void) :
 	AHTTPMessage(),
 	_status(START),
@@ -153,3 +156,19 @@ void
 Request::set_location(const Location* location) {
 	_location = location;
 }
+
+ByteArray&
+Request::get_raw(void) {
+	return _raw;
+}
+
+const ByteArray&
+Request::get_raw(void) const {
+	return _raw;
+}
+
+void
+Request::set_raw(const ByteArray& raw) {
+	_raw = raw;
+}
+

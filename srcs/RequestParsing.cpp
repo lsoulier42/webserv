@@ -150,6 +150,7 @@ RequestParsing::_collect_request_line_elements(Request &request, ByteArray &inpu
 	request.get_request_line().set_method(rl_elements[0]);
 	request.get_request_line().set_request_target(rl_elements[1]);
 	request.get_request_line().set_http_version(rl_elements[2]);
+	request.set_raw(input.sub_byte_array(0, end_rl + 2));
 	input.pop_front(end_rl + 2);
 	_pick_location(request);
 	if (request.get_location()) {
@@ -171,6 +172,7 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 		current_header.unparsed_value = Syntax::trim_whitespaces(input.substr(col + 1, (end_header - col - 1)));
 		request.get_headers().insert(current_header);
 	}
+	request.get_raw() += input.sub_byte_array(0, end_header + 2);
 	input.pop_front(end_header + 2);
 }
 
@@ -229,6 +231,7 @@ RequestParsing::_collect_body(Request &request, ByteArray &input) {
 			request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
 		request.set_body(ByteArray(input.substr(0, body_length).c_str()));
 	}
+	//request.get_raw() += input.sub_byte_array(0, body_length); a decommenter si necessite de sauver le body en raw mais pas de raison
 	input.pop_front(body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);

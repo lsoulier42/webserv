@@ -10,6 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+
 #ifndef REQUEST_HPP
 # define REQUEST_HPP
 
@@ -29,25 +30,25 @@ class Request : public AHTTPMessage {
 
 		class RequestLine : public AHTTPMessage::AStartLine {
 
-			public:
+		public:
 
-				RequestLine(void);
-				RequestLine(const RequestLine &x);
-				~RequestLine(void);
-				RequestLine &operator=(const RequestLine &x);
+			RequestLine(void);
+			RequestLine(const RequestLine &x);
+			~RequestLine(void);
+			RequestLine &operator=(const RequestLine &x);
 
-				method_t get_method(void) const;
-				const std::string &get_request_target(void) const;
+			method_t get_method(void) const;
+			const std::string &get_request_target(void) const;
 
-				void set_method(const std::string &method_str);
-				void set_request_target(const std::string &request_target);
+			void set_method(const std::string &method_str);
+			void set_request_target(const std::string &request_target);
 
-				void reset(void);
+			void reset(void);
 
-			private:
+		private:
 
-				method_t _method;
-				std::string _request_target;
+			method_t _method;
+			std::string _request_target;
 
 		};
 
@@ -77,16 +78,20 @@ class Request : public AHTTPMessage {
 		void set_status(request_status_t status);
 		void set_virtual_server(const VirtualServer* virtual_server);
 
+		ByteArray& get_raw(void);
+		const ByteArray& get_raw(void) const;
+		void set_raw(const ByteArray& raw);
+
 		void reset(void);
 
 	private:
-
+		ByteArray _raw;
 		request_status_t _status;
 		RequestLine _request_line;
 		const VirtualServer* _virtual_server;
 		const Location*	_location;
 		const struct sockaddr _client_addr;
-
 };
 
 #endif
+

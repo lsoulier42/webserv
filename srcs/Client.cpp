@@ -148,11 +148,9 @@ Client::read_socket(void) {
 		_closing = true;
 		return (FAILURE);
 	}
-	std::cout << ByteArray(buffer, ret);
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
-		std::cout << "there is a request ready to be processed : " << Syntax::method_tab[_exchanges.front().first.get_request_line().get_method()].name << std::endl;
 		return (_process(_exchanges.front()));
 	}
 	return (SUCCESS);
@@ -167,11 +165,8 @@ Client::write_socket(void) {
 		return (SUCCESS);
 	to_write = output_size > _buffer_size ? _buffer_size : output_size;
 	write_return = write(_sd, _output.c_str(), to_write);
-	std::cout << ByteArray((ByteArray(_output).c_str()), write_return);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
-		std::cout << "response has been sent." << std::endl;
-		std::cout << "THE EXCHANGE HAS BEEN DISCARD" << std::endl;
 		_exchanges.pop_front();
 		if (_closing)
 			return (FAILURE);
@@ -192,11 +187,9 @@ Client::_process(exchange_t &exchange) {
 		&Client::_process_DELETE, &Client::_process_CONNECT,
 		&Client::_process_OPTIONS, &Client::_process_TRACE};
 
-	std::cout << std::endl << "request processed." << std::endl;
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE) {
-		std::cout << "error code set during parsing" << std::endl;
 		return (_process_error(exchange));
 	}
 	if (_is_cgi_related(request))
@@ -574,7 +567,6 @@ Client::_build_output(exchange_t &exchange) {
 	_output += "\r\n";
 	if (request.get_request_line().get_method() != HEAD)
 		_output += response.get_body();
-	std::cout << "response will be sent..." << std::endl;
 	return (SUCCESS);
 }
 
@@ -654,7 +646,6 @@ Client::_handle_cgi(exchange_t &exchange) {
 	_cgi_output_fd = res_pipe[0];
 	WebServer::set_non_blocking(_cgi_input_fd);
 	WebServer::set_non_blocking(_cgi_output_fd);
-	std::cout << std::endl << "cgi output :" << std::endl;
 	return (SUCCESS);
 }
 
@@ -693,9 +684,7 @@ Client::read_cgi_output(void) {
 		close(_cgi_output_fd);
 		return (FAILURE);
 	}
-	std::cout << ByteArray(buffer, ret);
 	if (ret == 0) {
-		std::cout << std::endl << "end of cgi output" << std::endl;
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
 		return (_cgi_output_parsing());
@@ -789,24 +778,52 @@ Client::_process_HEAD(exchange_t &exchange) {
 
 int
 Client::_process_DELETE(exchange_t &exchange) {
-	(void)exchange;
-	return (SUCCESS);
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	std::string path(_build_resource_path(request));
+	path_type_t path_type = Syntax::get_path_type(path);
+
+	if (path_type == INVALID_PATH) {
+		response.get_status_line().set_status_code(NOT_FOUND);
+		return (_process_error(exchange));
+	}
+	if (unlink(path.c_str()) == -1) {
+		response.get_status_line().set_status_code(FORBIDDEN);
+		return (_process_error(exchange));
+	}
+	response.get_status_line().set_status_code(NO_CONTENT);
+	ResponseHandling::generate_basic_headers(exchange);
+	return (_build_output(exchange));
 }
 
 int
 Client::_process_CONNECT(exchange_t &exchange) {
-	(void)exchange;
-	return (SUCCESS);
+	Response& response = exchange.second;
+
+	response.get_status_line().set_status_code(NOT_IMPLEMENTED);
+	return (_process_error(exchange));
 }
 
 int
 Client::_process_OPTIONS(exchange_t &exchange) {
-	(void)exchange;
-	return (SUCCESS);
+	Response& response = exchange.second;
+
+	DEBUG_COUT("entered _process_OPTIONS");
+	response.get_status_line().set_status_code(OK);
+	response.set_content_type(Syntax::mime_types_tab[TEXT_HTML].name);
+	ResponseHandling::generate_basic_headers(exchange);
+	return (_build_output(exchange));
 }
 
 int
 Client::_process_TRACE(exchange_t &exchange) {
-	(void)exchange;
-	return (SUCCESS);
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+
+	DEBUG_COUT("entered _process_TRACE");
+	response.get_status_line().set_status_code(OK);
+	response.set_content_type("message/http");
+	response.set_body(request.get_raw());
+	ResponseHandling::generate_basic_headers(exchange);
+	return (_build_output(exchange));
 }
