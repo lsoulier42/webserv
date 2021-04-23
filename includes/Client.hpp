@@ -69,26 +69,11 @@ class Client {
 		int get_file_write_fd(void) const;
 		
 		int read_socket(void);
-		int write_socket(void) throw(ClientError);
-		int read_file(void) throw(ClientError);
+		int write_socket(void);
+		int read_file(void);
 		int read_cgi_output(void);
 		int write_cgi_input(void);
-		int	write_file(void) throw(ClientError);
-
-		class ClientError : public std::exception {
-			public:
-				ClientError(status_code_t error_code) throw() :
-					_error_code(error_code) {}
-				virtual ~ClientError() throw() {}
-				virtual const char* what() const throw() {
-					return (Syntax::status_codes_tab[_error_code].reason_phrase.c_str());
-				}
-				status_code_t get_error_code() const throw() {
-					return (_error_code);
-				}
-			private:
-				status_code_t _error_code;
-		};
+		int	write_file(void);
 
 	private:
 

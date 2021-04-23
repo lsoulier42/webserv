@@ -30,7 +30,7 @@ class RequestParsing {
 		static bool is_valid_http_date(const std::string& date_str);
 
 	private:
-		static void _failure(Client &client, Client::exchange_t &exchange, status_code_t status_code);
+		static void _failure(Client::exchange_t &exchange, status_code_t status_code);
 		static bool _request_line_received(const Request &request, const ByteArray &input_str);
 		static bool _header_received(const Request &request, const ByteArray &input_str);
 		static bool _headers_received(const Request &request, const ByteArray &input_str);

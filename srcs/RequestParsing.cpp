@@ -23,13 +23,13 @@ RequestParsing::parsing(Client &client) {
 		Client::exchange_t	&current_exchange(client._exchanges.back());
 		Request				&request(current_exchange.first);
 		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input))) {
-			_failure(client, current_exchange, (status_code_t)ret);
+			_failure(current_exchange, (status_code_t)ret);
 			return ;
 		}
 		while (_header_received(request, input))
 			_collect_header(request, input);
 		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request))) {
-			_failure(client, current_exchange, (status_code_t)ret);
+			_failure(current_exchange, (status_code_t)ret);
 			return ;
 		}
 		if (_body_received(request, input))
@@ -37,7 +37,7 @@ RequestParsing::parsing(Client &client) {
 		while (_trailer_received(request, input))
 			_collect_header(request, input);
 		if (_trailers_received(request, input) && SUCCESS != (ret = _check_trailer(request, input))) {
-			_failure(client, current_exchange, (status_code_t)ret);
+			_failure(current_exchange, (status_code_t)ret);
 			return ;
 		}
 		if (request.get_status() != Request::REQUEST_RECEIVED)
@@ -46,12 +46,10 @@ RequestParsing::parsing(Client &client) {
 }
 
 void
-RequestParsing::_failure(Client &client, Client::exchange_t &exchange, status_code_t status_code) {
+RequestParsing::_failure(Client::exchange_t &exchange, status_code_t status_code) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 
-	client._closing = true;
-	request.set_compromising(true);
 	request.set_status(Request::REQUEST_RECEIVED);
 	response.get_status_line().set_status_code(status_code);
 }

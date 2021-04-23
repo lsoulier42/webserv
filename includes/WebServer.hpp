@@ -60,8 +60,6 @@ class WebServer {
 		void _read_socks();
 		void _close_sockets();
 		void _write_socks();
-		void _process_internal_server_error(const Client& client);
-		void _close_error(std::list<Client>::iterator& it, const Client::ClientError& e);
 
 		std::ifstream _config_file;
 		std::list<Server> _servers;
