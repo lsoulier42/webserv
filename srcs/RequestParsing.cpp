@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 09:05:04 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/23 09:33:42 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,12 +97,10 @@ bool
 RequestParsing::_transfer_encoding_chunked(const Request &request) {
 	if (request.get_headers().key_exists(TRANSFER_ENCODING)) {
 		const std::list<std::string>& transfer_encoding_values = request.get_headers().get_value(TRANSFER_ENCODING);
-		if (!transfer_encoding_values.empty())
-			if (std::find(transfer_encoding_values.begin(), transfer_encoding_values.end(),
-				Syntax::encoding_types_tab[CHUNKED].name) != transfer_encoding_values.end())
-				return true;
+		if (!transfer_encoding_values.empty() && transfer_encoding_values.back() == Syntax::encoding_types_tab[CHUNKED].name)
+			return (true);
 	}
-	return false;
+	return (false);
 }
 
 bool
@@ -178,12 +176,14 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
+	int		ret(_process_request_headers(client, request));
+
 	client._input.pop_front(client._input.find("\r\n") + 2);
 	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
 	else
 		request.set_status(Request::REQUEST_RECEIVED);
-	return (_process_request_headers(client, request));
+	return (ret);
 }
 
 int

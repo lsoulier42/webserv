@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/21 07:15:40 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 03:35:23 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/23 11:32:23 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -310,7 +310,7 @@ Path::is_net_path(const std::string &path) {
 		seg = path.substr(2, end_authority - 2);
 		if (!is_authority_component(seg))
 			return (false);
-		seg = path.substr(end_authority + 1);
+		seg = path.substr(end_authority);
 		return (is_absolute_path(seg));
 	}
 	seg = path.substr(2);

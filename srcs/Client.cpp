@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 08:31:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/23 12:53:30 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -167,8 +167,10 @@ Client::write_socket(void) {
 		return (SUCCESS);
 	to_write = output_size > _buffer_size ? _buffer_size : output_size;
 	write_return = write(_sd, _output.c_str(), to_write);
+	std::cout << ByteArray((ByteArray(_output).c_str()), write_return);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
+		std::cout << "response has been sent." << std::endl;
 		std::cout << "THE EXCHANGE HAS BEEN DISCARD" << std::endl;
 		_exchanges.pop_front();
 		if (_closing)
@@ -190,13 +192,13 @@ Client::_process(exchange_t &exchange) {
 		&Client::_process_DELETE, &Client::_process_CONNECT,
 		&Client::_process_OPTIONS, &Client::_process_TRACE};
 
-	std::cout << std::endl << "request processed :" << std::endl;
-	std::cout << request.get_body() << std::endl;
-	request.get_headers().render();
+	std::cout << std::endl << "request processed." << std::endl;
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
-	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE)
+	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE) {
+		std::cout << "error code set during parsing" << std::endl;
 		return (_process_error(exchange));
+	}
 	if (_is_cgi_related(request))
 		return (_handle_cgi(exchange));
 	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
@@ -572,6 +574,7 @@ Client::_build_output(exchange_t &exchange) {
 	_output += "\r\n";
 	if (request.get_request_line().get_method() != HEAD)
 		_output += response.get_body();
+	std::cout << "response will be sent..." << std::endl;
 	return (SUCCESS);
 }
 
@@ -635,7 +638,7 @@ Client::_handle_cgi(exchange_t &exchange) {
 		close(res_pipe[0]);
 		dup2(req_pipe[0], STDIN_FILENO);
 		dup2(res_pipe[1], STDOUT_FILENO);
-		chdir(request.get_location()->get_root().c_str());
+//		chdir(request.get_location()->get_root().c_str());
 		if (0 > execve(request.get_location()->get_cgi_path().c_str(), args, mv.get_tab()))
 			perror("execve");
 		close(req_pipe[0]);
@@ -651,6 +654,7 @@ Client::_handle_cgi(exchange_t &exchange) {
 	_cgi_output_fd = res_pipe[0];
 	WebServer::set_non_blocking(_cgi_input_fd);
 	WebServer::set_non_blocking(_cgi_output_fd);
+	std::cout << std::endl << "cgi output :" << std::endl;
 	return (SUCCESS);
 }
 
@@ -689,7 +693,9 @@ Client::read_cgi_output(void) {
 		close(_cgi_output_fd);
 		return (FAILURE);
 	}
+	std::cout << ByteArray(buffer, ret);
 	if (ret == 0) {
+		std::cout << std::endl << "end of cgi output" << std::endl;
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
 		return (_cgi_output_parsing());
@@ -737,12 +743,24 @@ int
 Client::_build_response_from_cgi_response(const CGIResponse &cgi_response) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
-	if (cgi_response.get_headers().key_exists(CGI_STATUS))
-		response.get_status_line().set_status_code(static_cast<status_code_t>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_STATUS).c_str())));
+	if (cgi_response.get_headers().key_exists(CGI_STATUS)) {
+		std::string	status_line(cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
+		std::string status_code(status_line.substr(0, status_line.find(" ")));
+		int			status_code_int(std::atol(status_code.c_str()));
+		size_t		i(0);
+		while (Syntax::status_codes_tab[i].code_index != TOTAL_STATUS_CODE
+			&& Syntax::status_codes_tab[i].code_int != status_code_int)
+			i++;
+		response.get_status_line().set_status_code(Syntax::status_codes_tab[i].code_index);
+	}
 	else
 		response.get_status_line().set_status_code(OK);
 	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
+	//TODO:: virer ca
+	if (cgi_response.get_body().empty()) {
+		response.get_headers().insert(CONTENT_LENGTH, "0");
+	}
 	response.set_body(cgi_response.get_body());
 	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 		return (_process_error(exchange));
