@@ -6,7 +6,7 @@
 /*   By: cchenot <cchenot@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 16:28:47 by cchenot          ###   ########.fr       */
+/*   Updated: 2021/04/23 18:54:34 by cchenot          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -632,6 +632,7 @@ Client::_handle_cgi(exchange_t &exchange) {
 	char				*arg0(new char[arg0_str.size() + 1]);
 	char				*arg1(new char[arg1_str.size() + 1]);
 
+	DEBUG_COUT("---> Entered _handle_cgi");
 	strcpy(arg0, arg0_str.c_str());
 	strcpy(arg1, arg1_str.c_str());
 	char	*args[0];
