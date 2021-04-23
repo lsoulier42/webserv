@@ -331,6 +331,8 @@ class Syntax {
 		static std::string body_error_code(status_code_t error_code);
 		static std::string format_status_line(const std::string& http_version, status_code_t status_code);
 		static std::string format_header_field(header_name_t header_code, const std::string& header_value);
+		static void format_directory_name(std::string& directory_name);
+		static void trail_begining_backslash(std::string& path);
 
 		template<typename T>
 		static bool is_accepted_value(const std::string& value, const T* accepted_value, size_t accepted_size) {
@@ -343,9 +345,6 @@ class Syntax {
 			return false;
 		}
 
-		static char *buffer_dup(const char* buffer, size_t n);
-		static char *buffer_append(char* dest, const char* buffer, size_t dest_size, size_t buffer_size);
-		static char *buffer_pop_front(char* buffer, size_t buffer_size, size_t size_to_erase);
 
 	private:
 		Syntax();

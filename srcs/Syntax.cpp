@@ -423,43 +423,6 @@ Syntax::str_to_lower(const std::string& str) {
 	return return_str;
 }
 
-char*
-Syntax::buffer_dup(const char* buffer, size_t n) {
-	char* new_buffer;
-
-	new_buffer = (char*)malloc(sizeof(char) * n);
-	if (!new_buffer)
-		return (NULL);
-	new_buffer = (char*)memcpy(new_buffer, buffer, n);
-	return (new_buffer);
-}
-
-char*
-Syntax::buffer_append(char* dest, const char* buffer, size_t dest_size, size_t buffer_size) {
-	char* new_buffer;
-
-	new_buffer = (char*)malloc(sizeof(char) * (dest_size + buffer_size));
-	if (!new_buffer)
-		return (NULL);
-	new_buffer = (char*)memcpy(new_buffer, dest, dest_size);
-	memcpy(new_buffer + dest_size, buffer, buffer_size);
-	free(dest);
-	return (new_buffer);
-}
-
-char*
-Syntax::buffer_pop_front(char* buffer, size_t buffer_size, size_t size_to_erase) {
-	char* new_buffer;
-	size_t new_size = buffer_size - size_to_erase;
-
-	new_buffer = (char*)malloc(sizeof(char) * (new_size));
-	if (!new_buffer)
-		return (NULL);
-	new_buffer = (char*) memcpy(new_buffer, buffer + size_to_erase, new_size);
-	free(buffer);
-	return (new_buffer);
-}
-
 std::string
 Syntax::body_error_code(status_code_t error_code) {
 	std::stringstream ss;
@@ -498,4 +461,16 @@ Syntax::format_header_field(header_name_t header_code, const std::string& header
 	header_field += header_value;
 	header_field += "\r\n";
 	return (header_field);
+}
+
+void
+Syntax::format_directory_name(std::string& directory_name) {
+	if (*--directory_name.end() != '/')
+		directory_name += "/";
+}
+
+void
+Syntax::trail_begining_backslash(std::string& path) {
+	while(*path.begin() == '/')
+		path = path.substr(1);
 }

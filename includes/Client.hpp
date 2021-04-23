@@ -141,7 +141,7 @@ class Client {
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 
-	/* Autoindex
+		/* Autoindex
 		 *
 		 *
 		 *
@@ -150,7 +150,7 @@ class Client {
 		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, exchange_t& exchange, bool is_dir);
 		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
 			const std::set<std::string>& file_names);
-		std::string _format_directory_name(const std::string& directory_name);
+
     
 		/* CGI
 		 *
