@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 07:17:18 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/23 09:33:42 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,40 +18,36 @@ RequestParsing::parsing(Client &client) {
 	ByteArray& 	input(client._input);
 	
 	while (!client._closing && !input.empty()) {
+
 		if (client._exchanges.empty() || client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
 			client._exchanges.push_back(std::make_pair(Request(client), Response()));
+
 		Client::exchange_t	&current_exchange(client._exchanges.back());
 		Request				&request(current_exchange.first);
-		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input))) {
-			_failure(current_exchange, (status_code_t)ret);
-			return ;
-		}
+		Response			&response(current_exchange.second);
+
+		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input)))
+			_failure(response, (status_code_t)ret);
 		while (_header_received(request, input))
 			_collect_header(request, input);
-		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request))) {
-			_failure(current_exchange, (status_code_t)ret);
-			return ;
-		}
+		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request)))
+			_failure(response, (status_code_t)ret);
 		if (_body_received(request, input))
 			_collect_body(request, input);
 		while (_trailer_received(request, input))
 			_collect_header(request, input);
-		if (_trailers_received(request, input) && SUCCESS != (ret = _check_trailer(request, input))) {
-			_failure(current_exchange, (status_code_t)ret);
-			return ;
-		}
+		if (_trailers_received(request, input) && SUCCESS != (ret = _check_trailer(request, input)))
+			_failure(response, (status_code_t)ret);
 		if (request.get_status() != Request::REQUEST_RECEIVED)
 			return ;
+
 	}
 }
 
 void
-RequestParsing::_failure(Client::exchange_t &exchange, status_code_t status_code) {
-	Request		&request(exchange.first);
-	Response	&response(exchange.second);
-
-	request.set_status(Request::REQUEST_RECEIVED);
-	response.get_status_line().set_status_code(status_code);
+RequestParsing::_failure(Response &response, status_code_t status_code) {
+	if (response.get_status_line().get_status_code() == TOTAL_STATUS_CODE)
+		response.get_status_line().set_status_code(status_code);
 }
 
 bool
@@ -101,12 +97,10 @@ bool
 RequestParsing::_transfer_encoding_chunked(const Request &request) {
 	if (request.get_headers().key_exists(TRANSFER_ENCODING)) {
 		const std::list<std::string>& transfer_encoding_values = request.get_headers().get_value(TRANSFER_ENCODING);
-		if (!transfer_encoding_values.empty())
-			if (std::find(transfer_encoding_values.begin(), transfer_encoding_values.end(),
-				Syntax::encoding_types_tab[CHUNKED].name) != transfer_encoding_values.end())
-				return true;
+		if (!transfer_encoding_values.empty() && transfer_encoding_values.back() == Syntax::encoding_types_tab[CHUNKED].name)
+			return (true);
 	}
-	return false;
+	return (false);
 }
 
 bool
@@ -135,22 +129,28 @@ RequestParsing::_collect_request_line_elements(Request &request, ByteArray &inpu
 	std::vector<std::string> 	rl_elements = Syntax::split(input.substr(0, end_rl), " ");
 	std::list<std::string>		allowed_methods;
 
+	request.set_status(Request::REQUEST_LINE_RECEIVED);
 	if (rl_elements.size() != 3) {
 		input.pop_front(end_rl + 2);
 		return (BAD_REQUEST);
 	}
-	if (!Syntax::is_accepted_value(rl_elements[0], Syntax::method_tab, DEFAULT_METHOD))
+	if (!Syntax::is_accepted_value(rl_elements[0], Syntax::method_tab, DEFAULT_METHOD)) {
+		input.pop_front(end_rl + 2);
 		return (NOT_IMPLEMENTED);
+	}
 	std::vector<std::string> http_elements = Syntax::split(rl_elements[2], "/");
-	if (http_elements.size() != 2 || http_elements[0] != "HTTP")
+	if (http_elements.size() != 2 || http_elements[0] != "HTTP") {
+		input.pop_front(end_rl + 2);
 		return (BAD_REQUEST);
-	if (strtod(http_elements[1].c_str(), NULL) > 1.1)
+	}
+	if (strtod(http_elements[1].c_str(), NULL) > 1.1) {
+		input.pop_front(end_rl + 2);
 		return (HTTP_VERSION_NOT_SUPPORTED);
+	}
 	request.get_request_line().set_method(rl_elements[0]);
 	request.get_request_line().set_request_target(rl_elements[1]);
 	request.get_request_line().set_http_version(rl_elements[2]);
 	input.pop_front(end_rl + 2);
-	request.set_status(Request::REQUEST_LINE_RECEIVED);
 	_pick_location(request);
 	if (request.get_location()) {
 		allowed_methods = request.get_location()->get_methods();
@@ -176,14 +176,14 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
+	int		ret(_process_request_headers(client, request));
+
 	client._input.pop_front(client._input.find("\r\n") + 2);
-	if (_process_request_headers(client, request) == FAILURE)
-		return(FAILURE);
 	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
 	else
 		request.set_status(Request::REQUEST_RECEIVED);
-	return (SUCCESS);
+	return (ret);
 }
 
 int
@@ -215,7 +215,6 @@ RequestParsing::_decode_chunked(const ByteArray& input) {
 	}
 	return (to_return);
 }
-
 
 int
 RequestParsing::_collect_body(Request &request, ByteArray &input) {
