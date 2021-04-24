@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/24 10:58:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/24 13:19:02 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,11 +148,11 @@ Client::read_socket(void) {
 		_closing = true;
 		return (FAILURE);
 	}
-	std::cout << ByteArray(buffer, ret);
+//	std::cout << ByteArray(buffer, ret);
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
-		std::cout << "the resquest is going to be processed." << std::endl << std::endl;
+//		std::cout << "the resquest is going to be processed." << std::endl << std::endl;
 		return (_process(_exchanges.front()));
 	}
 	return (SUCCESS);
@@ -167,10 +167,10 @@ Client::write_socket(void) {
 		return (SUCCESS);
 	to_write = output_size > _buffer_size ? _buffer_size : output_size;
 	write_return = write(_sd, _output.c_str(), to_write);
-	std::cout << ByteArray(_output.c_str(), write_return);
+//	std::cout << ByteArray(_output.c_str(), write_return);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
-		std::cout << "end of response." << std::endl;
+		//std::cout << "end of response." << std::endl;
 		_exchanges.pop_front();
 		if (_closing)
 			return (FAILURE);
@@ -197,7 +197,7 @@ Client::_process(exchange_t &exchange) {
 		return (_process_error(exchange));
 	}
 	if (_is_cgi_related(request))
-		return (_handle_cgi(exchange));
+		return (_handle_cgi(request));
 	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
 }
 
@@ -608,39 +608,43 @@ Client::_create_cgi_child_process(void) {
 }
 
 int
-Client::_handle_cgi(exchange_t &exchange) {
-	Request				&request(exchange.first);
+Client::_child_process_cgi(Request &request) {
 	CGIMetaVariables	mv(request);
 	CGIScriptArgs		args(request);
-	pid_t				pid;
-	int					req_pipe[2];
-	int					res_pipe[2];
+	int					input_fd;
+	int					output_fd;
 
-	pipe(req_pipe);
-	pipe(res_pipe);
+	if (0 > (input_fd = open("/tmp/cgi_input_webserver", O_RDONLY | O_CREAT, S_IRUSR | S_IWUSR)))
+		perror("cgi input");
+	if ( 0 > (output_fd = open("/tmp/cgi_output_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)))
+		perror("cgi output");
+	dup2(input_fd, STDIN_FILENO);
+	dup2(output_fd, STDOUT_FILENO);
+	dup2(output_fd, STDERR_FILENO);
+	execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
+	//TODO:: message d'erreur
+	exit(EXIT_FAILURE);
+}
+
+int
+Client::_parent_process_cgi(Request &request) {
+	if (0 > (_cgi_input_fd = open("/tmp/cgi_input_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)))
+		perror("cgi input");
+	WebServer::set_non_blocking(_cgi_input_fd);
+	_cgi_input = request.get_body();
+	return (SUCCESS);
+}
+
+int
+Client::_handle_cgi(Request &request) {
+	pid_t				pid;
+
 	if (-1 == (pid = _create_cgi_child_process()))
 		return (FAILURE);
-	if (!pid) {
-		close(req_pipe[1]);
-		close(res_pipe[0]);
-		dup2(req_pipe[0], STDIN_FILENO);
-		dup2(res_pipe[1], STDOUT_FILENO);
-		chdir(request.get_location()->get_root().c_str());
-		if (0 > execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab())) {
-			//TODO:: ecrire au processus parent un header status 500
-			close(req_pipe[0]);
-			close(res_pipe[1]);
-			exit(EXIT_FAILURE);
-		}
-	}
-	close(req_pipe[0]);
-	close(res_pipe[1]);
-	_cgi_input = request.get_body();
-	_cgi_input_fd = req_pipe[1];
-	_cgi_output_fd = res_pipe[0];
-	WebServer::set_non_blocking(_cgi_input_fd);
-	WebServer::set_non_blocking(_cgi_output_fd);
-	return (SUCCESS);
+	if (!pid)
+		return (_child_process_cgi(request));
+	else
+		return (_parent_process_cgi(request));
 }
 
 int
@@ -648,12 +652,8 @@ Client::write_cgi_input(void) {
 	size_t		buffer_size(std::min(_buffer_size, _cgi_input.size()));
 	ssize_t		ret;
 
-	if (_cgi_input.empty()) {
-		close(_cgi_input_fd);
-		_cgi_input_fd = 0;
-		return (SUCCESS);
-	}
 	ret = write(_cgi_input_fd, _cgi_input.c_str(), buffer_size);
+	std::cout << "envoye au script cgi : " << ByteArray(_cgi_input.c_str(), ret);
 	if (ret < 0) {
 		close(_cgi_input_fd);
 		_cgi_input_fd = 0;
@@ -661,10 +661,13 @@ Client::write_cgi_input(void) {
 	}
 	_cgi_input.pop_front(ret);
 	if (ret == 0) {
+		std::cout << "Machin" << std::endl;
 		close(_cgi_input_fd);
 		_cgi_input_fd = 0;
 		waitpid(-1, NULL, 0);
-		std::cout <<  "cgi output :" << std::endl;
+		if ( 0 > (_cgi_output_fd = open("/tmp/cgi_output_webserver", O_RDONLY, S_IRUSR | S_IWUSR)))
+			perror("cgi output");
+		WebServer::set_non_blocking(_cgi_output_fd);
 	}
 	return (SUCCESS);
 }
@@ -675,7 +678,7 @@ Client::read_cgi_output(void) {
 	ssize_t		ret;
 
 	ret = read(_cgi_output_fd, buffer, _buffer_size);
-	std::cout << ByteArray(buffer, ret);
+	std::cout << "truc cgi output" << ByteArray(buffer, ret);
 	if (ret < 0) {
 		close(_cgi_output_fd);
 		return (FAILURE);

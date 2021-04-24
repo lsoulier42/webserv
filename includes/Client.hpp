@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/24 10:59:08 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/24 13:11:14 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -111,7 +111,6 @@ class Client {
 		int _process(exchange_t &exchange);
 
 		int _process_error(exchange_t &exchange);
-		int _handle_cgi(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
 		int _process_HEAD(exchange_t &exchange);
 		int _process_POST(exchange_t &exchange);
@@ -151,6 +150,9 @@ class Client {
 		bool _is_document_response(const CGIResponse &cgi_response) const;
 		bool _is_local_redirect_response(const CGIResponse &cgi_response) const;
 		bool _is_client_redirect_response(const CGIResponse &cgi_response) const;
+		int _parent_process_cgi(Request &request);
+		int _child_process_cgi(Request &request);
+		int _handle_cgi(Request &request);
 
 };
 
