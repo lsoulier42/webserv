@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 17:23:41 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/24 10:59:08 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@
 # include "Syntax.hpp"
 # include "VirtualServer.hpp"
 # include "CGIMetaVariables.hpp"
+# include "CGIScriptArgs.hpp"
 # include "CGIResponse.hpp"
 # include "Path.hpp"
 

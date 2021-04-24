@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 16:26:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/24 10:51:35 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,9 +65,10 @@ CGIMetaVariables::CGIMetaVariables(const Request &request) throw(std::bad_alloc)
 
 CGIMetaVariables::CGIMetaVariables(const CGIMetaVariables &x) throw(std::bad_alloc) :
 	_tab(new char *[_size + 1]) {
-	for (size_t i(0) ; i < _size ; i++)
-		if (!(_tab[i] = strdup(x._tab[i])))
-			throw (std::bad_alloc());
+	for (size_t i(0) ; i < _size ; i++) {
+		_tab[i] = new char[strlen(x._tab[i]) + 1];
+		strcpy(_tab[i], x._tab[i]);
+	}
 	_tab[_size] = 0;
 }
 
@@ -86,9 +87,10 @@ CGIMetaVariables
 			delete _tab[i];
 	} else
 		_tab = new char*[_size + 1];
-	for (size_t i(0) ; i < _size ; i++)
-		if (!(_tab[i] = strdup(x._tab[i])))
-			throw (std::bad_alloc());
+	for (size_t i(0) ; i < _size ; i++) {
+		_tab[i] = new char[strlen(x._tab[i]) + 1];
+		strcpy(_tab[i], x._tab[i]);
+	}
 	_tab[_size] = 0;
 	return (*this);
 }
@@ -171,7 +173,9 @@ char
 	std::string	mv_str(_path_translated + "=");
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string path(request_target.substr(0, request_target.find("?")));
-	mv_str += (request.get_location()->get_root() + path.erase(0, request.get_location()->get_path().size()));
+	if (request.get_location()->get_path().compare("/"))
+		path.erase(0, request.get_location()->get_path().size());
+	mv_str += (request.get_location()->get_root() + path);
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);

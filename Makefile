@@ -2,11 +2,11 @@ NAME = webserv
 
 SRCS_FILES = main.cpp Server.cpp WebServer.cpp ConfigParsing.cpp VirtualServer.cpp Location.cpp AHTTPMessage.cpp \
 	Client.cpp Request.cpp Response.cpp Syntax.cpp CGIMetaVariables.cpp CGIResponse.cpp Headers.cpp RequestParsing.cpp \
-	ResponseHandling.cpp ByteArray.cpp Debugger.cpp Path.cpp
+	ResponseHandling.cpp ByteArray.cpp Debugger.cpp Path.cpp CGIScriptArgs.cpp
 
 HEADER_FILES = Server.hpp WebServer.hpp ConfigParsing.hpp VirtualServer.hpp Location.hpp AHTTPMessage.hpp  \
 	   Client.hpp Request.hpp Response.hpp Syntax.hpp CGIMetaVariables.hpp CGIResponse.hpp Headers.hpp \
-	   RequestParsing.hpp ResponseHandling.hpp Debugger.hpp ByteArray.hpp Path.hpp
+	   RequestParsing.hpp ResponseHandling.hpp Debugger.hpp ByteArray.hpp Path.hpp CGIScriptArgs.hpp
 
 SRCS_DIR = ./srcs/
 SRCS_SUB_DIR = config_parsing/

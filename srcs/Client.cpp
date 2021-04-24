@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 12:57:45 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/24 10:58:46 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,9 +148,11 @@ Client::read_socket(void) {
 		_closing = true;
 		return (FAILURE);
 	}
+	std::cout << ByteArray(buffer, ret);
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
 	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
+		std::cout << "the resquest is going to be processed." << std::endl << std::endl;
 		return (_process(_exchanges.front()));
 	}
 	return (SUCCESS);
@@ -165,8 +167,10 @@ Client::write_socket(void) {
 		return (SUCCESS);
 	to_write = output_size > _buffer_size ? _buffer_size : output_size;
 	write_return = write(_sd, _output.c_str(), to_write);
+	std::cout << ByteArray(_output.c_str(), write_return);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
+		std::cout << "end of response." << std::endl;
 		_exchanges.pop_front();
 		if (_closing)
 			return (FAILURE);
@@ -607,20 +611,11 @@ int
 Client::_handle_cgi(exchange_t &exchange) {
 	Request				&request(exchange.first);
 	CGIMetaVariables	mv(request);
+	CGIScriptArgs		args(request);
 	pid_t				pid;
 	int					req_pipe[2];
 	int					res_pipe[2];
-	std::string			arg0_str(request.get_location()->get_cgi_path());
-	std::string			arg1_str(_build_cgi_script_path(request));
-	char				*arg0(new char[arg0_str.size() + 1]);
-	char				*arg1(new char[arg1_str.size() + 1]);
 
-	strcpy(arg0, arg0_str.c_str());
-	strcpy(arg1, arg1_str.c_str());
-	char	*args[0];
-	args[0] = arg0;
-	args[1] = arg1;
-	args[2] = 0;
 	pipe(req_pipe);
 	pipe(res_pipe);
 	if (-1 == (pid = _create_cgi_child_process()))
@@ -630,15 +625,14 @@ Client::_handle_cgi(exchange_t &exchange) {
 		close(res_pipe[0]);
 		dup2(req_pipe[0], STDIN_FILENO);
 		dup2(res_pipe[1], STDOUT_FILENO);
-//		chdir(request.get_location()->get_root().c_str());
-		if (0 > execve(request.get_location()->get_cgi_path().c_str(), args, mv.get_tab()))
-			perror("execve");
-		close(req_pipe[0]);
-		close(res_pipe[1]);
-		exit(EXIT_FAILURE);
+		chdir(request.get_location()->get_root().c_str());
+		if (0 > execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab())) {
+			//TODO:: ecrire au processus parent un header status 500
+			close(req_pipe[0]);
+			close(res_pipe[1]);
+			exit(EXIT_FAILURE);
+		}
 	}
-	delete[] arg0;
-	delete[] arg1;
 	close(req_pipe[0]);
 	close(res_pipe[1]);
 	_cgi_input = request.get_body();
@@ -670,6 +664,7 @@ Client::write_cgi_input(void) {
 		close(_cgi_input_fd);
 		_cgi_input_fd = 0;
 		waitpid(-1, NULL, 0);
+		std::cout <<  "cgi output :" << std::endl;
 	}
 	return (SUCCESS);
 }
@@ -680,11 +675,13 @@ Client::read_cgi_output(void) {
 	ssize_t		ret;
 
 	ret = read(_cgi_output_fd, buffer, _buffer_size);
+	std::cout << ByteArray(buffer, ret);
 	if (ret < 0) {
 		close(_cgi_output_fd);
 		return (FAILURE);
 	}
 	if (ret == 0) {
+		std::cout << "end of cgi output" << std::endl;
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
 		return (_cgi_output_parsing());
