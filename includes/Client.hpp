@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/24 13:11:14 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/24 14:36:43 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -150,9 +150,10 @@ class Client {
 		bool _is_document_response(const CGIResponse &cgi_response) const;
 		bool _is_local_redirect_response(const CGIResponse &cgi_response) const;
 		bool _is_client_redirect_response(const CGIResponse &cgi_response) const;
-		int _parent_process_cgi(Request &request);
-		int _child_process_cgi(Request &request);
-		int _handle_cgi(Request &request);
+		int _parent_process_cgi(exchange_t &exchange);
+		void _child_process_cgi(Request &request);
+		void _child_process_cgi_error(Request &request);
+		int _handle_cgi(exchange_t &exchange);
 
 };
 

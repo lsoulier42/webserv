@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/24 13:19:02 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/24 14:37:13 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -197,7 +197,7 @@ Client::_process(exchange_t &exchange) {
 		return (_process_error(exchange));
 	}
 	if (_is_cgi_related(request))
-		return (_handle_cgi(request));
+		return (_handle_cgi(exchange));
 	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
 }
 
@@ -452,18 +452,16 @@ Client::_process_POST(exchange_t &exchange) {
 
 int
 Client::_process_error(exchange_t &exchange) {
-	Request		&request(exchange.first);
-	Response	&response(exchange.second);
-	status_code_t error_code = response.get_status_line().get_status_code();
-	std::string error_page_path;
+	Request						&request(exchange.first);
+	Response					&response(exchange.second);
+	status_code_t				error_code(response.get_status_line().get_status_code());
+	std::string					error_page_path;
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 
 	DEBUG_COUT(std::endl << "_process_error entered");
 	DEBUG_COUT("---> Error status code sent: " << 
 	Syntax::status_codes_tab[response.get_status_line().get_status_code()].code_str);
 	response.get_headers().clear();
-	if (!request.get_location())
-		request.set_location(&request.get_virtual_server()->get_locations().back());
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
 		if (error_code == *it) {
 			error_page_path = request.get_virtual_server()->get_error_page_path();
@@ -607,7 +605,13 @@ Client::_create_cgi_child_process(void) {
 	return (pid);
 }
 
-int
+void
+Client::_child_process_cgi_error(Request &request) {
+	(void)request;
+	exit(EXIT_FAILURE);
+}
+
+void
 Client::_child_process_cgi(Request &request) {
 	CGIMetaVariables	mv(request);
 	CGIScriptArgs		args(request);
@@ -615,36 +619,39 @@ Client::_child_process_cgi(Request &request) {
 	int					output_fd;
 
 	if (0 > (input_fd = open("/tmp/cgi_input_webserver", O_RDONLY | O_CREAT, S_IRUSR | S_IWUSR)))
-		perror("cgi input");
+		_child_process_cgi_error(request);
 	if ( 0 > (output_fd = open("/tmp/cgi_output_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)))
-		perror("cgi output");
+		_child_process_cgi_error(request);
 	dup2(input_fd, STDIN_FILENO);
 	dup2(output_fd, STDOUT_FILENO);
 	dup2(output_fd, STDERR_FILENO);
 	execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
-	//TODO:: message d'erreur
-	exit(EXIT_FAILURE);
+	_child_process_cgi_error(request);
 }
 
 int
-Client::_parent_process_cgi(Request &request) {
-	if (0 > (_cgi_input_fd = open("/tmp/cgi_input_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)))
-		perror("cgi input");
+Client::_parent_process_cgi(exchange_t &exchange) {
+	Request		&request(exchange.first);
+	Response	&response(exchange.second);
+
+	if (0 > (_cgi_input_fd = open("/tmp/cgi_input_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
 	WebServer::set_non_blocking(_cgi_input_fd);
 	_cgi_input = request.get_body();
 	return (SUCCESS);
 }
 
 int
-Client::_handle_cgi(Request &request) {
+Client::_handle_cgi(exchange_t &exchange) {
 	pid_t				pid;
 
 	if (-1 == (pid = _create_cgi_child_process()))
 		return (FAILURE);
 	if (!pid)
-		return (_child_process_cgi(request));
-	else
-		return (_parent_process_cgi(request));
+		_child_process_cgi(exchange.first);
+	return (_parent_process_cgi(exchange));
 }
 
 int
@@ -653,7 +660,6 @@ Client::write_cgi_input(void) {
 	ssize_t		ret;
 
 	ret = write(_cgi_input_fd, _cgi_input.c_str(), buffer_size);
-	std::cout << "envoye au script cgi : " << ByteArray(_cgi_input.c_str(), ret);
 	if (ret < 0) {
 		close(_cgi_input_fd);
 		_cgi_input_fd = 0;
