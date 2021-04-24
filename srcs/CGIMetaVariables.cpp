@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 12:39:11 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/23 16:26:30 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -157,21 +157,8 @@ char
 	char		*mv;
 	std::string	mv_str(_path_info + "=");
 	std::string	request_target(request.get_request_line().get_request_target());
-	/*
-	std::string	cgi_extension(request.get_location()->get_cgi_extension());
-	size_t		size_extra_path(request_target.find("?") - (request_target.find(cgi_extension) + cgi_extension.size()));
-	std::string	extra_path(request_target.substr(request_target.find(cgi_extension) + cgi_extension.size(), size_extra_path));
-
-	mv_str += extra_path;
-	*/
-	/*
-	std::string	full_path(request_target.substr(0, request_target.find("?")));
-	full_path.erase(0, request.get_location()->get_path().size());
-	full_path.insert(0, request.get_location()->get_root());
-
-	mv_str += full_path;
-	*/
-	mv_str += "/directory/youpi.bla";
+	std::string path(request_target.substr(0, request_target.find("?")));
+	mv_str += path;
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
@@ -183,21 +170,8 @@ char
 	char		*mv;
 	std::string	mv_str(_path_translated + "=");
 	std::string	request_target(request.get_request_line().get_request_target());
-	/*
-	std::string	cgi_extension(request.get_location()->get_cgi_extension());
-	size_t		size_extra_path(request_target.find("?") - (request_target.find(cgi_extension) + cgi_extension.size()));
-	std::string	extra_path(request_target.substr(request_target.find(cgi_extension) + cgi_extension.size(), size_extra_path));
-
-	if (!extra_path.empty())
-		mv_str += request.get_location()->get_root() + extra_path;
-		*/
-	/*
-	std::string	full_path(request_target.substr(0, request_target.find("?")));
-
-	if (!full_path.empty())
-		mv_str += request.get_location()->get_root() + full_path;
-		*/
-	mv_str += "/home/user42/Documents/webserver2/first_one/YoupiBanane/youpi.bla";
+	std::string path(request_target.substr(0, request_target.find("?")));
+	mv_str += (request.get_location()->get_root() + path.erase(0, request.get_location()->get_path().size()));
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
@@ -284,13 +258,6 @@ char
 *CGIMetaVariables::_build_script_name(const Request &request) throw(std::bad_alloc) {
 	char		*mv;
 	std::string	mv_str(_script_name + "=");
-	/*
-	std::string	request_target(request.get_request_line().get_request_target());
-	std::string	cgi_extension(request.get_location()->get_cgi_extension());
-	std::string	script_name(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
-
-	mv_str += script_name;
-	*/
 	mv_str += request.get_location()->get_cgi_path();
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());

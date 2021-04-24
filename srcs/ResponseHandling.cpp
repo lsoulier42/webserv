@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/22 20:51:20 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/23 17:00:23 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,20 +161,25 @@ ResponseHandling::_response_content_language_handler(Client::exchange_t &exchang
 
 int
 ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange) {
-	Request& request = exchange.first;
-	Response& response = exchange.second;
-	struct stat buf;
-	std::stringstream ss;
+    Request& request = exchange.first;
+    Response& response = exchange.second;
+    struct stat buf;
+    std::stringstream ss;
 
-	if (stat(response.get_target_path().c_str(), &buf) != -1) {
-		if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
-			response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
-			return FAILURE;
-		}
-		ss << buf.st_size;
-		response.get_headers().insert(CONTENT_LENGTH, ss.str());
-	}
-	return SUCCESS;
+    if (request.get_request_line().get_method() == PUT) {
+        ss << response.get_body().size();
+        response.get_headers().insert(CONTENT_LENGTH, ss.str());
+        return SUCCESS;
+    }
+    if (stat(response.get_target_path().c_str(), &buf) != -1) {
+        if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
+            response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
+            return FAILURE;
+        }
+        ss << buf.st_size;
+        response.get_headers().insert(CONTENT_LENGTH, ss.str());
+    }
+    return SUCCESS;
 }
 
 int
