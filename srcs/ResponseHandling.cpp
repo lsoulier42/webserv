@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/23 17:00:23 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/24 06:37:09 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,17 +66,18 @@ ResponseHandling::_response_allow_handler(Client::exchange_t &exchange) {
 	Request &request = exchange.first;
 	Response &response = exchange.second;
 	std::string method_output;
+	status_code_t status_code = response.get_status_line().get_status_code();
 	std::list<std::string> allowed_methods = request.get_location()->get_methods();
 
-	if (!allowed_methods.empty() || response.get_status_line().get_status_code() == METHOD_NOT_ALLOWED) {
-		for (std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++) {
-			method_output += *it + ", ";
-		}
-		method_output = method_output.substr(0, method_output.size() - 2);
+	if (status_code == METHOD_NOT_ALLOWED || request.get_request_line().get_method() == OPTIONS) {
+		for (std::list<std::string>::iterator it = allowed_methods.begin(); it != allowed_methods.end(); it++)
+			method_output += *it + ",";
+		method_output = method_output.substr(0, method_output.size() - 1);
 		response.get_headers().insert(ALLOW, method_output);
 	}
 	return SUCCESS;
 }
+
 
 std::string
 ResponseHandling::_html_content_language_parser(const Response& response) {
@@ -161,25 +162,25 @@ ResponseHandling::_response_content_language_handler(Client::exchange_t &exchang
 
 int
 ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange) {
-    Request& request = exchange.first;
-    Response& response = exchange.second;
-    struct stat buf;
-    std::stringstream ss;
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	struct stat buf;
+	std::stringstream ss;
 
-    if (request.get_request_line().get_method() == PUT) {
-        ss << response.get_body().size();
-        response.get_headers().insert(CONTENT_LENGTH, ss.str());
-        return SUCCESS;
-    }
-    if (stat(response.get_target_path().c_str(), &buf) != -1) {
-        if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
-            response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
-            return FAILURE;
-        }
-        ss << buf.st_size;
-        response.get_headers().insert(CONTENT_LENGTH, ss.str());
-    }
-    return SUCCESS;
+	if (request.get_request_line().get_method() == PUT) {
+		ss << response.get_body().size();
+		response.get_headers().insert(CONTENT_LENGTH, ss.str());
+		return SUCCESS;
+	}
+	if (stat(response.get_target_path().c_str(), &buf) != -1) {
+		if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
+			response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
+			return FAILURE;
+		}
+		ss << buf.st_size;
+		response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	}
+	return SUCCESS;
 }
 
 int
@@ -374,18 +375,20 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	Response&	response = exchange.second;
 	Request&	request = exchange.first;
 	status_code_t error_code = response.get_status_line().get_status_code();
+	method_t method = request.get_request_line().get_method();
 	std::stringstream ss;
 
 	ss << response.get_body().size();
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
-	response.get_headers().insert(CONTENT_TYPE, "text/html");
-	if (request.get_request_line().get_method() == HEAD
-		&& error_code == METHOD_NOT_ALLOWED) //this condition cannot be verified on nginx
+	if (method != DELETE)
+		_response_content_type_handler(exchange);
+	if ((method == HEAD	&& error_code == METHOD_NOT_ALLOWED)
+		|| method == OPTIONS)
 		response.get_headers().insert(CONTENT_LENGTH, "0");
-	else
+	else if (method != DELETE)
 		response.get_headers().insert(CONTENT_LENGTH, ss.str());
-	if (error_code == METHOD_NOT_ALLOWED)
+	if (error_code == METHOD_NOT_ALLOWED || method == OPTIONS)
 		_response_allow_handler(exchange);
 	if (error_code == FORBIDDEN)
 		_response_www_authenticate_handler(exchange);
