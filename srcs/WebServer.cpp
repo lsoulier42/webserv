@@ -13,8 +13,9 @@
 #include "WebServer.hpp"
 #include "ResponseHandling.hpp"
 
-WebServer::WebServer() : _max_connection(DEFAULT_MAX_CONNECTION),
-	_highest_socket(0), _exit(false) {
+WebServer::WebServer() :
+	_max_connection(DEFAULT_MAX_CONNECTION),
+	_highest_socket(0) {
 
 }
 
@@ -52,7 +53,7 @@ WebServer::_accept_connection(const Server& server) {
 
 	connection = accept(server.get_server_sd(),
 		&client_addr, &client_socket_len);
-	if (connection < 0) {
+	if (connection < 0 && !sig_value) {
 		std::cerr << "Failed to grab connection : ";
 		std::cerr << std::strerror(errno) << std::endl;
 		this->_close_sockets();
@@ -85,23 +86,25 @@ WebServer::routine(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	while(!_exit) {
+	std::cout << PROGRAM_VERSION << " has started." << std::endl;
+	while(!sig_value) {
 		this->_build_select_list();
 		timeout.tv_sec = 0;
 		timeout.tv_usec = 10;
 		nb_sockets = select(_highest_socket + 1, &_sockets_list[READ],
 			&_sockets_list[WRITE], (fd_set*)0, &timeout);
-		if (nb_sockets < 0) {
+		if (nb_sockets < 0 && !sig_value) {
 			std::cerr << "Select error: ";
 			std::cerr << std::strerror(errno) << std::endl;
 			this->_close_sockets();
 			exit(EXIT_FAILURE);
 		}
-		if (nb_sockets != 0) {
+		if (nb_sockets != 0 && !sig_value) {
 			this->_read_socks();
 			this->_write_socks();
 		}
 	}
+	std::cout << PROGRAM_VERSION << " has finished." << std::endl;
 	this->_close_sockets();
 }
 
@@ -166,6 +169,8 @@ WebServer::_read_socks() {
 		if (FD_ISSET(it->get_server_sd(), &_sockets_list[READ]))
 			this->_accept_connection(*it);
 	}
+	if (sig_value != 0)
+		return;
 	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
 		if (FD_ISSET(it->get_sd(), &_sockets_list[READ]) && it->read_socket() == FAILURE) {
 			close(it->get_sd());
@@ -212,4 +217,38 @@ WebServer::parsing(const std::string &filepath) {
 	}
 	_config_file.close();
 	return (SUCCESS);
+}
+
+
+int
+WebServer::sig_value = 0;
+
+void
+WebServer::sigint_handler(int signum) {
+	sig_value = signum;
+}
+
+int main(int argc, char **argv) {
+	WebServer webserv;
+	std::string filepath;
+
+	if (signal(SIGINT, &WebServer::sigint_handler) == SIG_ERR)
+		return (EXIT_FAILURE);
+	if (argc >= 2 && argc <= 3) {
+		for (int i = 1; i < argc; i++) {
+			std::string argument(argv[i]);
+			if (argument == "-v") {
+				DEBUG_START(true);
+			}
+			else
+				filepath = argument;
+		}
+	}
+	if (filepath.empty())
+		filepath = "conf/default.conf";
+	if (!webserv.parsing(filepath))
+		return EXIT_FAILURE;
+	webserv.setup_servers();
+	webserv.routine();
+	return (EXIT_SUCCESS);
 }

@@ -28,6 +28,7 @@
 # include <ios>
 # include <set>
 # include <sstream>
+# include <csignal>
 
 # include "Server.hpp"
 # include "Client.hpp"
@@ -50,6 +51,8 @@ class WebServer {
 		void setup_servers();
 		void routine();
 		static void set_non_blocking(int file_descriptor);
+		static int sig_value;
+		static void sigint_handler(int signum);
 
 	private:
 		WebServer(const WebServer& src);
@@ -68,7 +71,5 @@ class WebServer {
 		std::list<Client> _clients;
 		fd_set _sockets_list[2];
 		int _highest_socket;
-		bool _exit;
-
 };
 #endif

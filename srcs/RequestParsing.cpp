@@ -12,6 +12,9 @@
 
 #include "RequestParsing.hpp"
 
+size_t RequestParsing::_uri_max_size = 8192;
+size_t RequestParsing::_header_max_size = 8192;
+
 void
 RequestParsing::parsing(Client &client) {
 	int			ret(0);
@@ -138,12 +141,21 @@ RequestParsing::_collect_request_line_elements(Request &request, ByteArray &inpu
 		input.pop_front(end_rl + 2);
 		return (NOT_IMPLEMENTED);
 	}
+	if (rl_elements[1].size() > _uri_max_size || (rl_elements[1][0] != '/' && rl_elements[1][0] != '*')) {
+		input.pop_front(end_rl + 2);
+		return (BAD_REQUEST);
+	}
+	if (rl_elements[2].find('/') == std::string::npos || rl_elements[2].find('.') == std::string::npos) {
+		input.pop_front(end_rl + 2);
+		return (BAD_REQUEST);
+	}
 	std::vector<std::string> http_elements = Syntax::split(rl_elements[2], "/");
 	if (http_elements.size() != 2 || http_elements[0] != "HTTP") {
 		input.pop_front(end_rl + 2);
 		return (BAD_REQUEST);
 	}
-	if (strtod(http_elements[1].c_str(), NULL) > 1.1) {
+	double http_version = strtod(http_elements[1].c_str(), NULL);
+	if (http_version > 1.1 || http_version < 1.0) {
 		input.pop_front(end_rl + 2);
 		return (HTTP_VERSION_NOT_SUPPORTED);
 	}
@@ -178,8 +190,14 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
-	int		ret(_process_request_headers(client, request));
+	Headers	headers = request.get_headers();
+	int		ret;
 
+	for(Headers::iterator it = headers.begin(); it != headers.end(); it++) {
+		if (it->unparsed_value.size() > _header_max_size)
+			return (BAD_REQUEST);
+	}
+	ret = _process_request_headers(client, request);
 	client._input.pop_front(client._input.find("\r\n") + 2);
 	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
