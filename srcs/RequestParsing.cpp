@@ -191,13 +191,22 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
 	Headers	headers = request.get_headers();
-	int		ret;
+	std::string check_host(request.get_raw().c_str(), request.get_raw().size());
+	int		ret = 0;
+	size_t	host_pos;
 
-	for(Headers::iterator it = headers.begin(); it != headers.end(); it++) {
+	for(Headers::iterator it = headers.begin(); it != headers.end(); it++)
 		if (it->unparsed_value.size() > _header_max_size)
-			return (BAD_REQUEST);
-	}
-	ret = _process_request_headers(client, request);
+			ret = BAD_REQUEST;
+	host_pos = check_host.find("Host:");
+	if (host_pos == std::string::npos)
+		ret = BAD_REQUEST;
+	check_host = check_host.substr(host_pos + 5);
+	host_pos = check_host.find("Host:");
+	if (host_pos != std::string::npos)
+		ret = BAD_REQUEST;
+	if (ret == 0)
+		ret = _process_request_headers(client, request);
 	client._input.pop_front(client._input.find("\r\n") + 2);
 	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
@@ -534,16 +543,14 @@ RequestParsing::_process_request_headers(Client &client, Request &request) {
 
 	header_parser_t handler_functions[] = {&RequestParsing::_request_accept_charset_parser,
 		&RequestParsing::_request_accept_language_parser, &RequestParsing::_request_authorization_parser,
-		&RequestParsing::_request_content_length_parser, &RequestParsing::_request_content_type_parser, &RequestParsing::_request_date_parser, NULL,
-		&RequestParsing::_request_referer_parser, &RequestParsing::_request_transfer_encoding_parser, &RequestParsing::_request_user_agent_parser,
+		&RequestParsing::_request_content_length_parser, &RequestParsing::_request_content_type_parser,
+		&RequestParsing::_request_date_parser, &RequestParsing::_request_host_parser,
+		&RequestParsing::_request_referer_parser, &RequestParsing::_request_transfer_encoding_parser,
+		&RequestParsing::_request_user_agent_parser,
 	};
-	if (!request.get_headers().key_exists(HOST)
-			|| _request_host_parser(request) == FAILURE)
-		return (FAILURE);
 	_pick_virtual_server(client, request);
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
-		if (Syntax::request_headers_tab[i].header_index != HOST
-			&& headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
+		if (headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
 			if ((*handler_functions[i])(request) == FAILURE)
 				return (FAILURE);
 		}

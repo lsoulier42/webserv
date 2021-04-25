@@ -25,7 +25,7 @@
 # include "WebServer.hpp"
 # include "VirtualServer.hpp"
 
-# define DEFAULT_BACKLOG 5
+# define DEFAULT_BACKLOG 32
 
 class WebServer;
 

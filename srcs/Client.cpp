@@ -16,7 +16,7 @@
 #include "WebServer.hpp"
 #include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
-const size_t	Client::_buffer_size(8192);
+const size_t	Client::_buffer_size(65536);
 
 Client::Client(void) :
 	_sd(),
