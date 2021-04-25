@@ -71,5 +71,6 @@ class WebServer {
 		std::list<Client> _clients;
 		fd_set _sockets_list[2];
 		int _highest_socket;
+		std::map<std::string, int> _locked_files;
 };
 #endif

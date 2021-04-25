@@ -827,3 +827,10 @@ Client::_process_TRACE(exchange_t &exchange) {
 	ResponseHandling::generate_basic_headers(exchange);
 	return (_build_output(exchange));
 }
+
+std::string
+Client::get_target_path(void) {
+	if (_exchanges.empty())
+		return "";
+	return _exchanges.front().second.get_target_path();
+}

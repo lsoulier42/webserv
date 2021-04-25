@@ -199,8 +199,17 @@ WebServer::_write_socks() {
 			it++;
 	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end(); it++)
-		if (FD_ISSET(it->get_file_write_fd(), &_sockets_list[WRITE]))
-			it->write_file();
+		if (FD_ISSET(it->get_file_write_fd(), &_sockets_list[WRITE])) {
+			std::map<std::string, int>::iterator file = _locked_files.find(it->get_target_path());
+			if (file == _locked_files.end())
+				_locked_files.insert(std::make_pair(it->get_target_path(), it->get_file_write_fd()));
+			if (file == _locked_files.end()
+				|| (file != _locked_files.end() && file->second == it->get_file_write_fd())) {
+				it->write_file();
+				if (it->get_file_write_fd() == 0)
+					_locked_files.erase(it->get_target_path());
+			}
+		}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
 		if (FD_ISSET(it->get_cgi_input_fd(), &_sockets_list[WRITE]))
 			it->write_cgi_input();

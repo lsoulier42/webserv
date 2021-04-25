@@ -67,6 +67,7 @@ class Client {
 		int get_cgi_input_fd(void) const;
 		int get_cgi_output_fd(void) const;
 		int get_file_write_fd(void) const;
+		std::string get_target_path(void);
 		
 		int read_socket(void);
 		int write_socket(void);

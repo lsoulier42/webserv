@@ -88,7 +88,6 @@ RequestParsing::_trailer_received(const Request &request, const ByteArray &input
 			&& ByteArray::npos != input.find("\r\n"));
 }
 
-//TODO:: pas du tout comme ca qu'on repere la fin des trailers, provisoire, pour test
 bool
 RequestParsing::_trailers_received(const Request &request, const ByteArray &input) {
 	std::string input_str(input.c_str(), input.size());
@@ -191,19 +190,17 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
 	Headers	headers = request.get_headers();
-	std::string check_host(request.get_raw().c_str(), request.get_raw().size());
 	int		ret = 0;
-	size_t	host_pos;
+	bool 	host_found = false;
 
-	for(Headers::iterator it = headers.begin(); it != headers.end(); it++)
-		if (it->unparsed_value.size() > _header_max_size)
+	for(Headers::iterator it = headers.begin(); it != headers.end(); it++) {
+		if (it->unparsed_value.size() > _header_max_size ||
+			(host_found && it->name == Syntax::headers_tab[HOST].name))
 			ret = BAD_REQUEST;
-	host_pos = check_host.find("Host:");
-	if (host_pos == std::string::npos)
-		ret = BAD_REQUEST;
-	check_host = check_host.substr(host_pos + 5);
-	host_pos = check_host.find("Host:");
-	if (host_pos != std::string::npos)
+		if (it->name == Syntax::headers_tab[HOST].name)
+			host_found = true;
+	}
+	if (!host_found)
 		ret = BAD_REQUEST;
 	if (ret == 0)
 		ret = _process_request_headers(client, request);
@@ -258,7 +255,6 @@ RequestParsing::_collect_body(Request &request, ByteArray &input) {
 			request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
 		request.set_body(ByteArray(input.substr(0, body_length).c_str()));
 	}
-	//request.get_raw() += input.sub_byte_array(0, body_length); a decommenter si necessite de sauver le body en raw mais pas de raison
 	input.pop_front(body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);
@@ -294,6 +290,8 @@ RequestParsing::_pick_location(Request &request) {
 	std::string					absolute_path(request_target.substr(0, request_target.find('?')));
 	const std::list<Location>	&locations(request.get_virtual_server()->get_locations());
 
+	if (absolute_path[0] != '/')
+		absolute_path = "/" + absolute_path;
 	for (std::list<Location>::const_iterator it(locations.begin()) ; it != locations.end() ; it++)
 		if (!absolute_path.compare(0, (it->get_path()).size(), it->get_path())
 				&& request.get_location()->get_path().size() < it->get_path().size())
