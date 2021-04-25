@@ -319,15 +319,16 @@ ResponseHandling::_response_last_modified_handler(Client::exchange_t &exchange) 
 
 int
 ResponseHandling::_response_location_handler(Client::exchange_t &exchange) {
-//	Response&	response = exchange.second;
-//	Request&	request = exchange.first;
-//	int status_code = response.get_status_line().get_status_code();
-(void)exchange;
-//	if ((request.get_request_line().get_method() == PUT
-//				|| request.get_request_line().get_method() == POST)
-//			&& (status_code == OK || status_code == CREATED || status_code == 204)
-//			&& request.get_headers().key_exists(CONTENT_LOCATION))
-//			response.get_headers().insert(CONTENT_LOCATION, request.get_headers().get_unparsed_value(CONTENT_LOCATION));
+	Response&	response = exchange.second;
+	Request&	request = exchange.first;
+	int status_code = response.get_status_line().get_status_code();
+
+	if ((request.get_request_line().get_method() == PUT
+				|| request.get_request_line().get_method() == POST)
+			&& (status_code == OK || status_code == CREATED || status_code == NO_CONTENT)
+			&& request.get_headers().key_exists(CONTENT_LOCATION))
+		response.get_headers().insert(CONTENT_LOCATION,
+			request.get_headers().get_unparsed_value(CONTENT_LOCATION));
 	return (SUCCESS);
 }
 
