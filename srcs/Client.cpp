@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/24 18:29:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/25 17:37:37 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -197,7 +197,7 @@ Client::_process(exchange_t &exchange) {
 		return (_process_error(exchange));
 	}
 	if (_is_cgi_related(request))
-		return (_handle_cgi(exchange));
+		return (_prepare_cgi(exchange));
 	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
 }
 
@@ -351,7 +351,6 @@ Client::_process_PUT(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 
-	std::cout << "truc" << std::endl;
 	std::string path(_build_resource_path(request));
 	path_type_t path_type = Syntax::get_path_type(path);
 
@@ -629,33 +628,52 @@ Client::_handle_cgi(exchange_t &exchange) {
 	Request				&request(exchange.first);
 	Response			&response(exchange.second);
 	pid_t				pid;
+	int					input_fd;
+	int					output_fd;
+	CGIMetaVariables	mv(request);
+	CGIScriptArgs		args(request);
 
-	if (0 > (_cgi_input_fd = open("/tmp/cgi_input_webserver", O_RDONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
+	if (0 > (input_fd = open("/tmp/cgi_input_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		_process_error(exchange);
+		return (_process_error(exchange));
 	}
-	if ( 0 > (_cgi_output_fd = open("/tmp/cgi_output_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
-		close(_cgi_input_fd);
-		_cgi_input_fd = 0;
+	if (0 > (output_fd = open("/tmp/cgi_output_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
+		close(input_fd);
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		_process_error(exchange);
+		return (_process_error(exchange));
 	}
 	if (-1 == (pid = _create_cgi_child_process())) {
-		close(_cgi_input_fd);
-		close(_cgi_output_fd);
-		_cgi_input_fd = 0;
-		_cgi_output_fd = 0;
+		close(input_fd);
+		close(output_fd);
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		_process_error(exchange);
+		return (_process_error(exchange));
 	}
-	if (!pid)
-		_child_process_cgi(exchange.first);
-	close(_cgi_output_fd);
-	close(_cgi_input_fd);
-	_cgi_output_fd = 0;
+	if (!pid) {
+		dup2(input_fd, STDIN_FILENO);
+		dup2(output_fd, STDOUT_FILENO);
+		dup2(output_fd, STDERR_FILENO);
+		execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
+		_child_process_cgi_error(request);
+	}
+	close(input_fd);
+	close(output_fd);
+	waitpid(-1, NULL, 0);
+	if (0 > (_cgi_output_fd = open("/tmp/cgi_output_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	WebServer::set_non_blocking(_cgi_output_fd);
+	return (SUCCESS);
+}
+
+int
+Client::_prepare_cgi(exchange_t &exchange) {
+	Request		&request(exchange.first);
+	Response	&response(exchange.second);
+
 	if (0 > (_cgi_input_fd = open("/tmp/cgi_input_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		_process_error(exchange);
+		return (_process_error(exchange));
 	}
 	WebServer::set_non_blocking(_cgi_input_fd);
 	_cgi_input = request.get_body();
@@ -669,42 +687,37 @@ Client::write_cgi_input(void) {
 	size_t		buffer_size(std::min(_buffer_size, _cgi_input.size()));
 	ssize_t		ret;
 
-	if (_cgi_input.empty())
-		return (SUCCESS);
 	ret = write(_cgi_input_fd, _cgi_input.c_str(), buffer_size);
 	if (ret < 0) {
 		close(_cgi_input_fd);
 		_cgi_input_fd = 0;
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		_process_error(exchange);
+		return (_process_error(exchange));
 	}
 	_cgi_input.pop_front(ret);
 	if (_cgi_input.empty()) {
 		close(_cgi_input_fd);
 		_cgi_input_fd = 0;
-		waitpid(-1, NULL, 0);
-		if ( 0 > (_cgi_output_fd = open("/tmp/cgi_output_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
-			response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-			_process_error(exchange);
-		}
-		WebServer::set_non_blocking(_cgi_output_fd);
+		return (_handle_cgi(exchange));
 	}
 	return (SUCCESS);
 }
 
 int
 Client::read_cgi_output(void) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
 	char		buffer[_buffer_size];
 	ssize_t		ret;
 
 	ret = read(_cgi_output_fd, buffer, _buffer_size);
-	std::cout << "truc cgi output" << ByteArray(buffer, ret);
 	if (ret < 0) {
 		close(_cgi_output_fd);
-		return (FAILURE);
+		_cgi_output_fd = 0;
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
 	}
 	if (ret == 0) {
-		std::cout << "end of cgi output" << std::endl;
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
 		return (_cgi_output_parsing());

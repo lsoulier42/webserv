@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/24 14:36:43 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/25 17:37:06 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,6 +154,7 @@ class Client {
 		void _child_process_cgi(Request &request);
 		void _child_process_cgi_error(Request &request);
 		int _handle_cgi(exchange_t &exchange);
+		int _prepare_cgi(exchange_t &exchange);
 
 };
 
