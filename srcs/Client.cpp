@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 12:54:19 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 13:58:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -168,10 +168,8 @@ Client::write_socket(void) {
 		return (SUCCESS);
 	to_write = output_size > _buffer_size ? _buffer_size : output_size;
 	write_return = write(_sd, _output.c_str(), to_write);
-//	std::cout << ByteArray(_output.c_str(), write_return);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
-//		std::cout << "end of response." << std::endl;
 		_exchanges.pop_front();
 		if (_closing)
 			return (FAILURE);
@@ -866,19 +864,16 @@ Client::_handle_cgi_response(void) {
 
 int
 Client::_handle_local_redirect_cgi_response(void) {
-	std::cout << "local_redirect_cgi_response" << std::endl;
 	return (SUCCESS);
 }
 
 int
 Client::_handle_client_redirect_cgi_response(void) {
-	std::cout << "client_redirect_cgi_response" << std::endl;
 	return (SUCCESS);
 }
 
 int
 Client::_handle_client_redirect_doc_cgi_response(void) {
-	std::cout << "client_doc_redirect_cgi_response" << std::endl;
 	return (SUCCESS);
 }
 
