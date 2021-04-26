@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:39:01 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 06:34:06 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 08:00:41 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,11 +14,13 @@
 
 CGIResponse::CGIResponse(void) :
 	_status(START),
+	_type(DOCUMENT),
 	_headers(),
 	_body() {}
 
 CGIResponse::CGIResponse(const CGIResponse &x) :
 	_status(x._status),
+	_type(x._type),
 	_headers(x._headers),
 	_body(x._body) {}
 
@@ -27,6 +29,7 @@ CGIResponse::~CGIResponse(void) {}
 CGIResponse
 &CGIResponse::operator=(const CGIResponse &x) {
 	_status = x._status;
+	_type = x._type;
 	_headers = x._headers;
 	_body = x._body;
 	return (*this);
@@ -35,6 +38,11 @@ CGIResponse
 CGIResponse::status_t
 CGIResponse::get_status(void) {
 	return (_status);
+}
+
+CGIResponse::type_t
+CGIResponse::get_type(void) {
+	return (_type);
 }
 
 CGIResponse::CGIHeaders
@@ -55,6 +63,11 @@ const ByteArray
 void
 CGIResponse::set_status(status_t status) {
 	_status = status;
+}
+
+void
+CGIResponse::set_type(type_t type) {
+	_type = type;
 }
 
 void
