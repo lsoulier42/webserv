@@ -221,7 +221,7 @@ Client::_get_default_index(exchange_t &exchange) {
 	std::list<std::string> index_list = request.get_location()->get_index();
 
 	if (index_list.empty()) {
-		definite_path = _format_index_path(dir_path, "index.html");
+		return (FAILURE);
 	} else {
 		for(std::list<std::string>::iterator it = index_list.begin(); it != index_list.end(); it++) {
 			definite_path = _format_index_path(dir_path, *it);
