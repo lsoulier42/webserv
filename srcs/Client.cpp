@@ -16,7 +16,7 @@
 #include "WebServer.hpp"
 #include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
-const size_t	Client::_buffer_size(32000);
+const size_t	Client::_buffer_size(65000);
 
 Client::Client(void) :
 	_sd(),
@@ -230,6 +230,7 @@ Client::_get_default_index(exchange_t &exchange) {
 		}
 	}
 	if (Syntax::get_path_type(definite_path) == INVALID_PATH)
+		return (FAILURE);
 		return (FAILURE);
 	response.set_target_path(definite_path);
 	return (SUCCESS);
@@ -514,7 +515,7 @@ Client::_is_cgi_related(const Request &request) {
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	path(request_target.substr(0, request_target.find("?")));
 	std::string extension(request.get_location()->get_cgi_extension());
-	return (path.find(".") != std::string::npos
+	return (path.find(".") != std::string::npos && !extension.empty()
 				&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
 }
 
