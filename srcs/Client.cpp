@@ -231,7 +231,6 @@ Client::_get_default_index(exchange_t &exchange) {
 	}
 	if (Syntax::get_path_type(definite_path) == INVALID_PATH)
 		return (FAILURE);
-		return (FAILURE);
 	response.set_target_path(definite_path);
 	return (SUCCESS);
 }
