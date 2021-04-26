@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/25 17:37:37 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 06:41:58 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -191,6 +191,7 @@ Client::_process(exchange_t &exchange) {
 		&Client::_process_DELETE, &Client::_process_CONNECT,
 		&Client::_process_OPTIONS, &Client::_process_TRACE};
 
+	request.get_headers().render();
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE) {
@@ -653,7 +654,7 @@ Client::_handle_cgi(exchange_t &exchange) {
 		dup2(output_fd, STDOUT_FILENO);
 		dup2(output_fd, STDERR_FILENO);
 		execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
-		_child_process_cgi_error(request);
+		write(STDOUT_FILENO, "Status:500 Internal Servor Error\n", 33);
 	}
 	close(input_fd);
 	close(output_fd);
@@ -714,6 +715,7 @@ Client::read_cgi_output(void) {
 	if (ret < 0) {
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
+		_cgi_output.clear();
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
 	}
@@ -723,6 +725,7 @@ Client::read_cgi_output(void) {
 		return (_cgi_output_parsing());
 	}
 	_cgi_output = (_cgi_output + ByteArray(buffer, ret));
+	_cgi_output_parsing();
 	return (SUCCESS);
 }
 
@@ -746,6 +749,31 @@ Client::_is_client_redirect_response(const CGIResponse &cgi_response) const {
 			&& cgi_response.get_headers().key_exists(CGI_LOCATION)
 			&& Path::is_fragment_uri(cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
 			&& cgi_response.get_headers().size() == 1);
+}
+
+bool
+Client::_cgi_header_received(void) {
+	return (_cgi_response.get_status() == CGIResponse::START
+			&& !_cgi_headers_received()
+			&& ByteArray::npos != _cgi_output.find("\n"));
+}
+
+bool
+Client::_cgi_headers_received(void) {
+	return (_cgi_response.get_status() == CGIResponse::START
+			&& _cgi_output[0] == '\n');
+}
+
+bool
+Client::_cgi_body_received(void) {
+	return (_cgi_response.get_status() == CGIResponse::HEADERS_RECEIVED
+			&& _cgi_output.size() >= static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
+}
+
+int
+Client::_cgi_output_parsing(void) {
+	while (_cgi_header_received())
+		_collect_cgi_header();
 }
 
 int
@@ -784,6 +812,7 @@ Client::_build_response_from_cgi_response(const CGIResponse &cgi_response) {
 		response.get_headers().insert(CONTENT_LENGTH, "0");
 	}
 	response.set_body(cgi_response.get_body());
+	ResponseHandling::generate_basic_headers(exchange);
 	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 		return (_process_error(exchange));
 	return (_build_output(exchange));

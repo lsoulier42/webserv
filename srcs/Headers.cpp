@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 05:07:54 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 06:53:35 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/25 19:29:27 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -250,7 +250,7 @@ Headers::insert(const header_t &header) {
 		_update_start(index);
 		_update_finish(index);
 	}
-	else if (_start._cell > _tab.begin() + index)
+	else if (_start._cell >= _tab.begin() + index)
 		_update_start(index);
 	else if (_finish._cell < _tab.begin() + index) {
 		_update_finish(index);
@@ -314,6 +314,11 @@ Headers::render(void) const {
 		std::cout << "HASH : " << _hash(it->name.c_str()) << "$" << std::endl;
 		std::cout << "VALUE : " << it->unparsed_value << "$" << std::endl;
 		std::cout << "*" << std::endl;
+	}
+	std::cout << "***" << std::endl;
+	for (std::vector<std::list<header_t> >::const_iterator it(_tab.begin()) ; it != _tab.end() ; it++) {
+		for (std::list<header_t>::const_iterator it1(it->begin()) ; it1 != it->end() ; it1++)
+			std::cout << it1->name << " - " << it1->unparsed_value << std::endl;
 	}
 }
 

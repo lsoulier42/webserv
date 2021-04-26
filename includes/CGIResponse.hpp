@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:33:46 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/22 06:55:19 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 06:38:40 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,19 +38,28 @@ class CGIResponse {
 
 		};
 
+		enum status_t {
+			START,
+			HEADERS_RECEIVED,
+			RESPONSE_RECEIVED
+		};
+
 		CGIResponse(void);
 		CGIResponse(const CGIResponse &x);
 		~CGIResponse(void);
 		CGIResponse &operator=(const CGIResponse &x);
 
+		status_t get_status(void) const;
 		CGIHeaders &get_headers(void);
 		const CGIHeaders &get_headers(void) const;
 		const ByteArray &get_body(void) const;
 
+		void set_status(status_t status);
 		void set_body(const ByteArray &body);
 
 	private:
 
+		status_t _status;
 		CGIHeaders _headers;
 		ByteArray _body;
 

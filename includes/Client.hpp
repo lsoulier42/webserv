@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/25 17:37:06 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 06:26:31 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,6 +92,7 @@ class Client {
 		ByteArray _output;
 		ByteArray _cgi_input;
 		ByteArray _cgi_output;
+		CGIResponse _cgi_response;
 		ByteArray _file_write_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
