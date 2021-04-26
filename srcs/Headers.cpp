@@ -250,7 +250,7 @@ Headers::insert(const header_t &header) {
 		_update_start(index);
 		_update_finish(index);
 	}
-	else if (_start._cell > _tab.begin() + index)
+	else if (_start._cell >= _tab.begin() + index)
 		_update_start(index);
 	else if (_finish._cell < _tab.begin() + index) {
 		_update_finish(index);

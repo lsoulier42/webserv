@@ -12,6 +12,9 @@
 
 #include "RequestParsing.hpp"
 
+size_t RequestParsing::_uri_max_size = 8192;
+size_t RequestParsing::_header_max_size = 8192;
+
 void
 RequestParsing::parsing(Client &client) {
 	int			ret(0);
@@ -85,7 +88,6 @@ RequestParsing::_trailer_received(const Request &request, const ByteArray &input
 			&& ByteArray::npos != input.find("\r\n"));
 }
 
-//TODO:: pas du tout comme ca qu'on repere la fin des trailers, provisoire, pour test
 bool
 RequestParsing::_trailers_received(const Request &request, const ByteArray &input) {
 	std::string input_str(input.c_str(), input.size());
@@ -138,12 +140,21 @@ RequestParsing::_collect_request_line_elements(Request &request, ByteArray &inpu
 		input.pop_front(end_rl + 2);
 		return (NOT_IMPLEMENTED);
 	}
+	if (rl_elements[1].size() > _uri_max_size || (rl_elements[1][0] != '/' && rl_elements[1][0] != '*')) {
+		input.pop_front(end_rl + 2);
+		return (BAD_REQUEST);
+	}
+	if (rl_elements[2].find('/') == std::string::npos || rl_elements[2].find('.') == std::string::npos) {
+		input.pop_front(end_rl + 2);
+		return (BAD_REQUEST);
+	}
 	std::vector<std::string> http_elements = Syntax::split(rl_elements[2], "/");
 	if (http_elements.size() != 2 || http_elements[0] != "HTTP") {
 		input.pop_front(end_rl + 2);
 		return (BAD_REQUEST);
 	}
-	if (strtod(http_elements[1].c_str(), NULL) > 1.1) {
+	double http_version = strtod(http_elements[1].c_str(), NULL);
+	if (http_version > 1.1 || http_version < 1.0) {
 		input.pop_front(end_rl + 2);
 		return (HTTP_VERSION_NOT_SUPPORTED);
 	}
@@ -178,8 +189,21 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
-	int		ret(_process_request_headers(client, request));
+	Headers	headers = request.get_headers();
+	int		ret = 0;
+	bool 	host_found = false;
 
+	for(Headers::iterator it = headers.begin(); it != headers.end(); it++) {
+		if (it->unparsed_value.size() > _header_max_size ||
+			(host_found && it->name == Syntax::headers_tab[HOST].name))
+			ret = BAD_REQUEST;
+		if (it->name == Syntax::headers_tab[HOST].name)
+			host_found = true;
+	}
+	if (!host_found)
+		ret = BAD_REQUEST;
+	if (ret == 0)
+		ret = _process_request_headers(client, request);
 	client._input.pop_front(client._input.find("\r\n") + 2);
 	if (_body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
@@ -231,7 +255,6 @@ RequestParsing::_collect_body(Request &request, ByteArray &input) {
 			request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
 		request.set_body(ByteArray(input.substr(0, body_length).c_str()));
 	}
-	//request.get_raw() += input.sub_byte_array(0, body_length); a decommenter si necessite de sauver le body en raw mais pas de raison
 	input.pop_front(body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);
@@ -267,6 +290,8 @@ RequestParsing::_pick_location(Request &request) {
 	std::string					absolute_path(request_target.substr(0, request_target.find('?')));
 	const std::list<Location>	&locations(request.get_virtual_server()->get_locations());
 
+	if (absolute_path[0] != '/')
+		absolute_path = "/" + absolute_path;
 	for (std::list<Location>::const_iterator it(locations.begin()) ; it != locations.end() ; it++)
 		if (!absolute_path.compare(0, (it->get_path()).size(), it->get_path())
 				&& request.get_location()->get_path().size() < it->get_path().size())
@@ -516,16 +541,14 @@ RequestParsing::_process_request_headers(Client &client, Request &request) {
 
 	header_parser_t handler_functions[] = {&RequestParsing::_request_accept_charset_parser,
 		&RequestParsing::_request_accept_language_parser, &RequestParsing::_request_authorization_parser,
-		&RequestParsing::_request_content_length_parser, &RequestParsing::_request_content_type_parser, &RequestParsing::_request_date_parser, NULL,
-		&RequestParsing::_request_referer_parser, &RequestParsing::_request_transfer_encoding_parser, &RequestParsing::_request_user_agent_parser,
+		&RequestParsing::_request_content_length_parser, &RequestParsing::_request_content_type_parser,
+		&RequestParsing::_request_date_parser, &RequestParsing::_request_host_parser,
+		&RequestParsing::_request_referer_parser, &RequestParsing::_request_transfer_encoding_parser,
+		&RequestParsing::_request_user_agent_parser,
 	};
-	if (!request.get_headers().key_exists(HOST)
-			|| _request_host_parser(request) == FAILURE)
-		return (FAILURE);
 	_pick_virtual_server(client, request);
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
-		if (Syntax::request_headers_tab[i].header_index != HOST
-			&& headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
+		if (headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
 			if ((*handler_functions[i])(request) == FAILURE)
 				return (FAILURE);
 		}

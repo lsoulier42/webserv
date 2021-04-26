@@ -62,6 +62,9 @@ class RequestParsing {
 		static std::list<std::string> _parse_coma_q_factor(const std::string& unparsed_value);
 		static bool _comp_q_factor(const std::pair<std::string, float> & a, const std::pair<std::string, float> & b);
 		static bool _is_allowed_method(const std::list<std::string>& allowed_methods, const std::string& method);
+
+		static size_t _uri_max_size;
+		static size_t _header_max_size;
 };
 
 #endif

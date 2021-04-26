@@ -1,6 +1,6 @@
 NAME = webserv
 
-SRCS_FILES = main.cpp Server.cpp WebServer.cpp ConfigParsing.cpp VirtualServer.cpp Location.cpp AHTTPMessage.cpp \
+SRCS_FILES = Server.cpp WebServer.cpp ConfigParsing.cpp VirtualServer.cpp Location.cpp AHTTPMessage.cpp \
 	Client.cpp Request.cpp Response.cpp Syntax.cpp CGIMetaVariables.cpp CGIResponse.cpp Headers.cpp RequestParsing.cpp \
 	ResponseHandling.cpp ByteArray.cpp Debugger.cpp Path.cpp
 

@@ -479,19 +479,19 @@ operator<<(std::ostream& o, const ByteArray& src) {
 }
 
 int
-ByteArray::compare( size_type pos1, size_type count1, const std::string& str ) const throw(std::out_of_range) {
+ByteArray::compare( size_type pos1, size_type count1, const std::string& str ) {
 	if (pos1 + count1 > size())
-		throw (std::out_of_range("pos1 + count1 > size"));
+		return (-1);
 	return (memcmp(str.c_str(), this->c_str() + pos1, count1));
 }
 
 bool
 ByteArray::starts_with( const std::string& str ) const {
-	return (memcmp(str.c_str(), this->c_str(), str.size()));
+	return (memcmp(str.c_str(), this->c_str(), str.size()) == 0);
 }
 
 bool
 ByteArray::ends_with( const std::string& str ) const {
 	size_t str_size = str.size();
-	return (memcmp(str.c_str(), this->c_str() + size() - str_size, str_size));
+	return (memcmp(str.c_str(), this->c_str() + size() - str_size, str_size) == 0);
 }
