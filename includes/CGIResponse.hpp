@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:33:46 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 07:58:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 11:20:49 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,8 @@ class CGIResponse {
 		void set_status(status_t status);
 		void set_type(type_t type);
 		void set_body(const ByteArray &body);
+
+		void reset(void);
 
 	private:
 

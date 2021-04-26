@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 06:26:31 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 11:36:15 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,21 +141,48 @@ class Client {
 		/* CGI
 		 *
 		 */
-    
-		bool _is_cgi_related(const Request &request) const;
-		std::string _build_cgi_script_path(const Request &request) const;
-		int _create_cgi_child_process(void);
-		int _cgi_output_parsing(void);
-		int _build_response_from_cgi_response(const CGIResponse &cgi_response);
-		void _collect_cgi_header(CGIResponse &cgi_response);
-		bool _is_document_response(const CGIResponse &cgi_response) const;
-		bool _is_local_redirect_response(const CGIResponse &cgi_response) const;
-		bool _is_client_redirect_response(const CGIResponse &cgi_response) const;
-		int _parent_process_cgi(exchange_t &exchange);
-		void _child_process_cgi(Request &request);
-		void _child_process_cgi_error(Request &request);
-		int _handle_cgi(exchange_t &exchange);
+
+		bool _is_cgi_related(const Request &request);
+
+		/* CGI input preparation
+		 */
 		int _prepare_cgi(exchange_t &exchange);
+
+		/* Interface setting
+		 */
+		int _create_cgi_child_process(void);
+		int _handle_cgi(exchange_t &exchange);
+    
+		/* CGI response parsing
+		 */
+		int _cgi_output_parsing(int ret);
+		void _collect_cgi_header(void);
+		int _check_cgi_headers(void);
+		void _collect_cgi_body(void);
+
+		/* Status predicates
+		 */
+		bool _cgi_header_received(void);
+		bool _cgi_headers_received(void);
+		bool _cgi_body_received(void);
+		bool _cgi_body_expected(void);
+
+		/* Type predicates
+		 */
+		bool _is_local_redirection(const std::string &location);
+		bool _is_client_redirection(const std::string &location);
+		bool _is_document_response(void);
+		bool _is_local_redirect_response(void);
+		bool _is_client_redirect_response(void);
+		bool _is_client_redirect_response_with_document(void);
+
+		/* Handling CGI responses
+		 */
+		int _handle_cgi_response(void);
+		int _handle_local_redirect_response(void);
+		int _handle_client_redirect_cgi_response(void);
+		int _handle_client_redirect_doc_cgi_response(void);
+		int _handle_document_cgi_response(void);
 
 };
 

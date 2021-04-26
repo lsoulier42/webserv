@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 10:06:24 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 11:40:46 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -582,89 +582,10 @@ Client::_send_debug_str(const std::string& str) const {
 }
 
 bool
-Client::_is_cgi_related(const Request &request) const {
+Client::_is_cgi_related(const Request &request) {
 	std::string	path(_build_cgi_script_path(request));
 	return (path.find(".") != std::string::npos
 				&& path.substr(path.rfind(".")) == request.get_location()->get_cgi_extension());
-}
-
-std::string
-Client::_build_cgi_script_path(const Request &request) const {
-	std::string	request_target(request.get_request_line().get_request_target());
-	std::string	cgi_extension(request.get_location()->get_cgi_extension());
-	std::string	path(request_target.substr(0, request_target.find(cgi_extension) + cgi_extension.size()));
-	return (request.get_location()->get_root() + path);
-}
-
-int
-Client::_create_cgi_child_process(void) {
-	pid_t	pid;
-
-	pid = fork();
-	while (pid == -1 && errno == EAGAIN)
-		pid = fork();
-	return (pid);
-}
-
-void
-Client::_child_process_cgi_error(Request &request) {
-	(void)request;
-	exit(EXIT_FAILURE);
-}
-
-void
-Client::_child_process_cgi(Request &request) {
-	CGIMetaVariables	mv(request);
-	CGIScriptArgs		args(request);
-
-	dup2(_cgi_input_fd, STDIN_FILENO);
-	dup2(_cgi_output_fd, STDOUT_FILENO);
-	dup2(_cgi_output_fd, STDERR_FILENO);
-	execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
-	_child_process_cgi_error(request);
-}
-
-int
-Client::_handle_cgi(exchange_t &exchange) {
-	Request				&request(exchange.first);
-	Response			&response(exchange.second);
-	pid_t				pid;
-	int					input_fd;
-	int					output_fd;
-	CGIMetaVariables	mv(request);
-	CGIScriptArgs		args(request);
-
-	if (0 > (input_fd = open("/tmp/cgi_input_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
-		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		return (_process_error(exchange));
-	}
-	if (0 > (output_fd = open("/tmp/cgi_output_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
-		close(input_fd);
-		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		return (_process_error(exchange));
-	}
-	if (-1 == (pid = _create_cgi_child_process())) {
-		close(input_fd);
-		close(output_fd);
-		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		return (_process_error(exchange));
-	}
-	if (!pid) {
-		dup2(input_fd, STDIN_FILENO);
-		dup2(output_fd, STDOUT_FILENO);
-		dup2(output_fd, STDERR_FILENO);
-		execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
-		write(STDOUT_FILENO, "Status:500 Internal Servor Error\n", 33);
-	}
-	close(input_fd);
-	close(output_fd);
-	waitpid(-1, NULL, 0);
-	if (0 > (_cgi_output_fd = open("/tmp/cgi_output_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
-		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		return (_process_error(exchange));
-	}
-	WebServer::set_non_blocking(_cgi_output_fd);
-	return (SUCCESS);
 }
 
 int
@@ -705,6 +626,62 @@ Client::write_cgi_input(void) {
 }
 
 int
+Client::_create_cgi_child_process(void) {
+	pid_t	pid;
+
+	pid = fork();
+	while (pid == -1 && errno == EAGAIN)
+		pid = fork();
+	return (pid);
+}
+
+int
+Client::_handle_cgi(exchange_t &exchange) {
+	Request				&request(exchange.first);
+	Response			&response(exchange.second);
+	pid_t				pid;
+	int					input_fd;
+	int					output_fd;
+	CGIMetaVariables	mv(request);
+	CGIScriptArgs		args(request);
+
+	if (0 > (input_fd = open("/tmp/cgi_input_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	if (0 > (output_fd = open("/tmp/cgi_output_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
+		close(input_fd);
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	if (-1 == (pid = _create_cgi_child_process())) {
+		close(input_fd);
+		close(output_fd);
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	if (!pid) {
+		dup2(input_fd, STDIN_FILENO);
+		dup2(output_fd, STDOUT_FILENO);
+		dup2(output_fd, STDERR_FILENO);
+		execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
+		write(STDOUT_FILENO, "Status:500 Internal Servor Error\n", 33);
+		close(input_fd);
+		close(output_fd);
+		exit(EXIT_FAILURE);
+	}
+	close(input_fd);
+	close(output_fd);
+	waitpid(-1, NULL, 0);
+	if (0 > (_cgi_output_fd = open("/tmp/cgi_output_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	WebServer::set_non_blocking(_cgi_output_fd);
+	return (SUCCESS);
+}
+
+int
 Client::read_cgi_output(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
@@ -735,73 +712,6 @@ Client::read_cgi_output(void) {
 		return (_handle_cgi_response());
 	}
 	return (SUCCESS);
-}
-
-bool
-Client::_is_document_response(void) const {
-	return (cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE)
-			&& !_is_client_redirect_response_with_document());
-}
-
-bool
-Client::_is_local_redirection(const std::string &location) const {
-	return (!location.empty()
-			&& !location.compare(0, 1, "/"));
-}
-
-bool
-Client::_is_client_redirection(const std::string &location) const {
-	return (!location.empty()
-			&& std::string::npos != location.find(":")
-			&& std::isalpha(location[0]));
-}
-
-bool
-Client::_is_local_redirect_response(void) const {
-	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
-			&& _is_local_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
-			&& _cgi_response.get_headers().size == 1);
-}
-
-bool
-Client::_is_client_redirect_response(void) const {
-	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
-			&& _is_client_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
-			&& _cgi_response.get_headers().size() == 1);
-}
-
-bool
-Client::_is_client_redirect_response_with_document(void) const {
-	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
-			&& _is_client_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
-			&& _cgi_response.get_headers().key_exists(CGI_STATUS)
-			&& _is_redirection_status(_cgi_response.get_headers().get_unparsed_value(CGI_STATUS))
-			&& _cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE));
-}
-
-bool
-Client::_cgi_header_received(void) {
-	return (_cgi_response.get_status() == CGIResponse::START
-			&& !_cgi_headers_received()
-			&& ByteArray::npos != _cgi_output.find("\n"));
-}
-
-bool
-Client::_cgi_headers_received(void) {
-	return (_cgi_response.get_status() == CGIResponse::START
-			&& _cgi_output[0] == '\n');
-}
-
-bool
-Client::_cgi_body_received(void) {
-	return (_cgi_response.get_status() == CGIResponse::HEADERS_RECEIVED
-			&& _cgi_output.size() >= static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
-}
-
-bool
-Client::_cgi_body_expected(void) {
-	return (_cgi_response.get_type == DOCUMENT
-			|| _cgi_response.get_type == CLIENT_REDIRECT_DOC);
 }
 
 int
@@ -862,6 +772,73 @@ Client::_collect_cgi_body(void) {
 	_cgi_output.clear();
 }
 
+bool
+Client::_cgi_header_received(void) {
+	return (_cgi_response.get_status() == CGIResponse::START
+			&& !_cgi_headers_received()
+			&& ByteArray::npos != _cgi_output.find("\n"));
+}
+
+bool
+Client::_cgi_headers_received(void) {
+	return (_cgi_response.get_status() == CGIResponse::START
+			&& _cgi_output[0] == '\n');
+}
+
+bool
+Client::_cgi_body_received(void) {
+	return (_cgi_response.get_status() == CGIResponse::HEADERS_RECEIVED
+			&& _cgi_output.size() >= static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
+}
+
+bool
+Client::_cgi_body_expected(void) {
+	return (_cgi_response.get_type == DOCUMENT
+			|| _cgi_response.get_type == CLIENT_REDIRECT_DOC);
+}
+
+bool
+Client::_is_local_redirection(const std::string &location) const {
+	return (!location.empty()
+			&& !location.compare(0, 1, "/"));
+}
+
+bool
+Client::_is_client_redirection(const std::string &location) const {
+	return (!location.empty()
+			&& std::string::npos != location.find(":")
+			&& std::isalpha(location[0]));
+}
+
+bool
+Client::_is_document_response(void) const {
+	return (cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE)
+			&& !_is_client_redirect_response_with_document());
+}
+
+bool
+Client::_is_local_redirect_response(void) const {
+	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
+			&& _is_local_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
+			&& _cgi_response.get_headers().size == 1);
+}
+
+bool
+Client::_is_client_redirect_response(void) const {
+	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
+			&& _is_client_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
+			&& _cgi_response.get_headers().size() == 1);
+}
+
+bool
+Client::_is_client_redirect_response_with_document(void) const {
+	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
+			&& _is_client_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
+			&& _cgi_response.get_headers().key_exists(CGI_STATUS)
+			&& _is_redirection_status(_cgi_response.get_headers().get_unparsed_value(CGI_STATUS))
+			&& _cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE));
+}
+
 int
 Client::_handle_cgi_response(void) {
 	if (_cgi_response.get_type() == CGIResponse::LOCAL_REDIRECT)
@@ -872,6 +849,24 @@ Client::_handle_cgi_response(void) {
 		return (_handle_client_redirect_doc_cgi_response());
 	else
 		return (_handle_document_cgi_response());
+}
+
+int
+Client::_handle_local_redirect_cgi_response(void) {
+	std::cout << "local_redirect_cgi_response" << std::endl;
+	return (SUCCESS);
+}
+
+int
+Client::_handle_client_redirect_cgi_response(void) {
+	std::cout << "client_redirect_cgi_response" << std::endl;
+	return (SUCCESS);
+}
+
+int
+Client::_handle_client_redirect_doc_cgi_response(void) {
+	std::cout << "client_doc_redirect_cgi_response" << std::endl;
+	return (SUCCESS);
 }
 
 int
@@ -893,12 +888,14 @@ Client::_handle_document_cgi_response(void) {
 		response.get_status_line().set_status_code(OK);
 	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
-	if (_cgi_response.get_body().empty()) {
-		response.get_headers().insert(CONTENT_LENGTH, "0");
-	}
 	response.set_body(_cgi_response.get_body());
-	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
+	if (_cgi_response.get_body().empty())
+		response.get_headers().insert(CONTENT_LENGTH, "0");
+	_cgi_response.reset();
+	if (ResponseHandling::process_response_headers(exchange) == FAILURE) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
+	}
 	return (_build_output(exchange));
 }
 
