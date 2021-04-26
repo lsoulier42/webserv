@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 08:35:05 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 10:06:24 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -716,21 +716,23 @@ Client::read_cgi_output(void) {
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
 		_cgi_output.clear();
+		_cgi_response.reset();
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
 	}
-	if (ret == 0) {
-		close(_cgi_output_fd);
-		_cgi_output_fd = 0;
-		return (_cgi_output_parsing());
-	}
 	_cgi_output = (_cgi_output + ByteArray(buffer, ret));
-	if (SUCCESS != _cgi_output_parsing()) {
+	if (SUCCESS != _cgi_output_parsing(ret)) {
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
 		_cgi_output.clear();
+		_cgi_response.reset();
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
+	}
+	if (_cgi_response.get_status == CGIResponse::RESPONSE_RECEIVED) {
+		close(_cgi_output_fd);
+		_cgi_output_fd = 0;
+		return (_handle_cgi_response());
 	}
 	return (SUCCESS);
 }
@@ -810,6 +812,7 @@ Client::_cgi_output_parsing(int ret) {
 		return (FAILURE);
 	if (_cgi_body_received() || ret == 0)
 		_collect_cgi_body();
+	return (SUCCESS);
 }
 
 void
@@ -829,38 +832,55 @@ Client::_collect_cgi_header(void) {
 int
 Client::_check_cgi_headers(void) {
 	_cgi_output.pop_front(_cgi_output.find("\n") + 1);
-	if (
-	_cgi_response.set_status(CGIResponse::HEADERS_RECEIVED);
+	if (_is_local_redirect_response())
+		_cgi_response.set_type(CGIResponse::LOCAL_REDIRECT);
+	else if (_is_client_redirect_response())
+		_cgi_response.set_type(CGIResponse::CLIENT_REDIRECT);
+	else if (_is_client_redirect_response_with_document())
+		_cgi_response.set_type(CGIResponse::CLIENT_REDIRECT_DOC);
+	else if (_is_document_response())
+		_cgi_response.set_type(CGIResponse::DOCUMENT);
+	else
+		return (FAILURE);
+	if (_cgi_body_expected())
+		_cgi_response.set_status(CGIResponse::HEADERS_RECEIVED);
+	else {
+		_cgi_output.clear();
+		_cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
+	}
+	return (SUCCESS);
 }
 
 void
 Client::_collect_cgi_body(void) {
 	_cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
-	_cgi_response.set_body(_cgi_output);
+	if (_cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)) {
+		size_t	body_size(static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
+		_cgi_response.set_body(ByteArray(_cgi_output.c_str(), body_size));
+	} else
+		_cgi_response.set_body(_cgi_output);
 	_cgi_output.clear();
 }
 
-/*
 int
-Client::_cgi_output_parsing(void) {
-	CGIResponse	cgi_response;
-
-	while (ByteArray::npos != _cgi_output.find("\n")
-			&& _cgi_output[0] != '\n')
-		_collect_cgi_header(cgi_response);
-	_cgi_output.pop_front(_cgi_output.find("\n") + 1);
-	cgi_response.set_body(_cgi_output);
-	_cgi_output.clear();
-	return (_build_response_from_cgi_response(cgi_response));
+Client::_handle_cgi_response(void) {
+	if (_cgi_response.get_type() == CGIResponse::LOCAL_REDIRECT)
+		return (_handle_local_redirect_cgi_response());
+	else if (_cgi_response.get_type() == CGIResponse::CLIENT_REDIRECT)
+		return (_handle_client_redirect_cgi_response());
+	else if (_cgi_response.get_type() == CGIResponse::CLIENT_REDIRECT_DOC)
+		return (_handle_client_redirect_doc_cgi_response());
+	else
+		return (_handle_document_cgi_response());
 }
-*/
 
 int
-Client::_build_response_from_cgi_response(const CGIResponse &cgi_response) {
+Client::_handle_document_cgi_response(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
-	if (cgi_response.get_headers().key_exists(CGI_STATUS)) {
-		std::string	status_line(cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
+
+	if (_cgi_response.get_headers().key_exists(CGI_STATUS)) {
+		std::string	status_line(_cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
 		std::string status_code(status_line.substr(0, status_line.find(" ")));
 		int			status_code_int(std::atol(status_code.c_str()));
 		size_t		i(0);
@@ -871,14 +891,12 @@ Client::_build_response_from_cgi_response(const CGIResponse &cgi_response) {
 	}
 	else
 		response.get_status_line().set_status_code(OK);
-	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
+	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
-	//TODO:: virer ca
-	if (cgi_response.get_body().empty()) {
+	if (_cgi_response.get_body().empty()) {
 		response.get_headers().insert(CONTENT_LENGTH, "0");
 	}
-	response.set_body(cgi_response.get_body());
-	ResponseHandling::generate_basic_headers(exchange);
+	response.set_body(_cgi_response.get_body());
 	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 		return (_process_error(exchange));
 	return (_build_output(exchange));
