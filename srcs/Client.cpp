@@ -514,8 +514,8 @@ Client::_is_cgi_related(const Request &request) {
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	path(request_target.substr(0, request_target.find("?")));
 	std::string extension(request.get_location()->get_cgi_extension());
-	return (path.find(".") != std::string::npos && !extension.empty()
-				&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
+	return (path.find('.') != std::string::npos && !extension.empty()
+		&& !(path.substr(path.rfind('.'))).compare(0, extension.size(), extension));
 }
 
 int
@@ -827,10 +827,8 @@ Client::_handle_document_cgi_response(void) {
 	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
 	response.set_body(_cgi_response.get_body());
-	if (_cgi_response.get_body().empty())
-		response.get_headers().insert(CONTENT_LENGTH, "0");
 	_cgi_response.reset();
-	if (ResponseHandling::process_response_headers(exchange) == FAILURE) {
+	if (ResponseHandling::process_cgi_response_headers(exchange) == FAILURE) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
 	}

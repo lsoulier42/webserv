@@ -29,7 +29,6 @@ ResponseHandling::_pick_content_type(Client::exchange_t &exchange) {
 	std::string extension;
 	size_t extension_point_pos;
 
-
 	extension_point_pos = path.find_last_of('.');
 	if (extension_point_pos != std::string::npos) {
 		extension = path.substr(extension_point_pos);
@@ -56,9 +55,31 @@ ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 	_pick_content_type(exchange);
 	for (size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (!(response_handlers[i])(exchange))
-			return FAILURE;
+				return FAILURE;
+		}
+	return (SUCCESS);
+}
+
+int ResponseHandling::process_cgi_response_headers(Client::exchange_t &exchange) {
+	Response& response = exchange.second;
+	size_t response_header_size = 0;
+	std::stringstream ss;
+	header_name_t cgi_headers[] = {CONTENT_LANGUAGE, DATE, SERVER,
+		TRANSFER_ENCODING, WWW_AUTHENTICATE, TOTAL_HEADER_NAMES};
+	int (*response_handlers[])(Client::exchange_t&) = { &ResponseHandling::_response_content_language_handler,
+		&ResponseHandling::_response_date_handler, &ResponseHandling::_response_server_handler,
+		&ResponseHandling::_response_transfer_encoding_handler,	&ResponseHandling::_response_www_authenticate_handler };
+
+	response.set_content_type(response.get_headers().get_unparsed_value(CONTENT_TYPE));
+	ss << response.get_body().size();
+	response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	while (cgi_headers[response_header_size] != TOTAL_HEADER_NAMES)
+		response_header_size++;
+	for (size_t i = 0; i < response_header_size; i++) {
+		if (!response.get_headers().key_exists(cgi_headers[i]) && !(response_handlers[i])(exchange))
+			return (FAILURE);
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -75,7 +96,7 @@ ResponseHandling::_response_allow_handler(Client::exchange_t &exchange) {
 		method_output = method_output.substr(0, method_output.size() - 1);
 		response.get_headers().insert(ALLOW, method_output);
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 
@@ -157,7 +178,7 @@ ResponseHandling::_response_content_language_handler(Client::exchange_t &exchang
 		}
 		response.get_headers().insert(CONTENT_LANGUAGE, language);
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -170,7 +191,7 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 	if (request.get_request_line().get_method() == PUT) {
 		ss << response.get_body().size();
 		response.get_headers().insert(CONTENT_LENGTH, ss.str());
-		return SUCCESS;
+		return (SUCCESS);
 	}
 	if (stat(response.get_target_path().c_str(), &buf) != -1) {
 		if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
@@ -180,7 +201,7 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 		ss << buf.st_size;
 		response.get_headers().insert(CONTENT_LENGTH, ss.str());
 	}
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 int
@@ -192,7 +213,7 @@ ResponseHandling::_response_content_location_handler(Client::exchange_t &exchang
 
 	if (response.get_status_line().get_status_code() < BAD_REQUEST)
 		response.get_headers().insert(CONTENT_LOCATION, location_str);
-	return SUCCESS;
+	return (SUCCESS);
 }
 
 bool
