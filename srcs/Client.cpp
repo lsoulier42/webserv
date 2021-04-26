@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 11:40:46 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 12:54:19 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ Client::Client(void) :
 	_output(),
 	_cgi_input(),
 	_cgi_output(),
+	_cgi_response(),
 	_file_write_str(),
 	_exchanges(),
 	_closing(false),
@@ -50,6 +51,7 @@ Client::Client(int sd, struct sockaddr addr, socklen_t socket_len,
 	_output(),
 	_cgi_input(),
 	_cgi_output(),
+	_cgi_response(),
 	_file_write_str(),
 	_exchanges(),
 	_closing(false),
@@ -68,6 +70,7 @@ Client::Client(const Client &x) :
 	_output(x._output),
 	_cgi_input(x._cgi_input),
 	_cgi_output(x._cgi_output),
+	_cgi_response(x._cgi_response),
 	_file_write_str(x._file_write_str),
 	_exchanges(x._exchanges),
 	_closing(x._closing),
@@ -87,6 +90,7 @@ Client
 		_output = x._output;
 		_cgi_input = x._cgi_input;
 		_cgi_output = x._cgi_output;
+		_cgi_response = x._cgi_response;
 		_file_write_str = x._file_write_str;
 		_closing = x._closing;
 		_connection_refused = x._connection_refused;
@@ -148,13 +152,10 @@ Client::read_socket(void) {
 		_closing = true;
 		return (FAILURE);
 	}
-//	std::cout << ByteArray(buffer, ret);
 	_input.append(buffer, ret);
 	RequestParsing::parsing(*this);
-	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
-//		std::cout << "the resquest is going to be processed." << std::endl << std::endl;
+	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
-	}
 	return (SUCCESS);
 }
 
@@ -170,7 +171,7 @@ Client::write_socket(void) {
 //	std::cout << ByteArray(_output.c_str(), write_return);
 	_output.pop_front(write_return);
 	if (_output.empty()) {
-		//std::cout << "end of response." << std::endl;
+//		std::cout << "end of response." << std::endl;
 		_exchanges.pop_front();
 		if (_closing)
 			return (FAILURE);
@@ -191,7 +192,6 @@ Client::_process(exchange_t &exchange) {
 		&Client::_process_DELETE, &Client::_process_CONNECT,
 		&Client::_process_OPTIONS, &Client::_process_TRACE};
 
-	request.get_headers().render();
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE) {
@@ -583,9 +583,11 @@ Client::_send_debug_str(const std::string& str) const {
 
 bool
 Client::_is_cgi_related(const Request &request) {
-	std::string	path(_build_cgi_script_path(request));
+	std::string	request_target(request.get_request_line().get_request_target());
+	std::string	path(request_target.substr(0, request_target.find("?")));
+	std::string extension(request.get_location()->get_cgi_extension());
 	return (path.find(".") != std::string::npos
-				&& path.substr(path.rfind(".")) == request.get_location()->get_cgi_extension());
+				&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
 }
 
 int
@@ -613,6 +615,7 @@ Client::write_cgi_input(void) {
 	if (ret < 0) {
 		close(_cgi_input_fd);
 		_cgi_input_fd = 0;
+		_cgi_input.clear();
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
 	}
@@ -678,6 +681,8 @@ Client::_handle_cgi(exchange_t &exchange) {
 		return (_process_error(exchange));
 	}
 	WebServer::set_non_blocking(_cgi_output_fd);
+	_cgi_output.clear();
+	_cgi_response.reset();
 	return (SUCCESS);
 }
 
@@ -706,7 +711,7 @@ Client::read_cgi_output(void) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
 	}
-	if (_cgi_response.get_status == CGIResponse::RESPONSE_RECEIVED) {
+	if (_cgi_response.get_status() == CGIResponse::RESPONSE_RECEIVED) {
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
 		return (_handle_cgi_response());
@@ -788,50 +793,58 @@ Client::_cgi_headers_received(void) {
 bool
 Client::_cgi_body_received(void) {
 	return (_cgi_response.get_status() == CGIResponse::HEADERS_RECEIVED
+			&& _cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)
 			&& _cgi_output.size() >= static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
 }
 
 bool
 Client::_cgi_body_expected(void) {
-	return (_cgi_response.get_type == DOCUMENT
-			|| _cgi_response.get_type == CLIENT_REDIRECT_DOC);
+	return (_cgi_response.get_type() == CGIResponse::DOCUMENT
+			|| _cgi_response.get_type() == CGIResponse::CLIENT_REDIRECT_DOC);
 }
 
 bool
-Client::_is_local_redirection(const std::string &location) const {
+Client::_is_local_redirection(const std::string &location) {
 	return (!location.empty()
 			&& !location.compare(0, 1, "/"));
 }
 
 bool
-Client::_is_client_redirection(const std::string &location) const {
+Client::_is_client_redirection(const std::string &location) {
 	return (!location.empty()
 			&& std::string::npos != location.find(":")
 			&& std::isalpha(location[0]));
 }
 
 bool
-Client::_is_document_response(void) const {
-	return (cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE)
+Client::_is_redirection_status(const std::string &status_line) {
+	std::string status_code(status_line.substr(0, status_line.find(" ")));
+	int			status_code_int(std::atol(status_code.c_str()));
+	return (Syntax::is_redirection_code(status_code_int));
+}
+
+bool
+Client::_is_document_response(void) {
+	return (_cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE)
 			&& !_is_client_redirect_response_with_document());
 }
 
 bool
-Client::_is_local_redirect_response(void) const {
+Client::_is_local_redirect_response(void) {
 	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
 			&& _is_local_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
-			&& _cgi_response.get_headers().size == 1);
+			&& _cgi_response.get_headers().size() == 1);
 }
 
 bool
-Client::_is_client_redirect_response(void) const {
+Client::_is_client_redirect_response(void) {
 	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
 			&& _is_client_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
 			&& _cgi_response.get_headers().size() == 1);
 }
 
 bool
-Client::_is_client_redirect_response_with_document(void) const {
+Client::_is_client_redirect_response_with_document(void) {
 	return (_cgi_response.get_headers().key_exists(CGI_LOCATION)
 			&& _is_client_redirection(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION))
 			&& _cgi_response.get_headers().key_exists(CGI_STATUS)

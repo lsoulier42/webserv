@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:39:01 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 11:23:16 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 12:48:16 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,12 +36,12 @@ CGIResponse
 }
 
 CGIResponse::status_t
-CGIResponse::get_status(void) {
+CGIResponse::get_status(void) const {
 	return (_status);
 }
 
 CGIResponse::type_t
-CGIResponse::get_type(void) {
+CGIResponse::get_type(void) const {
 	return (_type);
 }
 

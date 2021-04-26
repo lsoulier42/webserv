@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 11:36:15 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 12:47:34 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -171,6 +171,7 @@ class Client {
 		 */
 		bool _is_local_redirection(const std::string &location);
 		bool _is_client_redirection(const std::string &location);
+		bool _is_redirection_status(const std::string &status_line);
 		bool _is_document_response(void);
 		bool _is_local_redirect_response(void);
 		bool _is_client_redirect_response(void);
@@ -179,7 +180,7 @@ class Client {
 		/* Handling CGI responses
 		 */
 		int _handle_cgi_response(void);
-		int _handle_local_redirect_response(void);
+		int _handle_local_redirect_cgi_response(void);
 		int _handle_client_redirect_cgi_response(void);
 		int _handle_client_redirect_doc_cgi_response(void);
 		int _handle_document_cgi_response(void);
