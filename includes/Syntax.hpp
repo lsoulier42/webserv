@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:42 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/19 03:23:58 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 09:55:22 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,6 +141,7 @@ enum header_name_t {
 
 enum cgi_header_name_t {
 	CGI_CONTENT_TYPE,
+	CGI_CONTENT_LENGTH,
 	CGI_LOCATION,
 	CGI_STATUS
 };

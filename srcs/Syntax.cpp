@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:25 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/23 12:21:01 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/26 09:55:00 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -115,6 +115,7 @@ Syntax::headers_tab[] = {
 const Syntax::cgi_header_tab_entry_t
 Syntax::cgi_headers_tab[] = {
 	{CGI_CONTENT_TYPE, "Content-Type"},
+	{CGI_CONTENT_LENGTH, "Content-Length"},
 	{CGI_LOCATION, "Location"},
 	{CGI_STATUS, "Status"}
 };
