@@ -36,7 +36,7 @@
 # include "ConfigParsing.hpp"
 # include "Debugger.hpp"
 
-# define DEFAULT_MAX_CONNECTION 10
+# define DEFAULT_MAX_CONNECTION 128
 # define READ 0
 # define WRITE 1
 

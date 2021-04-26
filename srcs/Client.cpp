@@ -16,7 +16,7 @@
 #include "WebServer.hpp"
 #include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
-const size_t	Client::_buffer_size(65536);
+const size_t	Client::_buffer_size(32000);
 
 Client::Client(void) :
 	_sd(),
@@ -145,10 +145,11 @@ Client::read_socket(void) {
 	if (_connection_refused)
 		return(_process_connection_refused());
 	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
-		if (0 == ret)
-			std::cerr << "the client closed the connection." << std::endl;
+		if (0 == ret) {
+			DEBUG_COUT("the client closed the connection.");
+		}
 		else
-			std::cerr << "error during reading the socket: " << strerror(errno) << std::endl;
+			DEBUG_COUT("error during reading the socket: ");
 		_closing = true;
 		return (FAILURE);
 	}
