@@ -16,8 +16,11 @@
 #include "Request.hpp"
 #include "Client.hpp"
 
+int Request::_indexes = 0;
+
 Request::Request(void) :
 	AHTTPMessage(),
+	_id(_indexes++),
 	_status(START),
 	_request_line(),
 	_virtual_server(),
@@ -26,6 +29,7 @@ Request::Request(void) :
 
 Request::Request(const Client &client) :
 	AHTTPMessage(),
+	_id(_indexes++),
 	_status(START),
 	_request_line(),
 	_virtual_server(client._virtual_servers.front()),
@@ -34,6 +38,7 @@ Request::Request(const Client &client) :
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
+	_id(_indexes++),
 	_status(x._status),
 	_request_line(x._request_line),
 	_virtual_server(x._virtual_server),
@@ -45,6 +50,7 @@ Request::~Request(void) {}
 Request
 &Request::operator=(const Request &x) {
 	AHTTPMessage::operator=(x);
+	_id = _indexes++;
 	_status = x._status;
 	_request_line = x._request_line;
 	_virtual_server = x._virtual_server;
@@ -170,5 +176,22 @@ Request::get_raw(void) const {
 void
 Request::set_raw(const ByteArray& raw) {
 	_raw = raw;
+}
+
+char*
+Request::get_ip_addr() const {
+	struct sockaddr not_const = _client_addr;
+	struct sockaddr_in *client_addr_cast;
+
+	client_addr_cast = reinterpret_cast<struct sockaddr_in*>(&not_const);
+	return (inet_ntoa(client_addr_cast->sin_addr));
+}
+
+std::string
+Request::get_ident() const {
+	std::stringstream ss;
+
+	ss << get_ip_addr() << "[request no:" << _id << "]";
+	return (ss.str());
 }
 

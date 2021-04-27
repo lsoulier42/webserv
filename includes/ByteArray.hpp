@@ -77,6 +77,7 @@ class ByteArray {
 		void pop_front();
 		void pop_front(size_t len);
 		void resize( size_type count );
+		void reserve (size_type count );
 
 
 		const char* c_str() const;

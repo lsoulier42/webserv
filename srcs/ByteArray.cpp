@@ -38,16 +38,12 @@ ByteArray::ByteArray() : _byte_array() {
 
 }
 
-ByteArray::ByteArray(const std::string& to_add) {
-	_byte_array.reserve(to_add.size());
-	_byte_array.insert(begin(), to_add.begin(), to_add.end());
+ByteArray::ByteArray(const std::string& to_add) : _byte_array(to_add.begin(), to_add.end()) {
+
 }
 
-ByteArray::ByteArray(const char* to_add, size_t len) {
-	_byte_array.reserve(len);
-	for(size_t i = 0; i < len; i++) {
-		_byte_array.push_back(to_add[i]);
-	}
+ByteArray::ByteArray(const char* to_add, size_t len) : _byte_array(to_add, to_add + len) {
+
 }
 
 ByteArray::ByteArray(const ByteArray& src) {
@@ -159,28 +155,17 @@ ByteArray::push_back(const char& c) {
 
 void
 ByteArray::append(const char* to_add, size_t len) {
-	size_t size = this->size(), new_len;
-	new_len = size == 0 ? len : len + size;
-	_byte_array.reserve(new_len);
-	for(size_t i = 0; i < len; i++)
-		_byte_array.push_back(to_add[i]);
+	_byte_array.insert(end(), to_add, to_add + len);
 }
 
 void
 ByteArray::append(const std::string& to_add) {
-	size_t size = this->size(), new_len;
-	new_len = size == 0 ? to_add.size() : to_add.size() + size;
-	_byte_array.reserve(new_len);
 	_byte_array.insert(end(), to_add.begin(), to_add.end());
 }
 
 void
 ByteArray::append(const ByteArray& to_add) {
-	size_t current_size = this->size(), to_add_size = to_add.size(), new_len;
-	new_len = current_size == 0 ? to_add_size : to_add_size + current_size;
-	_byte_array.reserve(new_len);
-	for(size_t i = 0; i < to_add_size; i++)
-		_byte_array.push_back(to_add[i]);
+	_byte_array.insert(end(), to_add.begin(), to_add.end());
 }
 
 void
@@ -494,4 +479,9 @@ bool
 ByteArray::ends_with( const std::string& str ) const {
 	size_t str_size = str.size();
 	return (memcmp(str.c_str(), this->c_str() + size() - str_size, str_size) == 0);
+}
+
+void
+ByteArray::reserve(size_type count) {
+	_byte_array.reserve(count);
 }
