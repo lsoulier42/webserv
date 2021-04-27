@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 12:47:34 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 16:15:30 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,6 @@
 # include "CGIMetaVariables.hpp"
 # include "CGIScriptArgs.hpp"
 # include "CGIResponse.hpp"
-# include "Path.hpp"
 
 # ifdef __APPLE__
 #  define st_mtim st_mtimespec
@@ -51,6 +50,7 @@ class Client {
 
 	friend class RequestParsing;
 	friend class Request;
+	friend class CGI;
 
 	public:
 
@@ -72,9 +72,9 @@ class Client {
 		
 		int read_socket(void);
 		int write_socket(void);
-		int read_file(void);
 		int read_cgi_output(void);
 		int write_cgi_input(void);
+		int read_file(void);
 		int	write_file(void);
 
 	private:

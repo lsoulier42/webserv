@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 11:36:14 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 16:10:54 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -197,7 +197,7 @@ Client::_process(exchange_t &exchange) {
 		return (_process_error(exchange));
 	}
 	if (_is_cgi_related(request))
-		return (_prepare_cgi(exchange));
+		return (_cgi_init(exchange));
 	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
 }
 
@@ -509,6 +509,7 @@ Client::_send_debug_str(const std::string& str) const {
 	send(_sd, to_send.c_str(), size, 0);
 }
 
+/*
 bool
 Client::_is_cgi_related(const Request &request) {
 	std::string	request_target(request.get_request_line().get_request_target());
@@ -517,7 +518,20 @@ Client::_is_cgi_related(const Request &request) {
 	return (path.find(".") != std::string::npos && !extension.empty()
 				&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
 }
+*/
 
+int
+Client::_cgi_init(exchange_t &exchange) {
+	Response	&response(exchange.second);
+
+	if (SUCCESS != CGI::init(*this)) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	return (SUCCESS);
+}
+
+/*
 int
 Client::_prepare_cgi(exchange_t &exchange) {
 	Request		&request(exchange.first);
@@ -531,7 +545,21 @@ Client::_prepare_cgi(exchange_t &exchange) {
 	_cgi_input = request.get_body();
 	return (SUCCESS);
 }
+*/
 
+int
+Client::write_cgi_input(void) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+
+	if (SUCCESS != CGI::write_input(*this)) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	return (SUCCESS);
+}
+
+/*
 int
 Client::write_cgi_input(void) {
 	exchange_t	&exchange(_exchanges.front());
@@ -555,6 +583,7 @@ Client::write_cgi_input(void) {
 	}
 	return (SUCCESS);
 }
+*/
 
 int
 Client::_create_cgi_child_process(void) {
