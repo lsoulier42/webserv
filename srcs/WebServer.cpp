@@ -65,6 +65,7 @@ WebServer::_accept_connection(const Server& server) {
 	max_client_reached = _clients.size() >= _max_connection;
 	_clients.push_back(Client(connection, client_addr, client_socket_len,
 		VirtualServer::build_virtual_server_list(_virtual_servers, server.get_virtual_server()), max_client_reached));
+	DEBUG_COUT("Connection successfully established with " << _clients.front().get_ip_addr());
 }
 
 void
@@ -82,11 +83,9 @@ WebServer::routine(void) {
 	int nb_sockets;
 
 	if (_servers.empty()) {
-		std::cout << "No server has been set up yet" << std::endl;
+		DEBUG_COUT("No server has been set up yet");
 		exit(EXIT_FAILURE);
 	}
-
-	std::cout << PROGRAM_VERSION << " has started." << std::endl;
 	while(!sig_value) {
 		this->_build_select_list();
 		timeout.tv_sec = 0;
@@ -104,7 +103,7 @@ WebServer::routine(void) {
 			this->_write_socks();
 		}
 	}
-	std::cout << PROGRAM_VERSION << " has finished." << std::endl;
+	DEBUG_COUT(PROGRAM_VERSION << " is exiting majestically.");
 	this->_close_sockets();
 }
 
@@ -114,20 +113,16 @@ WebServer::set_non_blocking(int file_descriptor) {
 
 	opts = fcntl(file_descriptor, F_GETFD);
 	if (opts < 0) {
-		std::cerr << "Fcntl error with F_GETFD : ";
-		std::cerr << std::strerror(errno) << std::endl;
+		DEBUG_COUT("Fcntl error with F_GETFD : " << std::strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	opts = (opts | O_NONBLOCK);
 	if (fcntl(file_descriptor, F_SETFL, opts) < 0) {
-		std::cerr << "Fcntl error with F_SETFL : ";
-		std::cerr << std::strerror(errno) << std::endl;
+		DEBUG_COUT("Fcntl error with F_SETFL : " << std::strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
 
-/* function to build/set READ and WRITE fds that select() will use. Clears all at the beginning and
-start rebuilding one by one on each. Is called on each routine while loop instance. */
 void
 WebServer::_build_select_list() {
 	FD_ZERO(&_sockets_list[READ]);
@@ -181,7 +176,7 @@ WebServer::_read_socks() {
 	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++) {
 		if (FD_ISSET(it->get_fd(), &_sockets_list[READ]))
-			it->read_file();
+			it->read_target_resource();
 	}
 	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
 		if (FD_ISSET(it->get_cgi_output_fd(), &_sockets_list[READ]))
@@ -205,7 +200,7 @@ WebServer::_write_socks() {
 				_locked_files.insert(std::make_pair(it->get_target_path(), it->get_file_write_fd()));
 			if (file == _locked_files.end()
 				|| (file != _locked_files.end() && file->second == it->get_file_write_fd())) {
-				it->write_file();
+				it->write_target_resource();
 				if (it->get_file_write_fd() == 0)
 					_locked_files.erase(it->get_target_path());
 			}
@@ -220,7 +215,7 @@ WebServer::parsing(const std::string &filepath) {
 	if (!ConfigParsing::check_config_file(filepath, _config_file))
 		return (FAILURE);
 	if (!ConfigParsing::check_main_bloc(_config_file, _virtual_servers)) {
-		std::cerr << "Error during config file parsing." << std::endl;
+		DEBUG_COUT("Error during config file parsing.");
 		_config_file.close();
 		return (FAILURE);
 	}
@@ -253,10 +248,12 @@ int main(int argc, char **argv) {
 				filepath = argument;
 		}
 	}
+	DEBUG_COUT(PROGRAM_VERSION << " has started.");
 	if (filepath.empty())
 		filepath = "conf/default.conf";
 	if (!webserv.parsing(filepath))
 		return EXIT_FAILURE;
+	DEBUG_COUT("Config file parsing went well");
 	webserv.setup_servers();
 	webserv.routine();
 	return (EXIT_SUCCESS);

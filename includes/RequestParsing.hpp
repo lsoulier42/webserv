@@ -20,6 +20,7 @@
 # include "Response.hpp"
 # include "VirtualServer.hpp"
 # include "Syntax.hpp"
+# include "Debugger.hpp"
 
 class RequestParsing {
 

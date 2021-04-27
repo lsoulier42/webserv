@@ -72,10 +72,13 @@ class Client {
 		
 		int read_socket(void);
 		int write_socket(void);
-		int read_file(void);
+		int read_target_resource(void);
 		int read_cgi_output(void);
 		int write_cgi_input(void);
-		int	write_file(void);
+		int	write_target_resource(void);
+
+		char *get_ip_addr() const;
+		std::string get_ident() const;
 
 	private:
 
@@ -98,12 +101,6 @@ class Client {
 		std::list<exchange_t> _exchanges;
 		bool _closing;
 		bool _connection_refused;
-
-		/* debug function
-		 *
-		 *
-		 */
-		void _send_debug_str(const std::string& str) const;
 
 		/* Response sending
 		 *

@@ -29,12 +29,17 @@ RequestParsing::parsing(Client &client) {
 		Request				&request(current_exchange.first);
 		Response			&response(current_exchange.second);
 
-		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input)))
+		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input))) {
+			DEBUG_COUT("Request line parsing failure (" << request.get_ident()<< ") : " << Syntax::status_codes_tab[(status_code_t)ret].reason_phrase);
 			_failure(response, (status_code_t)ret);
+		}
+
 		while (_header_received(request, input))
 			_collect_header(request, input);
-		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request)))
-			_failure(response, (status_code_t)ret);
+		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request))) {
+			DEBUG_COUT("Headers parsing failure (" << request.get_ident() << ") : " << Syntax::status_codes_tab[(status_code_t)ret].reason_phrase);
+			_failure(response, (status_code_t) ret);
+		}
 		if (_body_received(request, input))
 			_collect_body(request, input);
 		while (_trailer_received(request, input))
@@ -128,10 +133,12 @@ RequestParsing::_is_allowed_method(const std::list<std::string>& allowed_methods
 int
 RequestParsing::_collect_request_line_elements(Request &request, ByteArray &input) {
 	size_t						end_rl(input.find("\r\n"));
-	std::vector<std::string> 	rl_elements = Syntax::split(input.substr(0, end_rl), " ");
+	std::string					request_line = input.substr(0, end_rl);
+	std::vector<std::string> 	rl_elements = Syntax::split(request_line, " ");
 	std::list<std::string>		allowed_methods;
 
 	request.set_status(Request::REQUEST_LINE_RECEIVED);
+	DEBUG_COUT("Request line received: \"" << request_line << "\" (" << request.get_ident() << ")");
 	if (rl_elements.size() != 3) {
 		input.pop_front(end_rl + 2);
 		return (BAD_REQUEST);
@@ -176,11 +183,13 @@ void
 RequestParsing::_collect_header(Request &request, ByteArray &input) {
 	size_t				col(0);
 	size_t				end_header(input.find("\r\n"));
+	std::string			header = input.substr(0, end_header);
 	header_t			current_header;
 
-	if (ByteArray::npos != (col = input.find_first_of(':'))) {
-		current_header.name = input.substr(0, col);
-		current_header.unparsed_value = Syntax::trim_whitespaces(input.substr(col + 1, (end_header - col - 1)));
+	if (ByteArray::npos != (col = header.find_first_of(':'))) {
+		DEBUG_COUT("Header received: \"" << header << "\"(" << request.get_ident() << ")");
+		current_header.name = header.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(header.substr(col + 1));
 		request.get_headers().insert(current_header);
 	}
 	request.get_raw() += input.sub_byte_array(0, end_header + 2);
@@ -249,7 +258,9 @@ int
 RequestParsing::_collect_body(Request &request, ByteArray &input) {
 	size_t		body_length(0);
 
+	DEBUG_COUT("Body received (" << request.get_ident() << ")");
 	if (_transfer_encoding_chunked(request)) {
+		DEBUG_COUT("Decoding chunked body (" << request.get_ident() << ")");
 		body_length = input.find("0\r\n\r\n") + 5;
 		request.set_body(_decode_chunked(input));
 	}

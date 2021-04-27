@@ -210,8 +210,9 @@ ResponseHandling::_response_content_location_handler(Client::exchange_t &exchang
 	Response& response = exchange.second;
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	location_str(request_target.substr(0, request_target.find('?')));
+	method_t method = request.get_request_line().get_method();
 
-	if (response.get_status_line().get_status_code() < BAD_REQUEST)
+	if (response.get_status_line().get_status_code() < BAD_REQUEST && (method == PUT || method == POST))
 		response.get_headers().insert(CONTENT_LOCATION, location_str);
 	return (SUCCESS);
 }

@@ -22,6 +22,7 @@
 # include <cerrno>
 # include <cstdlib>
 # include <unistd.h>
+# include <sstream>
 # include "WebServer.hpp"
 # include "VirtualServer.hpp"
 
