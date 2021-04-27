@@ -28,6 +28,7 @@ RequestParsing::parsing(Client &client) {
 		Client::exchange_t	&current_exchange(client._exchanges.back());
 		Request				&request(current_exchange.first);
 		Response			&response(current_exchange.second);
+		bool				chunked = _transfer_encoding_chunked(request);
 
 		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input))) {
 			DEBUG_COUT("Request line parsing failure (" << request.get_ident()<< ") : " << Syntax::status_codes_tab[(status_code_t)ret].reason_phrase);
@@ -40,7 +41,9 @@ RequestParsing::parsing(Client &client) {
 			DEBUG_COUT("Headers parsing failure (" << request.get_ident() << ") : " << Syntax::status_codes_tab[(status_code_t)ret].reason_phrase);
 			_failure(response, (status_code_t) ret);
 		}
-		if (_body_received(request, input))
+		if (request.get_status() == Request::HEADERS_RECEIVED && chunked)
+			_collect_chunked(request, input);
+		if (_body_received(request, input) && !chunked)
 			_collect_body(request, input);
 		while (_trailer_received(request, input))
 			_collect_header(request, input);
@@ -49,6 +52,37 @@ RequestParsing::parsing(Client &client) {
 		if (request.get_status() != Request::REQUEST_RECEIVED)
 			return ;
 
+	}
+}
+
+void
+RequestParsing::_collect_chunked(Request &request, ByteArray &input) {
+	std::stringstream ss;
+	size_t size_pos;
+	static size_t line_len = 0;
+
+	while ((size_pos = input.find("\r\n")) != ByteArray::npos) {
+		if (line_len == 0) {
+			ss.clear();
+			ss << std::hex << input.substr(0, size_pos);
+			ss >> line_len;
+			if (line_len == 0 && input.size() == 5) {
+				input.pop_front(size_pos + 4);
+				if (_trailer_expected(request))
+					request.set_status(Request::BODY_RECEIVED);
+				else
+					request.set_status(Request::REQUEST_RECEIVED);
+				return ;
+			} else if (line_len == 0) {
+				return ;
+			}
+			input.pop_front(size_pos + 2);
+		}
+		if (input.size() < line_len + 2)
+			return ;
+		request.get_body().append(input.sub_byte_array(0, line_len));
+		input.pop_front(line_len + 2);
+		line_len = 0;
 	}
 }
 
@@ -231,44 +265,14 @@ RequestParsing::_check_trailer(Request &request, ByteArray &input) {
 	return (SUCCESS);
 }
 
-ByteArray
-RequestParsing::_decode_chunked(const ByteArray& input) {
-	size_t end_l, line_nb = 0, next_line_len = -1;
-	std::stringstream ss;
-	ByteArray parsed_input = input, to_return, next_line_len_str;
-
-	while (next_line_len > 0) {
-		if (line_nb % 2 == 0) {
-			end_l = parsed_input.find("\r\n");
-			next_line_len_str = parsed_input.sub_byte_array(0, end_l);
-			ss.clear();
-			ss << std::hex << next_line_len_str;
-			ss >> next_line_len;
-		} else {
-			to_return += parsed_input.sub_byte_array(0, next_line_len);
-			end_l = next_line_len;
-		}
-		parsed_input.pop_front(end_l + 2);
-		line_nb++;
-	}
-	return (to_return);
-}
-
 int
 RequestParsing::_collect_body(Request &request, ByteArray &input) {
 	size_t		body_length(0);
 
 	DEBUG_COUT("Body received (" << request.get_ident() << ")");
-	if (_transfer_encoding_chunked(request)) {
-		DEBUG_COUT("Decoding chunked body (" << request.get_ident() << ")");
-		body_length = input.find("0\r\n\r\n") + 5;
-		request.set_body(_decode_chunked(input));
-	}
-	else if (request.get_headers().key_exists(CONTENT_LENGTH)) {
-		body_length = static_cast<unsigned long>(std::atol(
-			request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
-		request.set_body(ByteArray(input.substr(0, body_length).c_str()));
-	}
+	body_length = static_cast<unsigned long>(std::atol(
+		request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
+	request.set_body(ByteArray(input.substr(0, body_length)));
 	input.pop_front(body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);

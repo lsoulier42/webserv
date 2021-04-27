@@ -16,7 +16,7 @@
 #include "WebServer.hpp"
 #include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
-const size_t	Client::_buffer_size(65000);
+const size_t	Client::_buffer_size(1000000);
 
 Client::Client(void) :
 	_sd(),
@@ -176,6 +176,7 @@ Client::write_socket(void) {
 	}
 	_output.pop_front(write_return);
 	if (_output.empty()) {
+		DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
 		_exchanges.pop_front();
 		if (_closing)
 			return (FAILURE);
@@ -629,7 +630,8 @@ Client::read_cgi_output(void) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
 	}
-	_cgi_output = (_cgi_output + ByteArray(buffer, ret));
+	_cgi_output.append(buffer, ret);
+	//_cgi_output = (_cgi_output + ByteArray(buffer, ret));
 	if (SUCCESS != _cgi_output_parsing(ret)) {
 		DEBUG_COUT("Error during parsing of cgi output (" << request.get_ident() << ")");
 		close(_cgi_output_fd);
@@ -663,11 +665,13 @@ Client::_cgi_output_parsing(int ret) {
 
 void
 Client::_collect_cgi_header(void) {
+	Request				&request = _exchanges.front().first;
 	size_t				col(0);
 	size_t				end_header(_cgi_output.find("\n"));
 	header_t			current_header;
 
 	if (ByteArray::npos != (col = _cgi_output.find_first_of(':'))) {
+		DEBUG_COUT("CGI header received: \"" << _cgi_output.substr(0, end_header - 1) << "\" (" << request.get_ident() << ")");
 		current_header.name = _cgi_output.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output.substr(col + 1, (end_header - col - 1)));
 		_cgi_response.get_headers().insert(current_header);
@@ -699,7 +703,9 @@ Client::_check_cgi_headers(void) {
 
 void
 Client::_collect_cgi_body(void) {
+	Request &request = _exchanges.front().first;
 	_cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
+	DEBUG_COUT("CGI body received" << request.get_ident() << ")");
 	if (_cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)) {
 		size_t	body_size(static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
 		_cgi_response.set_body(ByteArray(_cgi_output.c_str(), body_size));

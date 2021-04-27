@@ -45,6 +45,7 @@ class RequestParsing {
 		static void _collect_header(Request &request, ByteArray &input_str);
 		static int _check_headers(Client &client, Request &request);
 		static int _check_trailer(Request &request, ByteArray &input_str);
+		static void _collect_chunked(Request &request, ByteArray &input);
 		static ByteArray _decode_chunked(const ByteArray& input);
 		static int _collect_body(Request &request, ByteArray &input_str);
 		static void _pick_virtual_server(Client &client, Request &request);
