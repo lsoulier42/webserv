@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 11:07:52 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 11:36:14 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@
 #include "WebServer.hpp"
 #include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
-const size_t	Client::_buffer_size(32000);
+const size_t	Client::_buffer_size(65000);
 
 Client::Client(void) :
 	_sd(),
@@ -514,8 +514,7 @@ Client::_is_cgi_related(const Request &request) {
 	std::string	request_target(request.get_request_line().get_request_target());
 	std::string	path(request_target.substr(0, request_target.find("?")));
 	std::string extension(request.get_location()->get_cgi_extension());
-	return (path.find(".") != std::string::npos
-				&& !extension.empty()
+	return (path.find(".") != std::string::npos && !extension.empty()
 				&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
 }
 

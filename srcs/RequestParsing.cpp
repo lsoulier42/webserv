@@ -190,18 +190,21 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 
 int
 RequestParsing::_check_headers(Client &client, Request &request) {
-	Headers	headers = request.get_headers();
-	int		ret = 0;
-	bool 	host_found = false;
+	Headers		headers = request.get_headers();
+	int			ret = 0;
+	bool 		host_found = false;
+	std::string	http_version = request.get_request_line().get_http_version();
 
+	if (!http_version.empty())
+		http_version = http_version.substr(5);
 	for(Headers::iterator it = headers.begin(); it != headers.end(); it++) {
-		if (it->unparsed_value.size() > _header_max_size ||
-			(host_found && it->name == Syntax::headers_tab[HOST].name))
+		if (it->unparsed_value.size() > _header_max_size
+			|| (host_found && it->name == Syntax::headers_tab[HOST].name && http_version == "1.0"))
 			ret = BAD_REQUEST;
 		if (it->name == Syntax::headers_tab[HOST].name)
 			host_found = true;
 	}
-	if (!host_found)
+	if (!host_found && http_version == "1.1")
 		ret = BAD_REQUEST;
 	if (ret == 0)
 		ret = _process_request_headers(client, request);
