@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 13:58:05 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 09:51:52 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,9 +154,12 @@ Client::read_socket(void) {
 		return (FAILURE);
 	}
 	_input.append(buffer, ret);
+	std::cout << "|r| " << ByteArray(buffer, ret);
 	RequestParsing::parsing(*this);
-	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
+	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
+		std::cout << "request complete" << std::endl;
 		return (_process(_exchanges.front()));
+	}
 	return (SUCCESS);
 }
 
@@ -515,6 +518,7 @@ Client::_is_cgi_related(const Request &request) {
 	std::string	path(request_target.substr(0, request_target.find("?")));
 	std::string extension(request.get_location()->get_cgi_extension());
 	return (path.find(".") != std::string::npos
+				&& !extension.empty()
 				&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
 }
 
@@ -596,7 +600,7 @@ Client::_handle_cgi(exchange_t &exchange) {
 		dup2(output_fd, STDOUT_FILENO);
 		dup2(output_fd, STDERR_FILENO);
 		execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
-		write(STDOUT_FILENO, "Status:500 Internal Servor Error\n", 33);
+		write(STDOUT_FILENO, "Status:500 Internal Servor Error\n\n", 34);
 		close(input_fd);
 		close(output_fd);
 		exit(EXIT_FAILURE);
@@ -622,6 +626,7 @@ Client::read_cgi_output(void) {
 	ssize_t		ret;
 
 	ret = read(_cgi_output_fd, buffer, _buffer_size);
+	std::cout << "|o| " << ByteArray(buffer, ret);
 	if (ret < 0) {
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
@@ -715,6 +720,7 @@ Client::_cgi_header_received(void) {
 bool
 Client::_cgi_headers_received(void) {
 	return (_cgi_response.get_status() == CGIResponse::START
+			&& _cgi_output.size() > 0
 			&& _cgi_output[0] == '\n');
 }
 
@@ -794,16 +800,44 @@ Client::_handle_cgi_response(void) {
 
 int
 Client::_handle_local_redirect_cgi_response(void) {
-	return (SUCCESS);
+	exchange_t	&exchange(_exchanges.front());
+	Request		&request(exchange.first);
+
+	request.get_request_line().set_request_target(_cgi_response.get_headers().get_unparsed_value(CGI_LOCATION));
+	request.set_status(Request::REQUEST_RECEIVED);
+	_cgi_response.reset();
+	return (_process(exchange));
 }
 
 int
 Client::_handle_client_redirect_cgi_response(void) {
-	return (SUCCESS);
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+
+	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
+		response.get_headers().insert(*it);
+	_cgi_response.reset();
+	response.get_status_line().set_status_code(FOUND);
+	return (_build_output(exchange));
 }
 
 int
 Client::_handle_client_redirect_doc_cgi_response(void) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+	std::string	status_line(_cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
+	std::string status_code(status_line.substr(0, status_line.find(" ")));
+	int			status_code_int(std::atol(status_code.c_str()));
+	size_t		i(0);
+
+	while (Syntax::status_codes_tab[i].code_index != TOTAL_STATUS_CODE
+		&& Syntax::status_codes_tab[i].code_int != status_code_int)
+		i++;
+	response.get_status_line().set_status_code(Syntax::status_codes_tab[i].code_index);
+	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
+		response.get_headers().insert(*it);
+	response.set_body(_cgi_response.get_body());
+	_cgi_response.reset();
 	return (SUCCESS);
 }
 
@@ -811,6 +845,7 @@ int
 Client::_handle_document_cgi_response(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
+	std::stringstream ss;
 
 	if (_cgi_response.get_headers().key_exists(CGI_STATUS)) {
 		std::string	status_line(_cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
@@ -827,8 +862,8 @@ Client::_handle_document_cgi_response(void) {
 	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
 	response.set_body(_cgi_response.get_body());
-	if (_cgi_response.get_body().empty())
-		response.get_headers().insert(CONTENT_LENGTH, "0");
+	ss << response.get_body().size();
+	response.get_headers().insert(CONTENT_LENGTH, ss.str());
 	_cgi_response.reset();
 	if (ResponseHandling::process_response_headers(exchange) == FAILURE) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
