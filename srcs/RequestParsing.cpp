@@ -51,7 +51,6 @@ RequestParsing::parsing(Client &client) {
 			_failure(response, (status_code_t)ret);
 		if (request.get_status() != Request::REQUEST_RECEIVED)
 			return ;
-
 	}
 }
 
@@ -72,6 +71,7 @@ RequestParsing::_collect_chunked(Request &request, ByteArray &input) {
 					request.set_status(Request::BODY_RECEIVED);
 				else
 					request.set_status(Request::REQUEST_RECEIVED);
+				DEBUG_COUT("Chunked body has been completely received (" << request.get_ident() << ")");
 				return ;
 			} else if (line_len == 0) {
 				return ;
@@ -492,14 +492,12 @@ RequestParsing::_request_host_parser(Request &request) {
 	std::vector<std::string> compounds;
 	std::list<std::string> definitive_value;
 
-	if (unparsed_header_value.find_first_of(WHITESPACES) != std::string::npos)
-		return (FAILURE);
 	compounds = Syntax::split(unparsed_header_value, ":");
 	if (compounds.size() > 2)
 		return (FAILURE);
 	definitive_value.push_back(compounds[0]);// host name
 	if (compounds.size() == 2)
-		definitive_value.push_back(compounds[1]); //port
+		definitive_value.push_back(Syntax::trim_whitespaces(compounds[1])); //port
 	request.get_headers().set_value(HOST, definitive_value);
 	return (SUCCESS);
 }
@@ -559,7 +557,7 @@ RequestParsing::_process_request_headers(Client &client, Request &request) {
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
 		if (headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
 			if ((*handler_functions[i])(request) == FAILURE)
-				return (FAILURE);
+				return (BAD_REQUEST);
 		}
 	}
 	return SUCCESS;
