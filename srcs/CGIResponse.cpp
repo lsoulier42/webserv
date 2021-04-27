@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:39:01 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 12:48:16 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 10:15:48 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,6 +95,11 @@ CGIResponse::CGIHeaders
 &CGIResponse::CGIHeaders::operator=(const CGIHeaders &x) {
 	Headers::operator=(x);
 	return (*this);
+}
+
+void
+CGIResponse::CGIHeaders::erase(cgi_header_name_t key) {
+	Headers::erase(Syntax::cgi_headers_tab[key].name);
 }
 
 bool

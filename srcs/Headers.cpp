@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 05:07:54 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 12:52:08 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 10:13:34 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -240,6 +240,19 @@ Headers::clear(void) {
 	for (std::vector<std::list<header_t> >::iterator it(_tab.begin()) ; it != _tab.end() ; it++)
 		it->clear();
 	_reset_start_finish();
+}
+
+void
+Headers::erase(const std::string &key) {
+	if (!key_exists(key))
+		return ;
+	std::list<header_t>	entry_list(_tab[_hash(key.c_str())]);
+	for (std::list<header_t>::iterator it(entry_list.begin()) ; it != entry_list.end() ; ) {
+		if (it->name == key)
+			it = entry_list.erase(it);
+		else
+			it++;
+	}
 }
 
 void

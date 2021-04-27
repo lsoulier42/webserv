@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:33:46 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 11:20:49 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 10:14:59 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,8 @@ class CGIResponse {
 				CGIHeaders(const CGIHeaders &x);
 				~CGIHeaders(void);
 				CGIHeaders &operator=(const CGIHeaders &x);
+
+				void erase(cgi_header_name_t key);
 
 				bool key_exists(cgi_header_name_t key) const;
 

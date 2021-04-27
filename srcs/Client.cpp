@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 09:51:52 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 11:07:52 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,12 +154,9 @@ Client::read_socket(void) {
 		return (FAILURE);
 	}
 	_input.append(buffer, ret);
-	std::cout << "|r| " << ByteArray(buffer, ret);
 	RequestParsing::parsing(*this);
-	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED) {
-		std::cout << "request complete" << std::endl;
+	if (!_exchanges.empty() && _exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
 		return (_process(_exchanges.front()));
-	}
 	return (SUCCESS);
 }
 
@@ -626,7 +623,6 @@ Client::read_cgi_output(void) {
 	ssize_t		ret;
 
 	ret = read(_cgi_output_fd, buffer, _buffer_size);
-	std::cout << "|o| " << ByteArray(buffer, ret);
 	if (ret < 0) {
 		close(_cgi_output_fd);
 		_cgi_output_fd = 0;
@@ -816,8 +812,8 @@ Client::_handle_client_redirect_cgi_response(void) {
 
 	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
-	_cgi_response.reset();
 	response.get_status_line().set_status_code(FOUND);
+	_cgi_response.reset();
 	return (_build_output(exchange));
 }
 
@@ -834,11 +830,12 @@ Client::_handle_client_redirect_doc_cgi_response(void) {
 		&& Syntax::status_codes_tab[i].code_int != status_code_int)
 		i++;
 	response.get_status_line().set_status_code(Syntax::status_codes_tab[i].code_index);
+	_cgi_response.get_headers().erase(CGI_STATUS);
 	for (Headers::const_iterator it(_cgi_response.get_headers().begin()); it != _cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
 	response.set_body(_cgi_response.get_body());
 	_cgi_response.reset();
-	return (SUCCESS);
+	return (_build_output(exchange));
 }
 
 int
@@ -856,6 +853,7 @@ Client::_handle_document_cgi_response(void) {
 			&& Syntax::status_codes_tab[i].code_int != status_code_int)
 			i++;
 		response.get_status_line().set_status_code(Syntax::status_codes_tab[i].code_index);
+		_cgi_response.get_headers().erase(CGI_STATUS);
 	}
 	else
 		response.get_status_line().set_status_code(OK);

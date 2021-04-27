@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 04:57:30 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 06:51:05 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 10:12:56 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,6 +85,8 @@ class Headers {
 		size_t size(void) const;
 		bool empty(void) const;
 		void clear(void);
+
+		void erase(const std::string &key);
 
 		void insert(const header_t &header);
 		void insert(const std::string &key, const std::string &unparsed_value);
