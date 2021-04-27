@@ -85,6 +85,8 @@ class Request : public AHTTPMessage {
 
 		char *get_ip_addr() const;
 		std::string get_ident() const;
+		bool is_chunked() const;
+		void set_chunked();
 
 		void reset(void);
 
@@ -96,6 +98,7 @@ class Request : public AHTTPMessage {
 		const VirtualServer* _virtual_server;
 		const Location*	_location;
 		const struct sockaddr _client_addr;
+		bool _chunked_body;
 
 		static int _indexes;
 };

@@ -705,7 +705,7 @@ void
 Client::_collect_cgi_body(void) {
 	Request &request = _exchanges.front().first;
 	_cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
-	DEBUG_COUT("CGI body received" << request.get_ident() << ")");
+	DEBUG_COUT("CGI body received (" << request.get_ident() << ")");
 	if (_cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)) {
 		size_t	body_size(static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
 		_cgi_response.set_body(ByteArray(_cgi_output.c_str(), body_size));
