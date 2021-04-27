@@ -639,7 +639,6 @@ Client::read_cgi_output(void) {
 		return (_process_error(exchange));
 	}
 	_cgi_output.append(buffer, ret);
-	//_cgi_output = (_cgi_output + ByteArray(buffer, ret));
 	if (SUCCESS != _cgi_output_parsing(ret)) {
 		DEBUG_COUT("Error during parsing of cgi output (" << request.get_ident() << ")");
 		close(_cgi_output_fd);
@@ -660,10 +659,14 @@ Client::read_cgi_output(void) {
 
 int
 Client::_cgi_output_parsing(int ret) {
+	exchange_t	&exchange(_exchanges.front());
+	Request		&request(exchange.first);
+	header_t	current_header;
+
 	while (_cgi_header_received())
 		_collect_cgi_header();
 	if (_cgi_headers_received() && SUCCESS != _check_cgi_headers()) {
-		DEBUG_COUT("Error during parsing of CGI headers (" << this->get_ident() << ")");
+		DEBUG_COUT("Error during parsing of CGI headers (" << request.get_ident() << ")");
 		return (FAILURE);
 	}
 	if (_cgi_body_received() || ret == 0)
@@ -679,9 +682,9 @@ Client::_collect_cgi_header(void) {
 	header_t			current_header;
 
 	if (ByteArray::npos != (col = _cgi_output.find_first_of(':'))) {
-		DEBUG_COUT("CGI header received: \"" << _cgi_output.substr(0, end_header - 1) << "\" (" << request.get_ident() << ")");
 		current_header.name = _cgi_output.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output.substr(col + 1, (end_header - col - 1)));
+		DEBUG_COUT("CGI header received: \"" << _cgi_output.substr(0, end_header - 1) << "\" (" << request.get_ident() << ")");
 		_cgi_response.get_headers().insert(current_header);
 	}
 	_cgi_output.pop_front(end_header + 1);
@@ -732,7 +735,7 @@ Client::_cgi_header_received(void) {
 bool
 Client::_cgi_headers_received(void) {
 	return (_cgi_response.get_status() == CGIResponse::START
-			&& _cgi_output[0] == '\n');
+			&& !_cgi_output.empty() && _cgi_output[0] == '\n');
 }
 
 bool
