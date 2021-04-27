@@ -35,3 +35,4 @@
 # folders
 .vscode*/*
 file_should_exist_after
+webserv_tester
