@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 11:59:14 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 11:54:56 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 12:18:57 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ class CGI {
 
 	public:
 
-		enum cgi_read_ret_t {
+		enum cgi_output_ret_t {
 			AGAIN,
 			COMPLETE,
 			REDIRECT,
@@ -43,7 +43,7 @@ class CGI {
 		static bool is_cgi_related(const Request &request);
 		static int init(Client &client);
 		static int write_input(Client &client);
-		static cgi_read_ret_t read_output(Client &client);
+		static cgi_output_ret_t read_output(Client &client);
 
 	private:
 
@@ -56,11 +56,11 @@ class CGI {
 		static int _check_headers(CGIResponse &cgi_response, ByteArray &output);
 		static void _collect_body(CGIResponse &cgi_response, ByteArray &output);
 
-		static cgi_read_ret_t _handle_cgi_response(Client &client);
-		static cgi_read_ret_t _handle_local_redirect_response(Client &client);
-		static cgi_read_ret_t _handle_client_redirect_response(Client &client);
-		static cgi_read_ret_t _handle_client_redirect_doc_response(Client &client);
-		static cgi_read_ret_t _handle_document_response(Client &client);
+		static cgi_output_ret_t _handle_cgi_response(Client &client);
+		static cgi_output_ret_t _handle_local_redirect_response(Client &client);
+		static cgi_output_ret_t _handle_client_redirect_response(Client &client);
+		static cgi_output_ret_t _handle_client_redirect_doc_response(Client &client);
+		static cgi_output_ret_t _handle_document_response(Client &client);
 
 		/* Status predicates
 		 */

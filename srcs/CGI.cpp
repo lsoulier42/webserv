@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 12:11:42 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 12:18:47 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ CGI::write_input(Client &client) {
 	return (SUCCESS);
 }
 
-CGI::cgi_read_ret_t
+CGI::cgi_output_ret_t
 CGI::read_output(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request				&request(exchange.first);
@@ -283,7 +283,7 @@ CGI::_is_client_redirect_response_with_document(const CGIResponse &cgi_response)
 			&& cgi_response.get_headers().key_exists(CGI_CONTENT_TYPE));
 }
 
-CGI::cgi_read_ret_t
+CGI::cgi_output_ret_t
 CGI::_handle_cgi_response(Client &client) {
 	if (client._cgi_response.get_type() == CGIResponse::LOCAL_REDIRECT)
 		return (_handle_local_redirect_response(client));
@@ -297,7 +297,7 @@ CGI::_handle_cgi_response(Client &client) {
 		return (SCRIPT_ERROR);
 }
 
-CGI::cgi_read_ret_t
+CGI::cgi_output_ret_t
 CGI::_handle_local_redirect_response(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request		&request(exchange.first);
@@ -309,7 +309,7 @@ CGI::_handle_local_redirect_response(Client &client) {
 	return (REDIRECT);
 }
 
-CGI::cgi_read_ret_t
+CGI::cgi_output_ret_t
 CGI::_handle_client_redirect_response(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Response	&response(exchange.second);
@@ -322,9 +322,10 @@ CGI::_handle_client_redirect_response(Client &client) {
 	return (COMPLETE);
 }
 
-CGI::cgi_read_ret_t
+CGI::cgi_output_ret_t
 CGI::_handle_client_redirect_doc_response(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
+	Request				&request(exchange.first);
 	Response	&response(exchange.second);
 	CGIResponse	&cgi_response(client._cgi_response);
 	std::string	status_line(cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
@@ -341,10 +342,14 @@ CGI::_handle_client_redirect_doc_response(Client &client) {
 		response.get_headers().insert(*it);
 	response.set_body(cgi_response.get_body());
 	cgi_response.reset();
+	if (ResponseHandling::process_cgi_response_headers(exchange) == FAILURE) {
+		DEBUG_COUT("Error during CGI response headers handling (" << std::string(request.get_ident()) << ")");
+		return (SERVER_ERROR);
+	}
 	return (COMPLETE);
 }
 
-CGI::cgi_read_ret_t
+CGI::cgi_output_ret_t
 CGI::_handle_document_response(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request				&request(exchange.first);
