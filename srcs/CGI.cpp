@@ -75,7 +75,7 @@ CGI::read_output(Client &client) {
 		return (SERVER_ERROR);
 	}
 
-	client._cgi_output = (client._cgi_output + ByteArray(buffer, ret));
+	client._cgi_output.append(buffer, ret);
 
 	while (_header_received(client._cgi_response, client._cgi_output))
 		_collect_header(client._cgi_response, client._cgi_output);
