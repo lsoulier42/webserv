@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:42 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/28 11:48:15 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 16:37:14 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -325,6 +325,7 @@ class Syntax {
 		static std::string trim_whitespaces(const std::string& str);
 		static std::vector<std::string> split(const std::string& str, const std::string& charset);
 		static std::string str_to_lower(const std::string& str);
+		static std::string str_to_upper(const std::string& str);
 
 		static URI_form_t get_URI_form(const std::string& uri_str);
 		static path_type_t get_path_type(const std::string &path);

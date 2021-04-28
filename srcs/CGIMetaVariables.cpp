@@ -6,13 +6,13 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/24 10:51:35 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 16:49:10 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CGIMetaVariables.hpp"
 
-const size_t CGIMetaVariables::_size(18);
+const size_t CGIMetaVariables::_default_size(18);
 const CGIMetaVariables::_mv_builder_t CGIMetaVariables::_builder_tab[] =
 {
 	&CGIMetaVariables::_build_auth_type,
@@ -56,14 +56,26 @@ const std::string CGIMetaVariables::_redirect_status("REDIRECT_STATUS");
 CGIMetaVariables::CGIMetaVariables(void) :
 	_tab() {}
 
-CGIMetaVariables::CGIMetaVariables(const Request &request) throw(std::bad_alloc) :
-	_tab(new char*[_size + 1]) {
-	for (size_t i(0) ; i < _size ; i++)
+CGIMetaVariables::CGIMetaVariables(const Request &request) throw(std::bad_alloc) {
+	size_t	i(0);
+
+	_size = _default_size;
+	for (Headers::const_iterator it(request.get_headers().begin()) ; it != request.get_headers().end() ; it++)
+		if (_is_metavariable_material(*it))
+			_size++;
+
+	_tab = new char*[_size + 1];
+
+	for ( ; i < _default_size ; i++)
 		_tab[i] = (*(_builder_tab[i]))(request);
-	_tab[_size] = 0;
+	for (Headers::const_iterator it(request.get_headers().begin()) ; it != request.get_headers().end() ; it++)
+		if (_is_metavariable_material(*it))
+			_tab[i++] = _build_http_metavariable(*it);
+	_tab[i] = 0;
 }
 
 CGIMetaVariables::CGIMetaVariables(const CGIMetaVariables &x) throw(std::bad_alloc) :
+	_size(x._size),
 	_tab(new char *[_size + 1]) {
 	for (size_t i(0) ; i < _size ; i++) {
 		_tab[i] = new char[strlen(x._tab[i]) + 1];
@@ -85,14 +97,52 @@ CGIMetaVariables
 	if (_tab) {
 		for (size_t i(0) ; i < _size ; i++)
 			delete _tab[i];
-	} else
-		_tab = new char*[_size + 1];
+		delete[] _tab;
+	}
+	_size = x._size;
+	_tab = new char*[_size + 1];
 	for (size_t i(0) ; i < _size ; i++) {
 		_tab[i] = new char[strlen(x._tab[i]) + 1];
 		strcpy(_tab[i], x._tab[i]);
 	}
 	_tab[_size] = 0;
 	return (*this);
+}
+
+std::string
+CGIMetaVariables::_build_http_metavariable_name(const header_t &header) {
+	std::string	mv_name("HTTP_" + Syntax::str_to_upper(header.name));
+
+	for (std::string::iterator it(mv_name.begin()) ; it != mv_name.end() ; it++)
+		if (*it == '-')
+			*it = '_';
+	return (mv_name);
+}
+
+char
+*CGIMetaVariables::_build_http_metavariable(const header_t &header) throw(std::bad_alloc) {
+	char		*mv;
+	std::string	mv_str(_build_http_metavariable_name(header) + "=" + header.unparsed_value);
+
+	mv = new char[mv_str.size() + 1];
+	strcpy(mv, mv_str.c_str());
+	return (mv);
+}
+
+bool
+CGIMetaVariables::_is_metavariable_material(const header_t &header) {
+	std::string	header_name(Syntax::str_to_lower(header.name));
+	if (header_name == Syntax::str_to_lower(Syntax::headers_tab[AUTHORIZATION].name)
+			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[CONTENT_TYPE].name)
+			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[CONTENT_LENGTH].name)
+			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[HOST].name))
+		return (false);
+	return (true);
+}
+
+size_t
+CGIMetaVariables::get_default_size(void) {
+	return (_default_size);
 }
 
 size_t

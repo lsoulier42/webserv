@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:19:23 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/21 23:54:03 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 16:49:29 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,8 @@ class CGIMetaVariables {
 		~CGIMetaVariables(void);
 		CGIMetaVariables &operator=(const CGIMetaVariables &x) throw(std::bad_alloc);
 
-		static size_t get_size(void);
+		static size_t get_default_size(void);
+		size_t get_size(void);
 		char **get_tab(void) const;
 
 	private:
@@ -58,7 +59,11 @@ class CGIMetaVariables {
 		static char *_build_server_software(const Request &request) throw(std::bad_alloc);
 		static char *_build_redirect_status(const Request &request) throw(std::bad_alloc);
 
-		static const size_t _size;
+		static bool _is_metavariable_material(const header_t &header);
+		static std::string _build_http_metavariable_name(const header_t &header);
+		static char *_build_http_metavariable(const header_t &header) throw(std::bad_alloc);
+
+		static const size_t _default_size;
 		static const _mv_builder_t _builder_tab[];
 		static const std::string _auth_type;
 		static const std::string _content_length;
@@ -79,6 +84,7 @@ class CGIMetaVariables {
 		static const std::string _server_software;
 		static const std::string _redirect_status;
 
+		size_t _size;
 		char **_tab;
 
 };
