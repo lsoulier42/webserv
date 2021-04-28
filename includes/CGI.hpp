@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 11:59:14 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 12:18:57 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 20:56:37 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,6 +48,9 @@ class CGI {
 	private:
 
 		CGI(void);
+
+		static std::string _build_input_file_name(const Request &request);
+		static std::string _build_output_file_name(const Request &request);
 
 		static int _create_child_process(void);
 		static int _launch_script(Client &client);
