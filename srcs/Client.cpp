@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 11:44:34 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 14:22:41 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -514,51 +514,6 @@ Client::_build_output(exchange_t &exchange) {
 }
 
 int
-Client::_cgi_init(exchange_t &exchange) {
-	Response	&response(exchange.second);
-
-	if (SUCCESS != CGI::init(*this)) {
-		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		return (_process_error(exchange));
-	}
-	return (SUCCESS);
-}
-
-int
-Client::write_cgi_input(void) {
-	exchange_t	&exchange(_exchanges.front());
-	Response	&response(exchange.second);
-
-	if (SUCCESS != CGI::write_input(*this)) {
-		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		return (_process_error(exchange));
-	}
-	return (SUCCESS);
-}
-
-int
-Client::read_cgi_output(void) {
-	exchange_t	&exchange(_exchanges.front());
-	Response	&response(exchange.second);
-	int			ret;
-
-	ret = CGI::read_output(*this);
-	if (CGI::SERVER_ERROR == ret) {
-		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
-		return (_process_error(exchange));
-	} else if (CGI::SCRIPT_ERROR == ret) {
-		response.get_status_line().set_status_code(BAD_GATEWAY);
-		return (_process_error(exchange));
-	}
-   	else if (CGI::COMPLETE == ret)
-		return (_build_output(exchange));
-	else if (CGI::REDIRECT == ret)
-		return (_process(exchange));
-	else
-		return (SUCCESS);
-}
-
-int
 Client::_process_HEAD(exchange_t &exchange) {
 	return (_process_GET(exchange));
 }
@@ -611,6 +566,51 @@ Client::_process_TRACE(exchange_t &exchange) {
 	response.set_body(request.get_raw());
 	ResponseHandling::generate_basic_headers(exchange);
 	return (_build_output(exchange));
+}
+
+int
+Client::_cgi_init(exchange_t &exchange) {
+	Response	&response(exchange.second);
+
+	if (SUCCESS != CGI::init(*this)) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	return (SUCCESS);
+}
+
+int
+Client::write_cgi_input(void) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+
+	if (SUCCESS != CGI::write_input(*this)) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	}
+	return (SUCCESS);
+}
+
+int
+Client::read_cgi_output(void) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+	int			ret;
+
+	ret = CGI::read_output(*this);
+	if (CGI::SERVER_ERROR == ret) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	} else if (CGI::SCRIPT_ERROR == ret) {
+		response.get_status_line().set_status_code(BAD_GATEWAY);
+		return (_process_error(exchange));
+	}
+   	else if (CGI::COMPLETE == ret)
+		return (_build_output(exchange));
+	else if (CGI::REDIRECT == ret)
+		return (_process(exchange));
+	else
+		return (SUCCESS);
 }
 
 std::string
