@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 11:59:14 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 09:22:59 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 10:16:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # include <algorithm>
 # include <cstring>
 # include <unistd.h>
+# include <cstdio>
 # include <cerrno>
 # include <sys/wait.h>
 # include "CGIMetaVariables.hpp"
