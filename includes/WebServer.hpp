@@ -50,7 +50,6 @@ class WebServer {
 		int parsing(const std::string& filepath);
 		void setup_servers();
 		void routine();
-		static void set_non_blocking(int file_descriptor);
 		static int sig_value;
 		static void sigint_handler(int signum);
 

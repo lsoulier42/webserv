@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 08:11:53 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 09:54:29 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,13 +29,21 @@ RequestParsing::parsing(Client &client) {
 		Request				&request(current_exchange.first);
 		Response			&response(current_exchange.second);
 
-		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input)))
+		if (_request_line_received(request, input) && SUCCESS != (ret = _collect_request_line_elements(request, input))) {
+			DEBUG_COUT("Request line parsing failure (" <<
+			request.get_ident()<< ") : " << Syntax::status_codes_tab[(status_code_t)ret].reason_phrase);
 			_failure(response, (status_code_t)ret);
+		}
 		while (_header_received(request, input))
 			_collect_header(request, input);
-		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request)))
-			_failure(response, (status_code_t)ret);
-		if (_body_received(request, input))
+		if (_headers_received(request, input) && SUCCESS != (ret = _check_headers(client, request))) {
+			DEBUG_COUT("Headers parsing failure (" << request.get_ident() <<
+			") : " << Syntax::status_codes_tab[(status_code_t)ret].reason_phrase);
+			_failure(response, (status_code_t) ret);
+		}
+		if (request.get_status() == Request::HEADERS_RECEIVED && request.is_chunked())
+			_collect_chunked(request, input);
+		if (_body_received(request, input) && !request.is_chunked())
 			_collect_body(request, input);
 		while (_trailer_received(request, input))
 			_collect_header(request, input);
@@ -43,7 +51,38 @@ RequestParsing::parsing(Client &client) {
 			_failure(response, (status_code_t)ret);
 		if (request.get_status() != Request::REQUEST_RECEIVED)
 			return ;
+	}
+}
 
+void
+RequestParsing::_collect_chunked(Request &request, ByteArray &input) {
+	std::stringstream ss;
+	size_t size_pos;
+	static size_t line_len = 0;
+
+	while ((size_pos = input.find("\r\n")) != ByteArray::npos) {
+		if (line_len == 0) {
+			ss.clear();
+			ss << std::hex << input.substr(0, size_pos);
+			ss >> line_len;
+			if (line_len == 0 && input.size() == 5) {
+				input.pop_front(size_pos + 4);
+				if (_trailer_expected(request))
+					request.set_status(Request::BODY_RECEIVED);
+				else
+					request.set_status(Request::REQUEST_RECEIVED);
+				DEBUG_COUT("Chunked body has been completely received (" << request.get_ident() << ")");
+				return ;
+			} else if (line_len == 0) {
+				return ;
+			}
+			input.pop_front(size_pos + 2);
+		}
+		if (input.size() < line_len + 2)
+			return ;
+		request.get_body().append(input.sub_byte_array(0, line_len));
+		input.pop_front(line_len + 2);
+		line_len = 0;
 	}
 }
 
@@ -75,10 +114,9 @@ RequestParsing::_headers_received(const Request &request, const ByteArray &input
 bool
 RequestParsing::_body_received(const Request &request, const ByteArray &input) {
 	return (request.get_status() == Request::HEADERS_RECEIVED
-			&& ((_transfer_encoding_chunked(request)
-					&& input.find("0\r\n\r\n") != ByteArray::npos)
-				|| (request.get_headers().key_exists(CONTENT_LENGTH)
-					&& input.size() >= static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())))));
+		&&  request.get_headers().key_exists(CONTENT_LENGTH)
+		&& input.size() >= static_cast<unsigned long>(
+			std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())));
 }
 
 bool
@@ -96,18 +134,8 @@ RequestParsing::_trailers_received(const Request &request, const ByteArray &inpu
 }
 
 bool
-RequestParsing::_transfer_encoding_chunked(const Request &request) {
-	if (request.get_headers().key_exists(TRANSFER_ENCODING)) {
-		const std::list<std::string>& transfer_encoding_values = request.get_headers().get_value(TRANSFER_ENCODING);
-		if (!transfer_encoding_values.empty() && transfer_encoding_values.back() == Syntax::encoding_types_tab[CHUNKED].name)
-			return (true);
-	}
-	return (false);
-}
-
-bool
 RequestParsing::_body_expected(const Request &request) {
-	return (_transfer_encoding_chunked(request)
+	return (request.get_headers().key_exists(TRANSFER_ENCODING)
 			|| (request.get_headers().key_exists(CONTENT_LENGTH)
 				&& static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())) > 0));
 }
@@ -129,10 +157,12 @@ RequestParsing::_is_allowed_method(const std::list<std::string>& allowed_methods
 int
 RequestParsing::_collect_request_line_elements(Request &request, ByteArray &input) {
 	size_t						end_rl(input.find("\r\n"));
-	std::vector<std::string> 	rl_elements = Syntax::split(input.substr(0, end_rl), " ");
+	std::string					request_line = input.substr(0, end_rl);
+	std::vector<std::string> 	rl_elements = Syntax::split(request_line, " ");
 	std::list<std::string>		allowed_methods;
 
 	request.set_status(Request::REQUEST_LINE_RECEIVED);
+	DEBUG_COUT("Request line received: \"" << request_line << "\" (" << request.get_ident() << ")");
 	if (rl_elements.size() != 3) {
 		input.pop_front(end_rl + 2);
 		return (BAD_REQUEST);
@@ -177,11 +207,13 @@ void
 RequestParsing::_collect_header(Request &request, ByteArray &input) {
 	size_t				col(0);
 	size_t				end_header(input.find("\r\n"));
+	std::string			header = input.substr(0, end_header);
 	header_t			current_header;
 
-	if (ByteArray::npos != (col = input.find_first_of(':'))) {
-		current_header.name = input.substr(0, col);
-		current_header.unparsed_value = Syntax::trim_whitespaces(input.substr(col + 1, (end_header - col - 1)));
+	if (ByteArray::npos != (col = header.find_first_of(':'))) {
+		DEBUG_COUT("Header received: \"" << header << "\"(" << request.get_ident() << ")");
+		current_header.name = header.substr(0, col);
+		current_header.unparsed_value = Syntax::trim_whitespaces(header.substr(col + 1));
 		request.get_headers().insert(current_header);
 	}
 	request.get_raw() += input.sub_byte_array(0, end_header + 2);
@@ -223,42 +255,14 @@ RequestParsing::_check_trailer(Request &request, ByteArray &input) {
 	return (SUCCESS);
 }
 
-ByteArray
-RequestParsing::_decode_chunked(const ByteArray& input) {
-	size_t end_l, line_nb = 0, next_line_len = -1;
-	std::stringstream ss;
-	ByteArray parsed_input = input, to_return, next_line_len_str;
-
-	while (next_line_len > 0) {
-		if (line_nb % 2 == 0) {
-			end_l = parsed_input.find("\r\n");
-			next_line_len_str = parsed_input.sub_byte_array(0, end_l);
-			ss.clear();
-			ss << std::hex << next_line_len_str;
-			ss >> next_line_len;
-		} else {
-			to_return += parsed_input.sub_byte_array(0, next_line_len);
-			end_l = next_line_len;
-		}
-		parsed_input.pop_front(end_l + 2);
-		line_nb++;
-	}
-	return (to_return);
-}
-
 int
 RequestParsing::_collect_body(Request &request, ByteArray &input) {
 	size_t		body_length(0);
 
-	if (_transfer_encoding_chunked(request)) {
-		body_length = input.find("0\r\n\r\n") + 5;
-		request.set_body(_decode_chunked(input));
-	}
-	else if (request.get_headers().key_exists(CONTENT_LENGTH)) {
-		body_length = static_cast<unsigned long>(std::atol(
-			request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
-		request.set_body(ByteArray(input.substr(0, body_length).c_str()));
-	}
+	DEBUG_COUT("Body received (" << request.get_ident() << ")");
+	body_length = static_cast<unsigned long>(std::atol(
+		request.get_headers().get_value(CONTENT_LENGTH).front().c_str()));
+	request.set_body(ByteArray(input.substr(0, body_length)));
 	input.pop_front(body_length);
 	if (_trailer_expected(request))
 		request.set_status(Request::BODY_RECEIVED);
@@ -489,14 +493,12 @@ RequestParsing::_request_host_parser(Request &request) {
 	std::vector<std::string> compounds;
 	std::list<std::string> definitive_value;
 
-	if (unparsed_header_value.find_first_of(WHITESPACES) != std::string::npos)
-		return (FAILURE);
 	compounds = Syntax::split(unparsed_header_value, ":");
 	if (compounds.size() > 2)
 		return (FAILURE);
 	definitive_value.push_back(compounds[0]);// host name
 	if (compounds.size() == 2)
-		definitive_value.push_back(compounds[1]); //port
+		definitive_value.push_back(Syntax::trim_whitespaces(compounds[1])); //port
 	request.get_headers().set_value(HOST, definitive_value);
 	return (SUCCESS);
 }
@@ -522,6 +524,8 @@ RequestParsing::_request_transfer_encoding_parser(Request &request) {
 		it != encoding_types_list.end(); it++)
 		if (!Syntax::is_accepted_value(*it, Syntax::encoding_types_tab, TOTAL_ENCODING_TYPES))
 			return (FAILURE);
+	if (encoding_types_list.back() == Syntax::encoding_types_tab[CHUNKED].name)
+		request.set_chunked();
 	request.get_headers().set_value(TRANSFER_ENCODING, encoding_types_list);
 	return (SUCCESS);
 }
@@ -554,7 +558,7 @@ RequestParsing::_process_request_headers(Client &client, Request &request) {
 	for(size_t i = 0; i < TOTAL_REQUEST_HEADERS; i++) {
 		if (headers.key_exists(Syntax::request_headers_tab[i].header_index)) {
 			if ((*handler_functions[i])(request) == FAILURE)
-				return (FAILURE);
+				return (BAD_REQUEST);
 		}
 	}
 	return SUCCESS;

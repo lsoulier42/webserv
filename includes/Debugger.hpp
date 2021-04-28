@@ -3,9 +3,11 @@
 
 # include <iostream>
 # include <string>
+# include <ctime>
+# include <sys/time.h>
 
 # define DEBUG_START(ACTIVATE) Debugger::start(ACTIVATE)
-# define DEBUG_COUT(MESSAGE) if (Debugger::_webserv_debugger.get_is_active() == true) std::cout << "DEBUG: " << MESSAGE << std::endl
+# define DEBUG_COUT(MESSAGE) if (Debugger::_webserv_debugger.get_is_active() == true) std::cout << "[" << Debugger::get_date() << "] " << MESSAGE << std::endl
 
 class Debugger
 {
@@ -15,11 +17,10 @@ class Debugger
 		Debugger();
 		~Debugger();
 
-		static void start(bool activate);
-//		static void print_std_out(const std::string str);
-		bool		get_is_active();
-
-		static Debugger _webserv_debugger;
+		static void 		start(bool activate);
+		bool				get_is_active();
+		static std::string	get_date();
+		static Debugger 	_webserv_debugger;
 
 	private:
 		Debugger( Debugger const & src );

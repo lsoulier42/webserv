@@ -41,11 +41,15 @@ void	Debugger::start(bool activate) {
 	_webserv_debugger._is_active = activate;
 }
 
-//void	Debugger::print_std_out(std::string str) {
-//	if (Debugger::_webserv_debugger.get_is_active() == true) {
-//		std::cout << "DEBUG: " << str << std::endl;
-//	}
-//}
+std::string	Debugger::get_date() {
+	struct tm *date = NULL;
+	char buff[64];
+	struct timeval tv;
 
+	gettimeofday(&tv, NULL);
+	date = localtime(&(tv.tv_sec));
+	strftime(buff, sizeof(buff), "%D %T", date);
+	return (std::string(buff));
+}
 
 /* ************************************************************************** */

@@ -78,6 +78,7 @@ class AHTTPMessage {
 
 		HTTPHeaders &get_headers(void);
 		const HTTPHeaders &get_headers(void) const;
+		ByteArray& get_body(void);
 		const ByteArray& get_body(void) const;
 		void set_body(const ByteArray& body);
 

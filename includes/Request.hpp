@@ -17,6 +17,7 @@
 # include <string>
 # include <iostream>
 # include <sys/socket.h>
+# include <arpa/inet.h>
 # include "Syntax.hpp"
 # include "AHTTPMessage.hpp"
 # include "VirtualServer.hpp"
@@ -82,15 +83,24 @@ class Request : public AHTTPMessage {
 		const ByteArray& get_raw(void) const;
 		void set_raw(const ByteArray& raw);
 
+		char *get_ip_addr() const;
+		std::string get_ident() const;
+		bool is_chunked() const;
+		void set_chunked();
+
 		void reset(void);
 
 	private:
+		int _id;
 		ByteArray _raw;
 		request_status_t _status;
 		RequestLine _request_line;
 		const VirtualServer* _virtual_server;
 		const Location*	_location;
 		const struct sockaddr _client_addr;
+		bool _chunked_body;
+
+		static int _indexes;
 };
 
 #endif

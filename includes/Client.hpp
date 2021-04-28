@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 22:18:42 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 09:59:36 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,10 +73,13 @@ class Client {
 		
 		int read_socket(void);
 		int write_socket(void);
+		int read_target_resource(void);
+		int	write_target_resource(void);
 		int read_cgi_output(void);
 		int write_cgi_input(void);
-		int read_file(void);
-		int	write_file(void);
+
+		char *get_ip_addr() const;
+		std::string get_ident() const;
 
 	private:
 
@@ -100,12 +103,6 @@ class Client {
 		bool _closing;
 		bool _connection_refused;
 
-		/* debug function
-		 *
-		 *
-		 */
-		void _send_debug_str(const std::string& str) const;
-
 		/* Response sending
 		 *
 		 *
@@ -128,6 +125,7 @@ class Client {
 		int _build_output(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
+		void _rebuild_request_target(exchange_t &exchange, const std::string& path);
 
 		/* Autoindex
 		 *

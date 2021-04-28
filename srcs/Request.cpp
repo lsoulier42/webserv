@@ -16,39 +16,51 @@
 #include "Request.hpp"
 #include "Client.hpp"
 
+int Request::_indexes = 0;
+
 Request::Request(void) :
 	AHTTPMessage(),
+	_id(_indexes++),
 	_status(START),
 	_request_line(),
 	_virtual_server(),
 	_location(),
-	_client_addr() {}
+	_client_addr(),
+	_chunked_body(false) {}
 
 Request::Request(const Client &client) :
 	AHTTPMessage(),
+	_id(_indexes++),
 	_status(START),
 	_request_line(),
 	_virtual_server(client._virtual_servers.front()),
 	_location(&(client._virtual_servers.front()->get_locations().back())),
-	_client_addr(client._addr) {}
+	_client_addr(client._addr),
+	_chunked_body(false) {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
+	_id(x._id),
 	_status(x._status),
 	_request_line(x._request_line),
 	_virtual_server(x._virtual_server),
 	_location(x._location),
-	_client_addr(x._client_addr) {}
+	_client_addr(x._client_addr),
+	_chunked_body(x._chunked_body) {}
 
 Request::~Request(void) {}
 
 Request
 &Request::operator=(const Request &x) {
 	AHTTPMessage::operator=(x);
-	_status = x._status;
-	_request_line = x._request_line;
-	_virtual_server = x._virtual_server;
-	_location = x._location;
+	if (this != &x) {
+		_id = x._id;
+		_status = x._status;
+		_request_line = x._request_line;
+		_virtual_server = x._virtual_server;
+		_location = x._location;
+		_chunked_body = x._chunked_body;
+	}
 	return (*this);
 }
 
@@ -170,5 +182,32 @@ Request::get_raw(void) const {
 void
 Request::set_raw(const ByteArray& raw) {
 	_raw = raw;
+}
+
+char*
+Request::get_ip_addr() const {
+	struct sockaddr not_const = _client_addr;
+	struct sockaddr_in *client_addr_cast;
+
+	client_addr_cast = reinterpret_cast<struct sockaddr_in*>(&not_const);
+	return (inet_ntoa(client_addr_cast->sin_addr));
+}
+
+std::string
+Request::get_ident() const {
+	std::stringstream ss;
+
+	ss << get_ip_addr() << "[request no:" << _id << "]";
+	return (ss.str());
+}
+
+bool
+Request::is_chunked() const {
+	return _chunked_body;
+}
+
+void
+Request::set_chunked() {
+	_chunked_body = true;
 }
 

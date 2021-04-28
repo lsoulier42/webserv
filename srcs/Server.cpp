@@ -77,8 +77,11 @@ Server::_create_socket_descriptor() {
 		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
+	if (fcntl(_server_sd, F_SETFL, O_NONBLOCK) < 0) {
+		DEBUG_COUT("Fcntl error with F_SETFL : " << std::strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	DEBUG_COUT("Server socket successfully created at file descriptor " << _server_sd);
-
 }
 
 void
@@ -90,7 +93,6 @@ Server::_change_socket_options() {
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
-	DEBUG_COUT("Socket options changes successfully on file descriptor " << _server_sd);
 }
 
 void
@@ -107,8 +109,7 @@ Server::_bind_socket() {
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
-	DEBUG_COUT("Server with file descriptor " <<  _server_sd);
-	DEBUG_COUT(" has been successfully bind on port: " << port);
+	DEBUG_COUT("Server with file descriptor " <<  _server_sd << " has been successfully bind on port: " << port);
 }
 
 void
@@ -119,5 +120,4 @@ Server::_set_listen_mode() const {
 		close(_server_sd);
 		exit(EXIT_FAILURE);
 	}
-	DEBUG_COUT("Server with file descriptor " << _server_sd << " has been successfully set in listen mode");
 }

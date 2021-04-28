@@ -26,6 +26,7 @@ class ResponseHandling {
 		~ResponseHandling();
 
 		static int process_response_headers(Client::exchange_t &exchange);
+		static int process_cgi_response_headers(Client::exchange_t &exchange);
 		static void generate_basic_headers(Client::exchange_t &exchange);
 		static std::string get_current_HTTP_date(void);
 

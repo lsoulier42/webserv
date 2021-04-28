@@ -136,3 +136,7 @@ void
 AHTTPMessage::HTTPHeaders::set_value(header_name_t key, const std::list<std::string>& parsed_value) throw (std::invalid_argument) {
 	Headers::set_value(Syntax::headers_tab[key].name, parsed_value);
 }
+
+ByteArray& AHTTPMessage::get_body(void) {
+	return _body;
+}
