@@ -211,3 +211,8 @@ Request::set_chunked() {
 	_chunked_body = true;
 }
 
+int
+Request::get_id() const {
+	return (_id);
+}
+

@@ -88,6 +88,8 @@ class Request : public AHTTPMessage {
 		bool is_chunked() const;
 		void set_chunked();
 
+		int get_id() const;
+
 		void reset(void);
 
 	private:

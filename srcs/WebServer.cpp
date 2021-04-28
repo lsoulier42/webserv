@@ -156,44 +156,40 @@ WebServer::_read_socks() {
 		if (FD_ISSET(it->get_sd(), &_sockets_list[READ]) && it->read_socket() == FAILURE) {
 			close(it->get_sd());
 			it = _clients.erase(it);
+			continue;
 		}
-		else
-			it++;
-	}
-	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++) {
 		if (FD_ISSET(it->get_fd(), &_sockets_list[READ]))
 			it->read_target_resource();
-	}
-	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
 		if (FD_ISSET(it->get_cgi_output_fd(), &_sockets_list[READ]))
 			it->read_cgi_output();
+		it++;
+	}
 }
 
 void
 WebServer::_write_socks() {
-	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ;) {
+	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
+		std::string put_file = it->get_PUT_file();
+		if (it->get_file_write_fd() == 0 && !put_file.empty()) {
+			if (_path_occupied.find(put_file) == _path_occupied.end()) {
+				_path_occupied.insert(put_file);
+				it->open_file_to_write();
+			}
+		}
+		if (FD_ISSET(it->get_file_write_fd(), &_sockets_list[WRITE])) {
+			it->write_target_resource();
+			if (it->get_file_write_fd() == 0)
+				_path_occupied.erase(it->get_PUT_file());
+		}
+		if (FD_ISSET(it->get_cgi_input_fd(), &_sockets_list[WRITE]))
+			it->write_cgi_input();
 		if (FD_ISSET(it->get_sd(), &_sockets_list[WRITE]) && it->write_socket() == FAILURE) {
 			close(it->get_sd());
 			it = _clients.erase(it);
+			continue;
 		}
-		else
-			it++;
+		it++;
 	}
-	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end(); it++)
-		if (FD_ISSET(it->get_file_write_fd(), &_sockets_list[WRITE])) {
-			std::map<std::string, int>::iterator file = _locked_files.find(it->get_target_path());
-			if (file == _locked_files.end())
-				_locked_files.insert(std::make_pair(it->get_target_path(), it->get_file_write_fd()));
-			if (file == _locked_files.end()
-				|| (file != _locked_files.end() && file->second == it->get_file_write_fd())) {
-				it->write_target_resource();
-				if (it->get_file_write_fd() == 0)
-					_locked_files.erase(it->get_target_path());
-			}
-		}
-	for (std::list<Client>::iterator it(_clients.begin()) ; it!= _clients.end() ; it++)
-		if (FD_ISSET(it->get_cgi_input_fd(), &_sockets_list[WRITE]))
-			it->write_cgi_input();
 }
 
 int

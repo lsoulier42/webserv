@@ -17,7 +17,7 @@
 # include <vector>
 # include <list>
 
-# define DEFAULT_MAX_BODY_SIZE 8192
+# define DEFAULT_MAX_BODY_SIZE 1000000000
 
 class Location {
 	public:
