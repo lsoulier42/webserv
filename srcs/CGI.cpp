@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 12:18:47 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 14:10:08 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,7 +65,7 @@ CGI::read_output(Client &client) {
 	char				buffer[Client::_buffer_size];
 	ssize_t				ret;
 
-	ret = read(client._cgi_output_fd, buffer,Client::_buffer_size);
+	ret = read(client._cgi_output_fd, buffer, Client::_buffer_size);
 	if (ret < 0) {
 		DEBUG_COUT("Error during reading of CGI output: " << strerror(errno) << "(" << request.get_ident() << ")");
 		close(client._cgi_output_fd);
@@ -217,8 +217,8 @@ CGI::_header_received(const CGIResponse &cgi_response, const ByteArray &output) 
 bool
 CGI::_headers_received(const CGIResponse &cgi_response, const ByteArray &output) {
 	return (cgi_response.get_status() == CGIResponse::START
-			&& !output.empty()
-			&& output[0] == '\n');
+			&& ((!output.empty() && output[0] == '\n')
+				|| (output.size() >= 2 && output[0] == '\r' && output[1] == '\n')));
 }
 
 bool

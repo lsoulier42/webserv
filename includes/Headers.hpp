@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 04:57:30 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 10:12:56 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 13:44:48 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 # include <string>
 # include <vector>
 # include <list>
+# include "Syntax.hpp"
 
 struct header_t {
 	std::string name;
