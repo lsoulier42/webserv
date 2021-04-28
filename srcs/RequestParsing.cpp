@@ -58,31 +58,29 @@ void
 RequestParsing::_collect_chunked(Request &request, ByteArray &input) {
 	std::stringstream ss;
 	size_t size_pos;
-	static size_t line_len = 0;
+	size_t line_len;
 
 	while ((size_pos = input.find("\r\n")) != ByteArray::npos) {
-		if (line_len == 0) {
-			ss.clear();
-			ss << std::hex << input.substr(0, size_pos);
-			ss >> line_len;
-			if (line_len == 0 && input.size() == 5) {
-				input.pop_front(size_pos + 4);
-				if (_trailer_expected(request))
-					request.set_status(Request::BODY_RECEIVED);
-				else
-					request.set_status(Request::REQUEST_RECEIVED);
-				DEBUG_COUT("Chunked body has been completely received (" << request.get_ident() << ")");
-				return ;
-			} else if (line_len == 0) {
-				return ;
-			}
-			input.pop_front(size_pos + 2);
-		}
-		if (input.size() < line_len + 2)
+		ss.clear();
+		line_len = 0;
+		ss << std::hex << input.substr(0, size_pos);
+		ss >> line_len;
+		if (line_len == 0 && input.size() == 5) {
+			input.pop_front(size_pos + 4);
+			if (_trailer_expected(request))
+				request.set_status(Request::BODY_RECEIVED);
+			else
+				request.set_status(Request::REQUEST_RECEIVED);
+			DEBUG_COUT("Chunked body has been completely received (" << request.get_ident() << ")");
 			return ;
+		} else if (line_len == 0) {
+			return ;
+		}
+		if (input.size() - size_pos - 2 < line_len + 2)
+			return ;
+		input.pop_front(size_pos + 2);
 		request.get_body().append(input.sub_byte_array(0, line_len));
 		input.pop_front(line_len + 2);
-		line_len = 0;
 	}
 }
 
