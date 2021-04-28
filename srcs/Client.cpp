@@ -13,7 +13,6 @@
 #include "Client.hpp"
 #include "RequestParsing.hpp"
 #include "ResponseHandling.hpp"
-#include "WebServer.hpp"
 #include "CGI.hpp"
 
 const size_t	Client::_buffer_size(1000000);
@@ -231,6 +230,11 @@ Client::_process(exchange_t &exchange) {
 		&& !request.get_location()->get_index().empty()) {
 		_rebuild_request_target(exchange, path);
 	}
+	if ((method == PUT || method == POST)
+		&& request.get_body().size() > request.get_location()->get_client_max_body_size()) {
+		response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
+		return (_process_error(exchange));
+	}
 	if (CGI::is_cgi_related(request)) {
 		DEBUG_COUT("CGI request processing (" << request.get_ident() << ")");
 		return (_cgi_init(exchange));
@@ -335,11 +339,12 @@ Client::_generate_autoindex(exchange_t &exchange) {
 
 int
 Client::_process_GET(exchange_t &exchange) {
+	if (_fd != 0)
+		return (SUCCESS);
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 	std::string target_path = response.get_target_path();
 	path_type_t path_type = Syntax::get_path_type(target_path);
-
 	if (path_type == INVALID_PATH) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
@@ -358,32 +363,25 @@ Client::_process_GET(exchange_t &exchange) {
 
 int
 Client::_process_PUT(exchange_t &exchange) {
-	Request		&request(exchange.first);
+	if (_file_write_fd != 0)
+		return (SUCCESS);
 	Response	&response(exchange.second);
 	std::string target_path = response.get_target_path();
 	path_type_t path_type = Syntax::get_path_type(target_path);
-	status_code_t error_opening, status_created;
-
 	if (path_type == DIRECTORY) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
-	error_opening = request.get_request_line().get_method() == PUT ? NOT_FOUND : INTERNAL_SERVER_ERROR;
-	_file_write_fd = open(response.get_target_path().c_str(), O_WRONLY | O_CREAT| O_TRUNC| O_NONBLOCK, 0666);
-	if (_file_write_fd < 0) {
-		DEBUG_COUT("Error during opening PUT/POST request target :" << strerror(errno) << "(" << this->get_ident() << ")");
-		response.get_status_line().set_status_code(error_opening);
-		return (_process_error(exchange));
-	}
-	status_created = path_type == INVALID_PATH ? CREATED : NO_CONTENT;
-	_file_write_str = request.get_body();
-	response.get_status_line().set_status_code(status_created);
 	return (SUCCESS);
 }
 
 int
 Client::_process_POST(exchange_t &exchange) {
-	return (_process_PUT(exchange));
+	Response	&response = exchange.second;
+
+	response.get_status_line().set_status_code(NO_CONTENT);
+	ResponseHandling::generate_basic_headers(exchange);
+	return (_build_output(exchange));
 }
 
 int
@@ -443,7 +441,7 @@ Client::read_target_resource(void) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 	char		buffer[_buffer_size];
-	int			ret;
+	ssize_t 	ret;
 
 	ret = read(_fd, buffer, _buffer_size);
 	if (ret < 0) {
@@ -614,10 +612,17 @@ Client::read_cgi_output(void) {
 }
 
 std::string
-Client::get_target_path(void) {
-	if (_exchanges.empty())
-		return "";
-	return _exchanges.front().second.get_target_path();
+Client::get_PUT_file(void) {
+	std::string to_return;
+
+	if (!_exchanges.empty()) {
+		exchange_t exchange = _exchanges.front();
+		Request &request = exchange.first;
+		Response &response = exchange.second;
+		if (request.get_request_line().get_method() == PUT)
+			to_return = response.get_target_path();
+	}
+	return to_return;
 }
 
 char*
@@ -635,4 +640,26 @@ Client::get_ident() const {
 
 	ss << get_ip_addr() << "[client no:" << _sd << "]";
 	return (ss.str());
+}
+
+int
+Client::open_file_to_write() {
+	exchange_t &exchange = _exchanges.front();
+	Request	&request = exchange.first;
+	Response &response = exchange.second;
+	std::string target_path = response.get_target_path();
+	path_type_t path_type = Syntax::get_path_type(target_path);
+	status_code_t status_created;
+
+	_file_write_fd = open(target_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK, 0666);
+	if (_file_write_fd < 0) {
+		DEBUG_COUT("Error during opening PUT request target :" << strerror(errno) << "(" << this->get_ident() << ")");
+		response.get_status_line().set_status_code(NOT_FOUND);
+		return (_process_error(exchange));
+	}
+	response.get_target_path().clear();
+	status_created = path_type == INVALID_PATH ? CREATED : NO_CONTENT;
+	_file_write_str = request.get_body();
+	response.get_status_line().set_status_code(status_created);
+	return (SUCCESS);
 }

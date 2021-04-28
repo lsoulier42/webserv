@@ -69,7 +69,7 @@ class Client {
 		int get_cgi_input_fd(void) const;
 		int get_cgi_output_fd(void) const;
 		int get_file_write_fd(void) const;
-		std::string get_target_path(void);
+		std::string get_PUT_file(void);
 		
 		int read_socket(void);
 		int write_socket(void);
@@ -77,6 +77,8 @@ class Client {
 		int	write_target_resource(void);
 		int read_cgi_output(void);
 		int write_cgi_input(void);
+
+		int open_file_to_write(void);
 
 		char *get_ip_addr() const;
 		std::string get_ident() const;
@@ -123,7 +125,6 @@ class Client {
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
 		int _build_output(exchange_t &exchange);
-		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 		void _rebuild_request_target(exchange_t &exchange, const std::string& path);
 
