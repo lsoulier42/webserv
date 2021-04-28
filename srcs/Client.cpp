@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 10:15:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 11:44:34 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -543,12 +543,16 @@ Client::read_cgi_output(void) {
 	int			ret;
 
 	ret = CGI::read_output(*this);
-	if (FAILURE == ret) {
+	if (CGI::SERVER_ERROR == ret) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(exchange));
-	} else if (SUCCESS == ret)
+	} else if (CGI::SCRIPT_ERROR == ret) {
+		response.get_status_line().set_status_code(BAD_GATEWAY);
+		return (_process_error(exchange));
+	}
+   	else if (CGI::COMPLETE == ret)
 		return (_build_output(exchange));
-	else if (REDIRECT == ret)
+	else if (CGI::REDIRECT == ret)
 		return (_process(exchange));
 	else
 		return (SUCCESS);

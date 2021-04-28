@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:42 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/27 22:17:00 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 11:48:15 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,8 +30,6 @@
 # define TOTAL_RESPONSE_HEADERS 12
 # define SUCCESS 1
 # define FAILURE 0
-# define REDIRECT 2
-# define AGAIN 3
 # define DELAY_RETRY_AFTER 10
 # define PROGRAM_VERSION "webserv/1.0"
 # define OUR_HTTP_VERSION "HTTP/1.1"

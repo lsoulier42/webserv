@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:39:01 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 10:15:48 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 12:10:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 CGIResponse::CGIResponse(void) :
 	_status(START),
-	_type(DOCUMENT),
+	_type(NO_TYPE),
 	_headers(),
 	_body() {}
 
@@ -78,7 +78,7 @@ CGIResponse::set_body(const ByteArray &body) {
 void
 CGIResponse::reset(void) {
 	_status = START;
-	_type = DOCUMENT;
+	_type = NO_TYPE;
 	_headers.clear();
 	_body.clear();
 }

@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:33:46 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 10:14:59 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 12:06:28 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,8 @@ class CGIResponse {
 			DOCUMENT,
 			LOCAL_REDIRECT,
 			CLIENT_REDIRECT,
-			CLIENT_REDIRECT_DOC
+			CLIENT_REDIRECT_DOC,
+			NO_TYPE
 		};
 
 		CGIResponse(void);
