@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 16:49:10 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 17:30:01 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -109,6 +109,27 @@ CGIMetaVariables
 	return (*this);
 }
 
+size_t
+CGIMetaVariables::get_size(void) {
+	return (_size);
+}
+
+char
+**CGIMetaVariables::get_tab(void) const {
+	return (_tab);
+}
+
+bool
+CGIMetaVariables::_is_metavariable_material(const header_t &header) {
+	std::string	header_name(Syntax::str_to_lower(header.name));
+	if (header_name == Syntax::str_to_lower(Syntax::headers_tab[AUTHORIZATION].name)
+			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[CONTENT_TYPE].name)
+			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[CONTENT_LENGTH].name)
+			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[HOST].name))
+		return (false);
+	return (true);
+}
+
 std::string
 CGIMetaVariables::_build_http_metavariable_name(const header_t &header) {
 	std::string	mv_name("HTTP_" + Syntax::str_to_upper(header.name));
@@ -127,32 +148,6 @@ char
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
-}
-
-bool
-CGIMetaVariables::_is_metavariable_material(const header_t &header) {
-	std::string	header_name(Syntax::str_to_lower(header.name));
-	if (header_name == Syntax::str_to_lower(Syntax::headers_tab[AUTHORIZATION].name)
-			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[CONTENT_TYPE].name)
-			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[CONTENT_LENGTH].name)
-			|| header_name == Syntax::str_to_lower(Syntax::headers_tab[HOST].name))
-		return (false);
-	return (true);
-}
-
-size_t
-CGIMetaVariables::get_default_size(void) {
-	return (_default_size);
-}
-
-size_t
-CGIMetaVariables::get_size(void) {
-	return (_size);
-}
-
-char
-**CGIMetaVariables::get_tab(void) const {
-	return (_tab);
 }
 
 char
@@ -267,7 +262,8 @@ char
 	char		*mv;
 	std::string	mv_str(_remote_ident + "=");
 
-	mv_str += "pouet";
+	if (request.get_headers().key_exists(AUTHORIZATION))
+		mv_str += request.get_headers().get_value(AUTHORIZATION).back();
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
@@ -348,7 +344,7 @@ char
 	char		*mv;
 	std::string	mv_str(_server_protocol + "=");
 
-	mv_str += "HTTP/1.1";
+	mv_str += OUR_HTTP_VERSION;
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
@@ -360,7 +356,7 @@ char
 	char		*mv;
 	std::string	mv_str(_server_software + "=");
 
-	mv_str += "WebServer/1.0";
+	mv_str += PROGRAM_VERSION;
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);

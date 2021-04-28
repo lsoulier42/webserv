@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:19:23 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 16:49:29 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 16:55:21 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,6 @@ class CGIMetaVariables {
 		~CGIMetaVariables(void);
 		CGIMetaVariables &operator=(const CGIMetaVariables &x) throw(std::bad_alloc);
 
-		static size_t get_default_size(void);
 		size_t get_size(void);
 		char **get_tab(void) const;
 
