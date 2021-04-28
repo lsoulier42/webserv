@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:33:46 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 11:20:49 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 12:06:28 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,8 @@ class CGIResponse {
 				~CGIHeaders(void);
 				CGIHeaders &operator=(const CGIHeaders &x);
 
+				void erase(cgi_header_name_t key);
+
 				bool key_exists(cgi_header_name_t key) const;
 
 				const std::string &get_unparsed_value(cgi_header_name_t key) const throw (std::invalid_argument);
@@ -48,7 +50,8 @@ class CGIResponse {
 			DOCUMENT,
 			LOCAL_REDIRECT,
 			CLIENT_REDIRECT,
-			CLIENT_REDIRECT_DOC
+			CLIENT_REDIRECT_DOC,
+			NO_TYPE
 		};
 
 		CGIResponse(void);

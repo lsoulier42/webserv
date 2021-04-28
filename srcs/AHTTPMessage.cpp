@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 17:24:38 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/18 10:06:13 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 10:17:45 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -100,6 +100,11 @@ AHTTPMessage::HTTPHeaders
 &AHTTPMessage::HTTPHeaders::operator=(const HTTPHeaders &x) {
 	Headers::operator=(x);
 	return (*this);
+}
+
+void
+AHTTPMessage::HTTPHeaders::erase(header_name_t key) {
+	Headers::erase(Syntax::headers_tab[key].name);
 }
 
 void

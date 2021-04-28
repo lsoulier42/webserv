@@ -6,7 +6,7 @@
 /*   By: lsoulier <lsoulier@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 21:57:25 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/26 09:55:00 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 16:36:57 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -421,6 +421,16 @@ Syntax::str_to_lower(const std::string& str) {
 
 	for(size_t i = 0; i < size; i++)
 		return_str[i] = tolower(return_str[i]);
+	return return_str;
+}
+
+std::string
+Syntax::str_to_upper(const std::string& str) {
+	std::string return_str(str);
+	size_t size = return_str.size();
+
+	for(size_t i = 0; i < size; i++)
+		return_str[i] = toupper(return_str[i]);
 	return return_str;
 }
 

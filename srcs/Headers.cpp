@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/18 05:07:54 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 12:52:08 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 13:53:24 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -243,8 +243,21 @@ Headers::clear(void) {
 }
 
 void
+Headers::erase(const std::string &key) {
+	if (!key_exists(key))
+		return ;
+	std::list<header_t>	entry_list(_tab[_hash((Syntax::str_to_lower(key)).c_str())]);
+	for (std::list<header_t>::iterator it(entry_list.begin()) ; it != entry_list.end() ; ) {
+		if (it->name == key)
+			it = entry_list.erase(it);
+		else
+			it++;
+	}
+}
+
+void
 Headers::insert(const header_t &header) {
-	unsigned long	index(_hash(header.name.c_str()));
+	unsigned long	index(_hash(Syntax::str_to_lower(header.name).c_str()));
 	(_tab[index]).push_front(header);
 	if (empty()) {
 		_update_start(index);
@@ -268,38 +281,38 @@ Headers::insert(const std::string &key, const std::string &unparsed_value) {
 
 bool
 Headers::key_exists(const std::string &key) const {
-	std::list<header_t>	entry_list(_tab[_hash(key.c_str())]);
+	std::list<header_t>	entry_list(_tab[_hash((Syntax::str_to_lower(key)).c_str())]);
 	if (entry_list.empty())
 		return (false);
 	for (std::list<header_t>::iterator it(entry_list.begin()) ; it != entry_list.end() ; it++)
-		if (it->name == key)
+		if (Syntax::str_to_lower(it->name) == Syntax::str_to_lower(key))
 			return (true);
 	return (false);
 }
 
 const std::string
 &Headers::get_unparsed_value(const std::string &key) const throw(std::invalid_argument) {
-	const std::list<header_t>	&entry_list(_tab[_hash(key.c_str())]);
+	const std::list<header_t>	&entry_list(_tab[_hash((Syntax::str_to_lower(key)).c_str())]);
 	for (std::list<header_t>::const_iterator it(entry_list.begin()) ; it != entry_list.end() ; it++)
-		if (it->name == key)
+		if (Syntax::str_to_lower(it->name) == Syntax::str_to_lower(key))
 			return (it->unparsed_value);
 	throw (std::invalid_argument("Headers::get_unparsed_value : invalid argument"));
 }
 
 const std::list<std::string>&
 Headers::get_value(const std::string &key) const throw (std::invalid_argument) {
-	const std::list<header_t>	&entry_list(_tab[_hash(key.c_str())]);
+	const std::list<header_t>	&entry_list(_tab[_hash((Syntax::str_to_lower(key)).c_str())]);
 	for (std::list<header_t>::const_iterator it(entry_list.begin()) ; it != entry_list.end() ; it++)
-		if (it->name == key)
+		if (Syntax::str_to_lower(it->name) == Syntax::str_to_lower(key))
 			return (it->value);
 	throw (std::invalid_argument("Headers::get_value : invalid argument"));
 }
 
 void
 Headers::set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument) {
-	std::list<header_t>	&entry_list(_tab[_hash(key.c_str())]);
+	std::list<header_t>	&entry_list(_tab[_hash((Syntax::str_to_lower(key)).c_str())]);
 	for (std::list<header_t>::iterator it(entry_list.begin()); it != entry_list.end(); it++)
-		if (it->name == key) {
+		if (Syntax::str_to_lower(it->name) == Syntax::str_to_lower(key)) {
 			it->value = parsed_value;
 			return ;
 		}
@@ -311,7 +324,7 @@ Headers::render(void) const {
 	for (const_iterator it(begin()) ; it != end() ; it++) {
 		std::cout << "*" << std::endl;
 		std::cout << "KEY : " << it->name << "$" << std::endl;
-		std::cout << "HASH : " << _hash(it->name.c_str()) << "$" << std::endl;
+		std::cout << "HASH : " << _hash(Syntax::str_to_lower(it->name).c_str()) << "$" << std::endl;
 		std::cout << "VALUE : " << it->unparsed_value << "$" << std::endl;
 		std::cout << "*" << std::endl;
 	}

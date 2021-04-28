@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/23 09:33:42 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 09:54:29 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -136,7 +136,8 @@ RequestParsing::_trailers_received(const Request &request, const ByteArray &inpu
 bool
 RequestParsing::_body_expected(const Request &request) {
 	return (request.get_headers().key_exists(TRANSFER_ENCODING)
-		|| request.get_headers().key_exists(CONTENT_LENGTH));
+			|| (request.get_headers().key_exists(CONTENT_LENGTH)
+				&& static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())) > 0));
 }
 
 bool

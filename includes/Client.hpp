@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/26 12:47:34 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 10:01:06 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,6 @@
 # include "CGIMetaVariables.hpp"
 # include "CGIScriptArgs.hpp"
 # include "CGIResponse.hpp"
-# include "Path.hpp"
 
 # ifdef __APPLE__
 #  define st_mtim st_mtimespec
@@ -46,11 +45,13 @@
 
 class RequestParsing;
 class ResponseHandling;
+class CGI;
 
 class Client {
 
 	friend class RequestParsing;
 	friend class Request;
+	friend class CGI;
 
 	public:
 
@@ -73,9 +74,9 @@ class Client {
 		int read_socket(void);
 		int write_socket(void);
 		int read_target_resource(void);
+		int	write_target_resource(void);
 		int read_cgi_output(void);
 		int write_cgi_input(void);
-		int	write_target_resource(void);
 
 		char *get_ip_addr() const;
 		std::string get_ident() const;
@@ -141,48 +142,7 @@ class Client {
 		 *
 		 */
 
-		bool _is_cgi_related(const Request &request);
-
-		/* CGI input preparation
-		 */
-		int _prepare_cgi(exchange_t &exchange);
-
-		/* Interface setting
-		 */
-		int _create_cgi_child_process(void);
-		int _handle_cgi(exchange_t &exchange);
-    
-		/* CGI response parsing
-		 */
-		int _cgi_output_parsing(int ret);
-		void _collect_cgi_header(void);
-		int _check_cgi_headers(void);
-		void _collect_cgi_body(void);
-
-		/* Status predicates
-		 */
-		bool _cgi_header_received(void);
-		bool _cgi_headers_received(void);
-		bool _cgi_body_received(void);
-		bool _cgi_body_expected(void);
-
-		/* Type predicates
-		 */
-		bool _is_local_redirection(const std::string &location);
-		bool _is_client_redirection(const std::string &location);
-		bool _is_redirection_status(const std::string &status_line);
-		bool _is_document_response(void);
-		bool _is_local_redirect_response(void);
-		bool _is_client_redirect_response(void);
-		bool _is_client_redirect_response_with_document(void);
-
-		/* Handling CGI responses
-		 */
-		int _handle_cgi_response(void);
-		int _handle_local_redirect_cgi_response(void);
-		int _handle_client_redirect_cgi_response(void);
-		int _handle_client_redirect_doc_cgi_response(void);
-		int _handle_document_cgi_response(void);
+		int _cgi_init(exchange_t &exchange);
 
 };
 
