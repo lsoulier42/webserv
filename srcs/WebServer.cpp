@@ -39,7 +39,6 @@ WebServer::setup_servers() {
 	}
 	for(std::list<Server>::iterator it = _servers.begin(); it != _servers.end(); it++) {
 		it->setup_default_server();
-		set_non_blocking(it->get_server_sd());
 		_highest_socket = it->get_server_sd();
 	}
 }
@@ -59,7 +58,10 @@ WebServer::_accept_connection(const Server& server) {
 		this->_close_sockets();
 		exit(EXIT_FAILURE);
 	}
-	set_non_blocking(connection);
+	if (fcntl(connection, F_SETFL, O_NONBLOCK) < 0) {
+		DEBUG_COUT("Fcntl error with F_SETFL : " << std::strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	if (connection == -1)
 		return ;
 	max_client_reached = _clients.size() >= _max_connection;
@@ -105,22 +107,6 @@ WebServer::routine(void) {
 	}
 	DEBUG_COUT(PROGRAM_VERSION << " is exiting majestically.");
 	this->_close_sockets();
-}
-
-void
-WebServer::set_non_blocking(int file_descriptor) {
-	int opts;
-
-	opts = fcntl(file_descriptor, F_GETFD);
-	if (opts < 0) {
-		DEBUG_COUT("Fcntl error with F_GETFD : " << std::strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	opts = (opts | O_NONBLOCK);
-	if (fcntl(file_descriptor, F_SETFL, opts) < 0) {
-		DEBUG_COUT("Fcntl error with F_SETFL : " << std::strerror(errno));
-		exit(EXIT_FAILURE);
-	}
 }
 
 void

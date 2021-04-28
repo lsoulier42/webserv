@@ -124,6 +124,7 @@ class Client {
 		int _build_output(exchange_t &exchange);
 		int _get_default_index(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
+		void _rebuild_request_target(exchange_t &exchange, const std::string& path);
 
 		/* Autoindex
 		 *

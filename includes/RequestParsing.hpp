@@ -38,7 +38,6 @@ class RequestParsing {
 		static bool _body_received(const Request &request, const ByteArray &input_str);
 		static bool _trailer_received(const Request &request, const ByteArray &input_str);
 		static bool _trailers_received(const Request &request, const ByteArray &input_str);
-		static bool _transfer_encoding_chunked(const Request &request);
 		static bool _body_expected(const Request &request);
 		static bool _trailer_expected(const Request &request);
 		static int _collect_request_line_elements(Request &request, ByteArray &input_str);
@@ -46,7 +45,6 @@ class RequestParsing {
 		static int _check_headers(Client &client, Request &request);
 		static int _check_trailer(Request &request, ByteArray &input_str);
 		static void _collect_chunked(Request &request, ByteArray &input);
-		static ByteArray _decode_chunked(const ByteArray& input);
 		static int _collect_body(Request &request, ByteArray &input_str);
 		static void _pick_virtual_server(Client &client, Request &request);
 		static void _pick_location(Request &request);

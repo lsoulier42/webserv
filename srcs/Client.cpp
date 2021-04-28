@@ -13,7 +13,6 @@
 #include "Client.hpp"
 #include "RequestParsing.hpp"
 #include "ResponseHandling.hpp"
-#include "WebServer.hpp"
 #include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
 const size_t	Client::_buffer_size(1000000);
@@ -184,10 +183,38 @@ Client::write_socket(void) {
 	return (SUCCESS);
 }
 
+void
+Client::_rebuild_request_target(exchange_t &exchange, const std::string& path) {
+	Request& request = exchange.first;
+	Response& response = exchange.second;
+	std::string definite_path, dir_path, index;
+	std::string request_target = request.get_request_line().get_request_target();
+	std::list<std::string> index_list = request.get_location()->get_index();
+
+	for(std::list<std::string>::iterator it = index_list.begin();
+		it != index_list.end(); it++) {
+		definite_path = _format_index_path(path, *it);
+		if (REGULAR_FILE == Syntax::get_path_type(definite_path)) {
+			index = *it;
+			break;
+		}
+	}
+	if (Syntax::get_path_type(definite_path) != INVALID_PATH) {
+		request.get_request_line().set_request_target(
+			_format_index_path(request_target, index));
+		DEBUG_COUT("Request target was directory, request target reset to : " <<
+			request.get_request_line().get_request_target() << " (" << request.get_ident() << ")");
+		response.set_target_path(definite_path);
+	}
+}
+
 int
 Client::_process(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
+	std::string	path(_build_resource_path(request));
+	path_type_t path_type = Syntax::get_path_type(path);
+	method_t	method = request.get_request_line().get_method();
 	int (Client::*process_functions[])(exchange_t &exchange) = {&Client::_process_GET,
 		&Client::_process_HEAD, &Client::_process_POST, &Client::_process_PUT,
 		&Client::_process_DELETE, &Client::_process_CONNECT,
@@ -197,6 +224,11 @@ Client::_process(exchange_t &exchange) {
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE) {
 		return (_process_error(exchange));
+	}
+	response.set_target_path(path);
+	if (path_type == DIRECTORY && (method == GET || method == HEAD)
+		&& !request.get_location()->get_index().empty()) {
+		_rebuild_request_target(exchange, path);
 	}
 	if (_is_cgi_related(request)) {
 		DEBUG_COUT("CGI request processing (" << request.get_ident() << ")");
@@ -216,28 +248,6 @@ Client::_format_index_path(const std::string& dir_path, const std::string& index
 	if (*index_file.begin() == '/')
 		definite_index_file = index_file.substr(1);
 	return definite_path + definite_index_file;
-}
-
-int
-Client::_get_default_index(exchange_t &exchange) {
-	Request& request = exchange.first;
-	Response& response = exchange.second;
-	std::string dir_path = response.get_target_path(), definite_path;
-	std::list<std::string> index_list = request.get_location()->get_index();
-
-	if (index_list.empty()) {
-		return (FAILURE);
-	} else {
-		for(std::list<std::string>::iterator it = index_list.begin(); it != index_list.end(); it++) {
-			definite_path = _format_index_path(dir_path, *it);
-			if (REGULAR_FILE == Syntax::get_path_type(definite_path))
-				break ;
-		}
-	}
-	if (Syntax::get_path_type(definite_path) == INVALID_PATH)
-		return (FAILURE);
-	response.set_target_path(definite_path);
-	return (SUCCESS);
 }
 
 std::string
@@ -326,42 +336,37 @@ int
 Client::_process_GET(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-
-	std::string	path(_build_resource_path(request));
-	path_type_t path_type = Syntax::get_path_type(path);
+	std::string target_path = response.get_target_path();
+	path_type_t path_type = Syntax::get_path_type(target_path);
 
 	if (path_type == INVALID_PATH) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
-	response.set_target_path(path);
 	if (path_type == DIRECTORY) {
-		if (_get_default_index(exchange) == FAILURE) {
-			if (request.get_location()->is_autoindex()) {
-				DEBUG_COUT("No index found, generating autoindex (" << request.get_ident() << ")");
-				return (_generate_autoindex(exchange));
-			}
-			response.get_status_line().set_status_code(NOT_FOUND);
-			return (_process_error(exchange));
+		if (request.get_location()->is_autoindex()) {
+			DEBUG_COUT("No index found, generating autoindex (" << request.get_ident() << ")");
+			return (_generate_autoindex(exchange));
 		}
+		response.get_status_line().set_status_code(NOT_FOUND);
+		return (_process_error(exchange));
 	}
 	response.get_status_line().set_status_code(OK);
-	return (_open_file_to_read(response.get_target_path()));
+	return (_open_file_to_read(target_path));
 }
 
 int
 Client::_process_PUT(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-	std::string path(_build_resource_path(request));
-	path_type_t path_type = Syntax::get_path_type(path);
+	std::string target_path = response.get_target_path();
+	path_type_t path_type = Syntax::get_path_type(target_path);
 	status_code_t error_opening, status_created;
 
 	if (path_type == DIRECTORY) {
 		response.get_status_line().set_status_code(NOT_FOUND);
 		return (_process_error(exchange));
 	}
-	response.set_target_path(path);
 	error_opening = request.get_request_line().get_method() == PUT ? NOT_FOUND : INTERNAL_SERVER_ERROR;
 	_file_write_fd = open(response.get_target_path().c_str(), O_WRONLY | O_CREAT| O_TRUNC| O_NONBLOCK, 0666);
 	if (_file_write_fd < 0) {
@@ -421,9 +426,12 @@ Client::_build_resource_path(Request &request) {
 
 int
 Client::_open_file_to_read(const std::string &path) {
+	exchange_t &exchange = _exchanges.front();
+	Response &response = exchange.second;
 	if (0 > (_fd = open(path.c_str(), O_RDONLY | O_NONBLOCK))) {
 		DEBUG_COUT("Error during opening a file: " << std::strerror(errno) << "(" << this->get_ident() << ")");
-		return (FAILURE);
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(_exchanges.front()));
 	}
 	return (SUCCESS);
 }
@@ -631,7 +639,6 @@ Client::read_cgi_output(void) {
 		return (_process_error(exchange));
 	}
 	_cgi_output.append(buffer, ret);
-	//_cgi_output = (_cgi_output + ByteArray(buffer, ret));
 	if (SUCCESS != _cgi_output_parsing(ret)) {
 		DEBUG_COUT("Error during parsing of cgi output (" << request.get_ident() << ")");
 		close(_cgi_output_fd);
@@ -652,10 +659,14 @@ Client::read_cgi_output(void) {
 
 int
 Client::_cgi_output_parsing(int ret) {
+	exchange_t	&exchange(_exchanges.front());
+	Request		&request(exchange.first);
+	header_t	current_header;
+
 	while (_cgi_header_received())
 		_collect_cgi_header();
 	if (_cgi_headers_received() && SUCCESS != _check_cgi_headers()) {
-		DEBUG_COUT("Error during parsing of CGI headers (" << this->get_ident() << ")");
+		DEBUG_COUT("Error during parsing of CGI headers (" << request.get_ident() << ")");
 		return (FAILURE);
 	}
 	if (_cgi_body_received() || ret == 0)
@@ -671,9 +682,9 @@ Client::_collect_cgi_header(void) {
 	header_t			current_header;
 
 	if (ByteArray::npos != (col = _cgi_output.find_first_of(':'))) {
-		DEBUG_COUT("CGI header received: \"" << _cgi_output.substr(0, end_header - 1) << "\" (" << request.get_ident() << ")");
 		current_header.name = _cgi_output.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(_cgi_output.substr(col + 1, (end_header - col - 1)));
+		DEBUG_COUT("CGI header received: \"" << _cgi_output.substr(0, end_header - 1) << "\" (" << request.get_ident() << ")");
 		_cgi_response.get_headers().insert(current_header);
 	}
 	_cgi_output.pop_front(end_header + 1);
@@ -705,7 +716,7 @@ void
 Client::_collect_cgi_body(void) {
 	Request &request = _exchanges.front().first;
 	_cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
-	DEBUG_COUT("CGI body received" << request.get_ident() << ")");
+	DEBUG_COUT("CGI body received (" << request.get_ident() << ")");
 	if (_cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)) {
 		size_t	body_size(static_cast<unsigned long>(std::atol(_cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
 		_cgi_response.set_body(ByteArray(_cgi_output.c_str(), body_size));
@@ -724,7 +735,7 @@ Client::_cgi_header_received(void) {
 bool
 Client::_cgi_headers_received(void) {
 	return (_cgi_response.get_status() == CGIResponse::START
-			&& _cgi_output[0] == '\n');
+			&& !_cgi_output.empty() && _cgi_output[0] == '\n');
 }
 
 bool

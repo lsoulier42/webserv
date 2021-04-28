@@ -77,6 +77,10 @@ Server::_create_socket_descriptor() {
 		std::cerr << std::strerror(errno) << std::endl;
 		exit(EXIT_FAILURE);
 	}
+	if (fcntl(_server_sd, F_SETFL, O_NONBLOCK) < 0) {
+		DEBUG_COUT("Fcntl error with F_SETFL : " << std::strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	DEBUG_COUT("Server socket successfully created at file descriptor " << _server_sd);
 }
 
