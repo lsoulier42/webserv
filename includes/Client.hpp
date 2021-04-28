@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 16:15:30 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 22:18:42 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,7 @@
 
 class RequestParsing;
 class ResponseHandling;
+class CGI;
 
 class Client {
 
@@ -185,6 +186,8 @@ class Client {
 		int _handle_client_redirect_cgi_response(void);
 		int _handle_client_redirect_doc_cgi_response(void);
 		int _handle_document_cgi_response(void);
+
+		int _cgi_init(exchange_t &exchange);
 
 };
 

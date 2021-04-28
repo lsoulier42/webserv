@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 11:59:14 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 16:15:20 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 09:22:59 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,9 +17,11 @@
 # include <cstring>
 # include <unistd.h>
 # include <cerrno>
+# include <sys/wait.h>
 # include "CGIMetaVariables.hpp"
 # include "CGIScriptArgs.hpp"
 # include "CGIResponse.hpp"
+# include "ResponseHandling.hpp"
 # include "Client.hpp"
 # include "Request.hpp"
 # include "Syntax.hpp"
@@ -41,8 +43,8 @@ class CGI {
 		static int _launch_script(Client &client);
 
 		static void _collect_header(CGIResponse &cgi_response, ByteArray &output);
-		static int _check_headers(CGIResponse &cgi_response);
-		static void _collect_body(CGIResponse &cgi_response);
+		static int _check_headers(CGIResponse &cgi_response, ByteArray &output);
+		static void _collect_body(CGIResponse &cgi_response, ByteArray &output);
 
 		static int _handle_cgi_response(Client &client);
 		static int _handle_local_redirect_response(Client &client);
@@ -52,10 +54,10 @@ class CGI {
 
 		/* Status predicates
 		 */
-		static bool _cgi_header_received(const CGIResponse &cgi_response, const ByteArray &output);
-		static bool _cgi_headers_received(const CGIResponse &cgi_response, const ByteArray &output);
-		static bool _cgi_body_received(const CGIResponse &cgi_response, const ByteArray &output);
-		static bool _cgi_body_expected(const CGIResponse &cgi_response);
+		static bool _header_received(const CGIResponse &cgi_response, const ByteArray &output);
+		static bool _headers_received(const CGIResponse &cgi_response, const ByteArray &output);
+		static bool _body_received(const CGIResponse &cgi_response, const ByteArray &output);
+		static bool _body_expected(const CGIResponse &cgi_response);
 
 		/* Type predicates
 		 */

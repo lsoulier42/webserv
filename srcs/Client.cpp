@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/27 16:10:54 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/27 22:18:16 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include "RequestParsing.hpp"
 #include "ResponseHandling.hpp"
 #include "WebServer.hpp"
+#include "CGI.hpp"
 #include <sys/wait.h> /* added sys/ for MAC_OS compatibility */
 
 const size_t	Client::_buffer_size(65000);
@@ -196,7 +197,7 @@ Client::_process(exchange_t &exchange) {
 	if (response.get_status_line().get_status_code() != TOTAL_STATUS_CODE) {
 		return (_process_error(exchange));
 	}
-	if (_is_cgi_related(request))
+	if (CGI::is_cgi_related(request))
 		return (_cgi_init(exchange));
 	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
 }
@@ -585,6 +586,7 @@ Client::write_cgi_input(void) {
 }
 */
 
+/*
 int
 Client::_create_cgi_child_process(void) {
 	pid_t	pid;
@@ -594,7 +596,9 @@ Client::_create_cgi_child_process(void) {
 		pid = fork();
 	return (pid);
 }
+*/
 
+/*
 int
 Client::_handle_cgi(exchange_t &exchange) {
 	Request				&request(exchange.first);
@@ -642,7 +646,27 @@ Client::_handle_cgi(exchange_t &exchange) {
 	_cgi_response.reset();
 	return (SUCCESS);
 }
+*/
 
+int
+Client::read_cgi_output(void) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+	int			ret;
+
+	ret = CGI::read_output(*this);
+	if (FAILURE == ret) {
+		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+		return (_process_error(exchange));
+	} else if (SUCCESS == ret)
+		return (_build_output(exchange));
+	else if (REDIRECT == ret)
+		return (_process(exchange));
+	else
+		return (SUCCESS);
+}
+
+/*
 int
 Client::read_cgi_output(void) {
 	exchange_t	&exchange(_exchanges.front());
@@ -897,6 +921,7 @@ Client::_handle_document_cgi_response(void) {
 	}
 	return (_build_output(exchange));
 }
+*/
 
 int
 Client::_process_HEAD(exchange_t &exchange) {
