@@ -1,11 +1,204 @@
-<!DOCTYPE html>
-    <head>
-        <title>Hello!</title>
-    </head>
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <body>
-        <h1>Hello World!</h1>
-        <p>LETS GOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO</p>
-    </body>
+	<link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,900' rel='stylesheet' type='text/css'>
 
+	<link rel="stylesheet" href="css/reset.css"> <!-- CSS reset -->
+	<link rel="stylesheet" href="css/style.css"> <!-- Resource style -->
+	<script src="js/modernizr.js"></script> <!-- Modernizr -->
+</head>
+<body>
+	<title>Page d'acceuil de notre projet Webserv</title>
+	<main>
+		<div class="cd-image-block">
+			<ul class="cd-images-list">
+				<li class="is-selected">
+					<a href="#0">
+						<h2>Serveur Web HTTP 1.1</h2>
+					</a>
+				</li>
+
+				<li>
+					<a href="#0">
+						<h2>Gestions des méthodes</h2>
+					</a>
+				</li>
+
+				<li>
+					<a href="#0">
+						<h2>Prise en charge des CGI</h2>
+					</a>
+				</li>
+
+				<li>
+					<a href="#0">
+						<h2>Autres features </h2>
+					</a>
+				</li>
+			</ul> <!-- .cd-images-list -->
+		</div> <!-- .cd-image-block -->
+
+		<div class="cd-content-block">
+			<ul>
+				<li class="is-selected">
+					<div>
+						<h2>Présentation</h2>
+						<h3>Un serveur Web écrit en CPP98 : </h3>
+						<p>
+							- protocole HTTP/1.1 <br \>
+							- implementé sur la base des RFC 7230-7235 <br \>
+							- connexion server/client par socket TCP/IP <br \>
+							- utilise select() pour gérer dans un seul thread/processus les multiples connexions entrantes <br \>
+						</p>
+						<h3>Fichier de configuration : </h3>
+						<p>
+							- implémenation basée sur la configuration de nginx <br />
+							- possibilité de lancer plusieurs virtual servers avec port et hostname différents dans le même processus <br />
+							- gestion de pages d'erreur custom, de l'index par defaut, de l'autoindex, de la taille max du body du client <br />
+						</p>
+						<h3>Un serveur résilent : </h3>
+						<p>
+							- gestion de tous les cas d'erreurs <br />
+							- pas d'interruption du service si erreur du coté client ou server <br />
+							- testé avec siege et le testeur de l'intra 42 <br />
+						</p>
+					</div> 
+				</li>
+
+				<li>
+					<div>
+						<h2>Principales méthodes implementées</h2>
+						
+
+						<h3>GET "target ressource"</h3>
+						<p>
+							Utilisée pour l'affichage des pages web statiques (hors CGI) ou dynamiques (CGI) <br />
+						</p>
+
+
+						<h3>HEAD "target ressource"</h3>
+						<p>
+							Renvoie seulement les headers que l'on aurait obtenu avec une requête GET <br />
+						</p>
+						
+
+						<h3>PUT "target ressource" + "body"</h3>
+						<p>
+							Création d'un fichier contenant le body envoyé par la requete <br />
+						</p>
+
+						<h3>POST "target ressource" + "body"</h3>
+						<p>
+							Utilisée pour passer des données a un script CGI
+						</p>
+
+						<h3>DELETE "target ressource"</h3>
+						<p>
+							Supprimer une ressource sur le server
+						</p>
+
+						<h3>OPTIONS "path/asterisk form"</h3>
+						<p>
+							Permet principalement de renseigner sur les methodes autorisees pour une location donnée
+						</p>
+
+						<h3>TRACE "path/asterisk form"</h3>
+						<p>
+							Permet de s'assurer de la bonne réception d'une requête en la renvoyant inchangée
+						</p>
+					</div> 
+				</li>
+
+				<li>
+					<div>
+						<h2>Les scripts CGI</h2>
+						
+						<p>
+							Un script CGI est un programme exécuté par le serveur web,
+							qui traite des données envoyées par le client (formulaire html, par exemple),
+							et génère des réponses (page html, par exemple).
+							Cela permet de proposer au client un service interactif.
+						</p>
+						
+						<p>
+							Le serveur est responsable de gérer la connexion, le transfert de données,
+							le transport et les problèmes réseau relatifs à la requête du client.
+							Le script CGI s’occupe quant à lui des problèmes niveau application : accès aux
+							données et traitement des documents.
+						</p>
+
+						<h2>Testé avec les scripts habituels : php, perl, bash</h2>
+
+						<h2>Métavariables traitées</h2>
+						<p>
+							AUTH_TYPE -
+							CONTENT_LENGTH -
+							CONTENT_TYPE -
+							GATEWAY_INTERFACE -
+							PATH_INFO -
+							PATH_TRANSLATED -
+							QUERY_STRING -
+							REMOTE_ADDR -
+							REMOTE_IDENT -
+							REMOTE_USER -
+							REQUEST_METHOD -
+							REQUEST_URI -
+							SCRIPT_NAME -
+							SERVER_NAME -
+							SERVER_PORT -
+							SERVER_PROTOCOL -
+							SERVER_SOFTWARE
+						</p>
+					</div> 
+				</li>
+
+				<li>
+					<div>
+						<h2>Gestion des principaux headers HTTP</h2>
+						
+						<p>
+							Accept-Charsets -
+							Accept-Language -
+							Allow -
+							Authorization -
+							Content-Language -
+							Content-Length -
+							Content-Location -
+							Content-Type -
+							Date -
+							Host -
+							Last-Modified -
+							Location -
+							Referer -
+							Retry-After -
+							Server -
+							Transfer-Encoding -
+							User-Agent -
+							WWW-Authenticate
+						</p>
+
+						<h2>Debugger</h2>
+						<p>
+							Affichage de l'ensemble des étapes de connexions, des requêtes recues, réponses créées. <br />
+							Affichage détaillée de toute la gestion des scripts CGI.
+						</p>
+					</div> 
+				</li>
+			</ul>
+
+			<button class="cd-close">Close</button>
+		</div> <!-- .cd-content-block -->
+
+		<ul class="block-navigation">
+			<li><button class="cd-prev inactive">&larr; Prev</button></li>
+			<li><button class="cd-next">Next &rarr;</button></li>
+		</ul> <!-- .block-navigation -->
+	</main>	<!-- .cd-main -->
+	
+<script src="js/jquery-2.1.4.js"></script>
+<script src="js/main.js"></script> <!-- Resource jQuery -->
+</body>
 </html>

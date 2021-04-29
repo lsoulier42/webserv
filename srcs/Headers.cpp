@@ -25,12 +25,12 @@ header_iterator::header_iterator(std::list<header_t>::iterator x, std::vector<st
 	_cell(y) {}
 
 header_t
-&header_iterator::operator*(void) {
+&header_iterator::operator*(void) const {
 	return (*_cur);
 }
 
 header_t
-*header_iterator::operator->(void) {
+*header_iterator::operator->(void) const {
 	return (&(*_cur));
 }
 
@@ -317,17 +317,6 @@ Headers::set_value(const std::string &key, const std::list<std::string>& parsed_
 			return ;
 		}
 	throw (std::invalid_argument("Headers::set_value : invalid argument"));
-}
-
-void
-Headers::render(void) const {
-	for (const_iterator it(begin()) ; it != end() ; it++) {
-		std::cout << "*" << std::endl;
-		std::cout << "KEY : " << it->name << "$" << std::endl;
-		std::cout << "HASH : " << _hash(Syntax::str_to_lower(it->name).c_str()) << "$" << std::endl;
-		std::cout << "VALUE : " << it->unparsed_value << "$" << std::endl;
-		std::cout << "*" << std::endl;
-	}
 }
 
 void

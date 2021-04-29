@@ -183,24 +183,18 @@ ResponseHandling::_response_content_language_handler(Client::exchange_t &exchang
 
 int
 ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange) {
-	Request& request = exchange.first;
-	Response& response = exchange.second;
-	struct stat buf;
-	std::stringstream ss;
+	Request				&request = exchange.first;
+	Response			&response = exchange.second;
+	std::stringstream	ss;
+	struct stat			buf;
 
-	if (request.get_request_line().get_method() == PUT) {
+	if (request.get_request_line().get_method() == PUT)
 		ss << response.get_body().size();
-		response.get_headers().insert(CONTENT_LENGTH, ss.str());
-		return (SUCCESS);
-	}
-	if (stat(response.get_target_path().c_str(), &buf) != -1) {
-		if (buf.st_size > static_cast<long>(request.get_location()->get_client_max_body_size())) {
-			response.get_status_line().set_status_code(PAYLOAD_TOO_LARGE);
-			return FAILURE;
-		}
+	else if (stat(response.get_target_path().c_str(), &buf) != -1)
 		ss << buf.st_size;
-		response.get_headers().insert(CONTENT_LENGTH, ss.str());
-	}
+	else
+		return (SUCCESS);
+	response.get_headers().insert(CONTENT_LENGTH, ss.str());
 	return (SUCCESS);
 }
 

@@ -2,11 +2,11 @@ NAME = webserv
 
 SRCS_FILES = Server.cpp WebServer.cpp ConfigParsing.cpp VirtualServer.cpp Location.cpp AHTTPMessage.cpp \
 	Client.cpp Request.cpp Response.cpp Syntax.cpp CGIMetaVariables.cpp CGIResponse.cpp Headers.cpp RequestParsing.cpp \
-	ResponseHandling.cpp ByteArray.cpp Debugger.cpp Path.cpp CGIScriptArgs.cpp CGI.cpp
+	ResponseHandling.cpp ByteArray.cpp Debugger.cpp CGIScriptArgs.cpp CGI.cpp
 
 HEADER_FILES = Server.hpp WebServer.hpp ConfigParsing.hpp VirtualServer.hpp Location.hpp AHTTPMessage.hpp  \
 	   Client.hpp Request.hpp Response.hpp Syntax.hpp CGIMetaVariables.hpp CGIResponse.hpp Headers.hpp \
-	   RequestParsing.hpp ResponseHandling.hpp Debugger.hpp ByteArray.hpp Path.hpp CGIScriptArgs.hpp CGI.hpp
+	   RequestParsing.hpp ResponseHandling.hpp Debugger.hpp ByteArray.hpp CGIScriptArgs.hpp CGI.hpp
 
 SRCS_DIR = ./srcs/
 SRCS_SUB_DIR = config_parsing/
@@ -19,7 +19,7 @@ SRCS = $(addprefix $(SRCS_DIR), $(SRCS_FILES))
 OBJS = $(addprefix $(OBJS_DIR), $(SRCS_FILES:.cpp=.o))
 
 CC = clang++
-CFLAGS = -Wall -Wextra -Werror -std=c++98 -g3 -fsanitize=address
+CFLAGS = -Wall -Wextra -Werror -std=c++98
 INCLUDE = -I $(HEADER_DIR)
 
 $(OBJS_DIR)%.o: $(SRCS_DIR)%.cpp $(HEADERS)

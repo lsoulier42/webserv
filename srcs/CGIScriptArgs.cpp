@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "CGIScriptArgs.hpp"
+#include "Debugger.hpp"
 
 const size_t
 CGIScriptArgs::size_tab(2);
@@ -21,7 +22,9 @@ CGIScriptArgs::CGIScriptArgs(void) :
 CGIScriptArgs::CGIScriptArgs(const Request &request) throw(std::bad_alloc) :
 	tab(new char*[size_tab + 1]) {
 	tab[0] = CGIScriptArgs::_build_script_path(request);
+	DEBUG_COUT("CGI script args \"" << tab[0] << "\" (" << request.get_ident() << ")");
 	tab[1] = CGIScriptArgs::_build_requested_file_path(request);
+	DEBUG_COUT("CGI script args \"" << tab[1] << "\" (" << request.get_ident() << ")");
 	tab[2] = 0;
 }
 
@@ -70,7 +73,7 @@ char
 *CGIScriptArgs::_build_requested_file_path(const Request &request) throw(std::bad_alloc) {
 	char		*path;
 	std::string	request_target(request.get_request_line().get_request_target());
-	std::string	path_str(request_target.substr(0, request_target.find("?")));
+	std::string	path_str(request_target.substr(0, request_target.find('?')));
 	if (request.get_location()->get_path().compare("/"))
 		path_str.erase(0, request.get_location()->get_path().size());
 	path_str.insert(0, request.get_location()->get_root());

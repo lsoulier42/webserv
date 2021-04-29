@@ -13,9 +13,17 @@
 #include "WebServer.hpp"
 #include "ResponseHandling.hpp"
 
+size_t WebServer::write_buffer_size = 65000;
+
 WebServer::WebServer() :
+	_config_file(),
+	_servers(),
+	_virtual_servers(),
 	_max_connection(DEFAULT_MAX_CONNECTION),
-	_highest_socket(0) {
+	_clients(),
+	_sockets_list(),
+	_highest_socket(0),
+	_path_occupied() {
 
 }
 
@@ -25,9 +33,9 @@ WebServer::~WebServer() {
 
 void
 WebServer::setup_servers() {
-	std::set<std::pair<std::string, int> > unique_pairs;
-	std::pair<std::string, int> ip_port;
-	Server new_server;
+	std::set<std::pair<std::string, int> >	unique_pairs;
+	std::pair<std::string, int> 			ip_port;
+	Server 									new_server;
 
 	for(std::list<VirtualServer>::iterator it = _virtual_servers.begin(); it != _virtual_servers.end(); it++) {
 		ip_port = std::make_pair(it->get_ip_addr(), it->get_port());
@@ -45,10 +53,10 @@ WebServer::setup_servers() {
 
 void
 WebServer::_accept_connection(const Server& server) {
-	int connection;
-	bool max_client_reached;
-	struct sockaddr client_addr = *server.get_sock_addr();
-	socklen_t client_socket_len = *server.get_addr_len();
+	int				connection;
+	bool 			max_client_reached;
+	struct sockaddr	client_addr = *server.get_sock_addr();
+	socklen_t 		client_socket_len = *server.get_addr_len();
 
 	connection = accept(server.get_server_sd(),
 		&client_addr, &client_socket_len);
@@ -81,8 +89,8 @@ WebServer::_close_sockets() {
 
 void
 WebServer::routine(void) {
-	struct timeval timeout;
-	int nb_sockets;
+	struct timeval	timeout;
+	int 			nb_sockets;
 
 	if (_servers.empty()) {
 		DEBUG_COUT("No server has been set up yet");
@@ -214,28 +222,62 @@ WebServer::sigint_handler(int signum) {
 	sig_value = signum;
 }
 
-int main(int argc, char **argv) {
-	WebServer webserv;
-	std::string filepath;
+int handle_buffer_size(char **argv, int& i) {
+	size_t arg_buffer_size;
 
-	if (signal(SIGINT, &WebServer::sigint_handler) == SIG_ERR)
-		return (EXIT_FAILURE);
-	if (argc >= 2 && argc <= 3) {
+	if (!argv[i + 1]) {
+		std::cout << "Error : -bf needs an argument" << std::endl;
+	}
+	if(!Syntax::str_is_num(argv[i + 1])) {
+		std::cout << "Error : -bf argument must be numerical and positive" << std::endl;
+		return (FAILURE);
+	}
+	arg_buffer_size = strtol(argv[++i], NULL, 10);
+	if (arg_buffer_size == 0) {
+		std::cout << "Error : -bf argument can't be 0" << std::endl;
+		return (FAILURE);
+	}
+	if (arg_buffer_size > MAX_BUFFER_SIZE) {
+		std::cout << "Error : -bf argument can't be more than 1Mo" << std::endl;
+		return (FAILURE);
+	}
+	WebServer::write_buffer_size = arg_buffer_size;
+	return (SUCCESS);
+}
+
+int check_args(int argc, char **argv, std::string& filepath) {
+	if (argc >= 2 && argc <= 5) {
 		for (int i = 1; i < argc; i++) {
 			std::string argument(argv[i]);
 			if (argument == "-v") {
 				DEBUG_START(true);
 			}
+			else if (argument == "-bf") {
+				if (handle_buffer_size(argv, i) == FAILURE)
+					return (FAILURE);
+			}
 			else
 				filepath = argument;
 		}
 	}
-	DEBUG_COUT(PROGRAM_VERSION << " has started.");
+	return (SUCCESS);
+}
+
+int main(int argc, char **argv) {
+	WebServer	webserv;
+	std::string	filepath;
+
+	if (signal(SIGINT, &WebServer::sigint_handler) == SIG_ERR)
+		return (EXIT_FAILURE);
+	if (check_args(argc, argv, filepath) == FAILURE)
+		return (EXIT_FAILURE);
 	if (filepath.empty())
 		filepath = "conf/default.conf";
 	if (!webserv.parsing(filepath))
 		return EXIT_FAILURE;
 	DEBUG_COUT("Config file parsing went well");
+	DEBUG_COUT("Write buffer size has been set to : " << WebServer::write_buffer_size);
+	DEBUG_COUT(PROGRAM_VERSION << " has started.");
 	webserv.setup_servers();
 	webserv.routine();
 	return (EXIT_SUCCESS);
