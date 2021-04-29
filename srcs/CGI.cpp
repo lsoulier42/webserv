@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 14:10:08 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/28 21:40:40 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,13 +25,23 @@ CGI::is_cgi_related(const Request &request) {
 			&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
 }
 
+std::string
+CGI::_build_input_file_name(const Request &request) {
+	return ("/tmp/cgi_input_" + request.get_ident());
+}
+
+std::string
+CGI::_build_output_file_name(const Request &request) {
+	return ("/tmp/cgi_output_" + request.get_ident());
+}
+
 //TODO:: generer un nom unique pour le fichier temporaire
 //TODO:: eviter la copie du body de la requete
 int
 CGI::init(Client &client) {
 	Request		&request(client._exchanges.front().first);
 
-	if (0 > (client._cgi_input_fd = open("/tmp/cgi_input_webserver", O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK, S_IRUSR | S_IWUSR)))
+	if (0 > (client._cgi_input_fd = open(_build_input_file_name(request).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK, S_IRUSR | S_IWUSR)))
 		return (FAILURE);
 	client._cgi_input = request.get_body();
 	return (SUCCESS);
@@ -70,6 +80,7 @@ CGI::read_output(Client &client) {
 		DEBUG_COUT("Error during reading of CGI output: " << strerror(errno) << "(" << request.get_ident() << ")");
 		close(client._cgi_output_fd);
 		client._cgi_output_fd = 0;
+		unlink(_build_output_file_name(request).c_str());
 		client._cgi_output.clear();
 		client._cgi_response.reset();
 		return (SERVER_ERROR);
@@ -84,6 +95,7 @@ CGI::read_output(Client &client) {
 		DEBUG_COUT("Error during parsing of cgi output (" << request.get_ident() << ")");
 		close(client._cgi_output_fd);
 		client._cgi_output_fd = 0;
+		unlink(_build_output_file_name(request).c_str());
 		client._cgi_output.clear();
 		client._cgi_response.reset();
 		return (SCRIPT_ERROR);
@@ -95,6 +107,7 @@ CGI::read_output(Client &client) {
 	if (client._cgi_response.get_status() == CGIResponse::RESPONSE_RECEIVED) {
 		close(client._cgi_output_fd);
 		client._cgi_output_fd = 0;
+		unlink(_build_output_file_name(request).c_str());
 		DEBUG_COUT("CGI output parsing went well (" << request.get_ident() << ")");
 		return (_handle_cgi_response(client));
 	}
@@ -122,19 +135,22 @@ CGI::_launch_script(Client &client) {
 	CGIMetaVariables	mv(request);
 	CGIScriptArgs		args(request);
 
-	if (0 > (input_fd = open("/tmp/cgi_input_webserver", O_RDONLY, S_IRUSR | S_IWUSR))) {
+	if (0 > (input_fd = open(_build_input_file_name(request).c_str(), O_RDONLY, S_IRUSR | S_IWUSR))) {
 		DEBUG_COUT("Error during opening of tmp cgi input file :" << strerror(errno) << "(" << request.get_ident() << ")");
 		return (FAILURE);
 	}
-	if (0 > (output_fd = open("/tmp/cgi_output_webserver", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
+	if (0 > (output_fd = open(_build_output_file_name(request).c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
 		DEBUG_COUT("Error during opening of tmp cgi output file (for writing) :" << strerror(errno) << "(" << request.get_ident() << ")");
 		close(input_fd);
+		unlink(_build_input_file_name(request).c_str());
 		return (FAILURE);
 	}
 	if (-1 == (pid = _create_child_process())) {
 		DEBUG_COUT("Error creating child process: " << strerror(errno) << "(" << request.get_ident() << ")");
 		close(input_fd);
 		close(output_fd);
+		unlink(_build_input_file_name(request).c_str());
+		unlink(_build_output_file_name(request).c_str());
 		return (FAILURE);
 	}
 	if (!pid) {
@@ -150,8 +166,10 @@ CGI::_launch_script(Client &client) {
 	close(input_fd);
 	close(output_fd);
 	waitpid(-1, NULL, 0);
-	if (0 > (client._cgi_output_fd = open("/tmp/cgi_output_webserver", O_RDONLY | O_NONBLOCK, S_IRUSR | S_IWUSR))) {
+	unlink(_build_input_file_name(request).c_str());
+	if (0 > (client._cgi_output_fd = open(_build_output_file_name(request).c_str(), O_RDONLY | O_NONBLOCK, S_IRUSR | S_IWUSR))) {
 		DEBUG_COUT("Error during opening of tmp cgi output file (for reading) :" << strerror(errno) << "(" << request.get_ident() << ")");
+		unlink(_build_output_file_name(request).c_str());
 		return (FAILURE);
 	}
 	client._cgi_output.clear();
