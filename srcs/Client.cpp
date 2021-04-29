@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 14:22:41 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/29 23:03:39 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,6 +162,7 @@ Client::read_socket(void) {
 
 int
 Client::write_socket(void) {
+	/*
 	size_t		output_size = _output.size();
 	size_t		to_write = std::min(output_size, WebServer::write_buffer_size);
 	ssize_t 	write_return;
@@ -182,6 +183,7 @@ Client::write_socket(void) {
 			return (FAILURE);
 	}
 	return (SUCCESS);
+	*/
 }
 
 void
