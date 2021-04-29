@@ -83,9 +83,9 @@ class Client {
 		char *get_ip_addr() const;
 		std::string get_ident() const;
 
-	private:
+		static const size_t read_buffer_size;
 
-		static const size_t _buffer_size;
+	private:
 
 		const int _sd;
 		int _fd;

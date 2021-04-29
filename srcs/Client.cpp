@@ -14,8 +14,9 @@
 #include "RequestParsing.hpp"
 #include "ResponseHandling.hpp"
 #include "CGI.hpp"
+#include "WebServer.hpp"
 
-const size_t	Client::_buffer_size(1000000);
+const size_t	Client::read_buffer_size(MAX_BUFFER_SIZE);
 
 Client::Client(void) :
 	_sd(),
@@ -138,12 +139,12 @@ Client::_process_connection_refused() {
 
 int
 Client::read_socket(void) {
-	char	buffer[_buffer_size];
+	char	buffer[read_buffer_size];
 	int		ret;
 
 	if (_connection_refused)
 		return(_process_connection_refused());
-	if (0 >= (ret = read(_sd, buffer, _buffer_size))) {
+	if (0 >= (ret = read(_sd, buffer, read_buffer_size))) {
 		if (0 == ret) {
 			DEBUG_COUT("Client closed the connection" << "(" << this->get_ident() << ")");
 		}
@@ -162,7 +163,7 @@ Client::read_socket(void) {
 int
 Client::write_socket(void) {
 	size_t		output_size = _output.size();
-	size_t		to_write = std::min(output_size, _buffer_size);
+	size_t		to_write = std::min(output_size, WebServer::write_buffer_size);
 	ssize_t 	write_return;
 
 	if (output_size == 0)
@@ -189,8 +190,14 @@ Client::_rebuild_request_target(exchange_t &exchange, const std::string& path) {
 	Response& response = exchange.second;
 	std::string definite_path, dir_path, index;
 	std::string request_target = request.get_request_line().get_request_target();
+	std::string query_string;
 	std::list<std::string> index_list = request.get_location()->get_index();
+	size_t qs_pos = request_target.find('?');
 
+	if (qs_pos != std::string::npos) {
+		query_string = request_target.substr(qs_pos);
+		request_target = request_target.substr(0, qs_pos);
+	}
 	for(std::list<std::string>::iterator it = index_list.begin();
 		it != index_list.end(); it++) {
 		definite_path = _format_index_path(path, *it);
@@ -201,7 +208,7 @@ Client::_rebuild_request_target(exchange_t &exchange, const std::string& path) {
 	}
 	if (Syntax::get_path_type(definite_path) != INVALID_PATH) {
 		request.get_request_line().set_request_target(
-			_format_index_path(request_target, index));
+			_format_index_path(request_target, index) + query_string);
 		DEBUG_COUT("Request target was directory, request target reset to : " <<
 			request.get_request_line().get_request_target() << " (" << request.get_ident() << ")");
 		response.set_target_path(definite_path);
@@ -440,10 +447,10 @@ Client::read_target_resource(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-	char		buffer[_buffer_size];
+	char		buffer[read_buffer_size];
 	ssize_t 	ret;
 
-	ret = read(_fd, buffer, _buffer_size);
+	ret = read(_fd, buffer, read_buffer_size);
 	if (ret < 0) {
 		DEBUG_COUT("Error during reading target resource: " << std::strerror(errno) << "(" << request.get_ident() << ")");
 		close(_fd);
@@ -467,7 +474,7 @@ Client::write_target_resource(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Request		&request(exchange.first);
 	size_t		file_write_size = _file_write_str.size();
-	size_t		to_write = std::min(file_write_size, _buffer_size);
+	size_t		to_write = std::min(file_write_size, WebServer::write_buffer_size);
 	ssize_t 	write_return;
 
 	if (file_write_size == 0)
@@ -494,6 +501,7 @@ int
 Client::_build_output(exchange_t &exchange) {
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
+	std::string	new_header;
 	Response::StatusLine status_line = response.get_status_line();
 	AHTTPMessage::HTTPHeaders& headers = response.get_headers();
 
@@ -501,8 +509,10 @@ Client::_build_output(exchange_t &exchange) {
 	DEBUG_COUT("Generating response with status: \"" << _output.substr(0, _output.size() - 2) << "\" (" << request.get_ident() << ")");
 	for(size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (headers.key_exists(Syntax::response_headers_tab[i].header_index)) {
-			_output += Syntax::format_header_field(Syntax::response_headers_tab[i].header_index,
+			new_header = Syntax::format_header_field(Syntax::response_headers_tab[i].header_index,
 				headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index));
+			_output += new_header;
+			DEBUG_COUT("Response header created \"" << new_header.substr(0, new_header.size() - 2) << "\" (" << request.get_ident() << ")");
 		}
 	}
 	_output += "\r\n";

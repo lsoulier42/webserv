@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "CGI.hpp"
+#include "WebServer.hpp"
 
 CGI::CGI(void) {}
 
@@ -20,7 +21,7 @@ CGI::is_cgi_related(const Request &request) {
 	std::string	path(request_target.substr(0, request_target.find("?")));
 	std::string extension(request.get_location()->get_cgi_extension());
 
-	return (path.find(".") != std::string::npos
+	return (path.find('.') != std::string::npos
 			&& !extension.empty()
 			&& !(path.substr(path.rfind("."))).compare(0, extension.size(), extension));
 }
@@ -31,15 +32,18 @@ int
 CGI::init(Client &client) {
 	Request		&request(client._exchanges.front().first);
 
-	if (0 > (client._cgi_input_fd = open("/tmp/cgi_input_webserver", O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK, S_IRUSR | S_IWUSR)))
+	if (0 > (client._cgi_input_fd = open("/tmp/cgi_input_webserver",
+		O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK, S_IRUSR | S_IWUSR))) {
+		DEBUG_COUT("Opening CGI input temp file went wrong (" << client.get_ident() << ")");
 		return (FAILURE);
+	}
 	client._cgi_input = request.get_body();
 	return (SUCCESS);
 }
 
 int
 CGI::write_input(Client &client) {
-	size_t		buffer_size(std::min(Client::_buffer_size, client._cgi_input.size()));
+	size_t		buffer_size(std::min(WebServer::write_buffer_size, client._cgi_input.size()));
 	ssize_t		ret;
 
 	ret = write(client._cgi_input_fd, client._cgi_input.c_str(), buffer_size);
@@ -62,10 +66,10 @@ CGI::cgi_output_ret_t
 CGI::read_output(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request				&request(exchange.first);
-	char				buffer[Client::_buffer_size];
+	char				buffer[Client::read_buffer_size];
 	ssize_t				ret;
 
-	ret = read(client._cgi_output_fd, buffer, Client::_buffer_size);
+	ret = read(client._cgi_output_fd, buffer, Client::read_buffer_size);
 	if (ret < 0) {
 		DEBUG_COUT("Error during reading of CGI output: " << strerror(errno) << "(" << request.get_ident() << ")");
 		close(client._cgi_output_fd);
@@ -142,7 +146,7 @@ CGI::_launch_script(Client &client) {
 		dup2(output_fd, STDOUT_FILENO);
 		dup2(output_fd, STDERR_FILENO);
 		execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
-		write(STDOUT_FILENO, "Status:500 Internal Servor Error\n\n", 34);
+		write(STDOUT_FILENO, "Status: 500 Internal Server Error\n\n", 34);
 		close(input_fd);
 		close(output_fd);
 		exit(EXIT_FAILURE);
@@ -249,7 +253,7 @@ CGI::_is_client_redirection(const std::string &location) {
 
 bool
 CGI::_is_redirection_status(const std::string &status_line) {
-	std::string status_code(status_line.substr(0, status_line.find(" ")));
+	std::string status_code(status_line.substr(0, status_line.find(' ')));
 	int			status_code_int(std::atol(status_code.c_str()));
 	return (Syntax::is_redirection_code(status_code_int));
 }
@@ -358,7 +362,7 @@ CGI::_handle_document_response(Client &client) {
 
 	if (cgi_response.get_headers().key_exists(CGI_STATUS)) {
 		std::string	status_line(cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
-		std::string status_code(status_line.substr(0, status_line.find(" ")));
+		std::string status_code(status_line.substr(0, status_line.find(' ')));
 		int			status_code_int(std::atol(status_code.c_str()));
 		size_t		i(0);
 		while (Syntax::status_codes_tab[i].code_index != TOTAL_STATUS_CODE

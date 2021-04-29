@@ -209,7 +209,7 @@ RequestParsing::_collect_header(Request &request, ByteArray &input) {
 	header_t			current_header;
 
 	if (ByteArray::npos != (col = header.find_first_of(':'))) {
-		DEBUG_COUT("Header received: \"" << header << "\"(" << request.get_ident() << ")");
+		DEBUG_COUT("Request header received: \"" << header << "\"(" << request.get_ident() << ")");
 		current_header.name = header.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(header.substr(col + 1));
 		request.get_headers().insert(current_header);

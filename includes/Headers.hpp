@@ -32,8 +32,8 @@ struct header_iterator {
 	bool operator!=(const header_iterator &lhs, const header_iterator &rhs);
 	header_iterator(void);
 	explicit header_iterator(std::list<header_t>::iterator x, std::vector<std::list<header_t> >::iterator y);
-	header_t &operator*(void);
-	header_t *operator->(void);
+	header_t &operator*(void) const;
+	header_t *operator->(void) const;
 	header_iterator &operator++(void);
 	header_iterator operator++(int);
 	header_iterator &operator--(void);
@@ -89,7 +89,7 @@ class Headers {
 
 		void erase(const std::string &key);
 
-		void insert(const header_t &header);
+		virtual void insert(const header_t &header);
 		void insert(const std::string &key, const std::string &unparsed_value);
 
 		bool key_exists(const std::string &key) const;
@@ -98,8 +98,6 @@ class Headers {
 		const std::list<std::string> &get_value(const std::string &key) const throw (std::invalid_argument);
 
 		void set_value(const std::string &key, const std::list<std::string>& parsed_value) throw (std::invalid_argument);
-
-		void render(void) const;
 
 	private:
 

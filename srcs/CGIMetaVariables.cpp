@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "CGIMetaVariables.hpp"
+#include "Debugger.hpp"
 
 const size_t CGIMetaVariables::_default_size(18);
 const CGIMetaVariables::_mv_builder_t CGIMetaVariables::_builder_tab[] =
@@ -66,11 +67,15 @@ CGIMetaVariables::CGIMetaVariables(const Request &request) throw(std::bad_alloc)
 
 	_tab = new char*[_size + 1];
 
-	for ( ; i < _default_size ; i++)
+	for ( ; i < _default_size ; i++) {
 		_tab[i] = (*(_builder_tab[i]))(request);
+		DEBUG_COUT("CGI metavariable created \"" << _tab[i] << "\" (" << request.get_ident() << ")");
+	}
 	for (Headers::const_iterator it(request.get_headers().begin()) ; it != request.get_headers().end() ; it++)
-		if (_is_metavariable_material(*it))
-			_tab[i++] = _build_http_metavariable(*it);
+		if (_is_metavariable_material(*it)) {
+			_tab[i] = _build_http_metavariable(*it);
+			DEBUG_COUT("CGI HTTP metavariable created \"" << _tab[i++] << "\" (" << request.get_ident() << ")");
+		}
 	_tab[i] = 0;
 }
 
@@ -320,7 +325,7 @@ char
 	std::string	mv_str(_server_name + "=");
 
 	if (request.get_headers().key_exists(HOST))
-		mv_str += request.get_headers().get_unparsed_value(HOST);
+		mv_str += request.get_headers().get_value(HOST).front();
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);

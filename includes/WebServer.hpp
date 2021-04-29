@@ -37,6 +37,7 @@
 # include "Debugger.hpp"
 
 # define DEFAULT_MAX_CONNECTION 1024
+# define MAX_BUFFER_SIZE 1000000
 # define READ 0
 # define WRITE 1
 
@@ -53,6 +54,8 @@ class WebServer {
 		static int sig_value;
 		static void sigint_handler(int signum);
 
+		static size_t write_buffer_size;
+
 	private:
 		WebServer(const WebServer& src);
 		WebServer& operator=(const WebServer& rhs);
@@ -66,10 +69,10 @@ class WebServer {
 		std::ifstream _config_file;
 		std::list<Server> _servers;
 		std::list<VirtualServer> _virtual_servers;
-		size_t _max_connection;
-		std::list<Client> _clients;
-		fd_set _sockets_list[2];
-		int _highest_socket;
-		std::set<std::string> _path_occupied;
+		size_t 					_max_connection;
+		std::list<Client> 		_clients;
+		fd_set 					_sockets_list[2];
+		int 					_highest_socket;
+		std::set<std::string>	_path_occupied;
 };
 #endif
