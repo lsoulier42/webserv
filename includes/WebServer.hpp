@@ -36,7 +36,7 @@
 # include "ConfigParsing.hpp"
 # include "Debugger.hpp"
 
-# define DEFAULT_MAX_CONNECTION 128
+# define DEFAULT_MAX_CONNECTION 1024
 # define READ 0
 # define WRITE 1
 
@@ -70,6 +70,6 @@ class WebServer {
 		std::list<Client> _clients;
 		fd_set _sockets_list[2];
 		int _highest_socket;
-		std::map<std::string, int> _locked_files;
+		std::set<std::string> _path_occupied;
 };
 #endif
