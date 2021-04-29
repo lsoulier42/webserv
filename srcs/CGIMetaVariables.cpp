@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 17:30:01 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/29 13:22:25 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -320,7 +320,7 @@ char
 	std::string	mv_str(_server_name + "=");
 
 	if (request.get_headers().key_exists(HOST))
-		mv_str += request.get_headers().get_unparsed_value(HOST);
+		mv_str += request.get_headers().get_value(HOST).front();
 	mv = new char[mv_str.size() + 1];
 	strcpy(mv, mv_str.c_str());
 	return (mv);
