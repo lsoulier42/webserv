@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 20:00:24 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/29 23:02:57 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/29 23:23:48 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@ Response::Response(void) :
 	AHTTPMessage(),
 	_status(START),
 	_sending_indicator(),
+	_chunked(false),
 	_status_line(),
 	_head(),
 	_content(),
@@ -26,6 +27,7 @@ Response::Response(const Response &x) :
 	AHTTPMessage(x),
 	_status(x._status),
 	_sending_indicator(x._sending_indicator),
+	_chunked(x._chunked),
 	_status_line(x._status_line),
 	_head(x._head),
 	_content(x._content),
@@ -40,6 +42,7 @@ Response
 		AHTTPMessage::operator=(x);
 		_status = x._status;
 		_sending_indicator = x._sending_indicator;
+		_chunked = x._chunked;
 		_status_line = x._status_line;
 		_head = x._head;
 		_content = x._content;
@@ -57,6 +60,11 @@ Response::get_status(void) const {
 size_t
 Response::get_sending_indicator(void) const {
 	return (_sending_indicator);
+}
+
+bool
+Response::get_chunked(void) const {
+	return (_chunked);
 }
 
 Response::StatusLine
@@ -107,6 +115,11 @@ Response::set_status(response_status_t status) {
 void
 Response::set_sending_indicator(size_t sending_indicator) {
 	_sending_indicator = sending_indicator;
+}
+
+void
+Response::set_chunked(bool chunked) {
+	_chunked = chunked;
 }
 
 void

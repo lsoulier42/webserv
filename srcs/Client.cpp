@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/29 23:03:39 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/29 23:52:22 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,6 +162,64 @@ Client::read_socket(void) {
 
 int
 Client::write_socket(void) {
+	exchange_t	&exchange(_exchanges.front());
+	Response	&response(exchange.second);
+
+	if (response.get_status() == Response::START
+			&& !response.get_head().empty()) {
+
+		size_t		buffer_size(std::min(response.get_head().size(), WebServer::write_buffer_size));
+		ssize_t		ret;
+
+		ret = write(_sd, response.get_head().c_str(), buffer_size);
+		if (ret < 0) {
+			DEBUG_COUT("Error during writing on the socket: " << std::strerror(errno) << "(" << this->get_ident() << ")");
+			_closing = true;
+			return (FAILURE);
+		}
+		response.get_head().pop_front(ret);
+		if (response.get_head().empty()) {
+			if (response.get_headers().key_exists(CONTENT_LENGTH)
+					|| response.get_chunked()) {
+				response.set_status(Response::HEAD_SENT);
+				return (SUCCESS);
+			} else {
+				response.set_status(Response::SENT);
+				DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
+				_exchanges.pop_front();
+				if (_closing)
+					return (FAILURE);
+			}
+		}
+
+	} else if (response.get_status() == Response::HEAD_SENT
+			&& !response.get_content().empty()) {
+
+		size_t		buffer_size(std::min(response.get_content().size(), WebServer::write_buffer_size));
+		ssize_t		ret;
+
+		ret = write(_sd, response.get_content().c_str(), buffer_size);
+		if (ret < 0) {
+			DEBUG_COUT("Error during writing on the socket: " << std::strerror(errno) << "(" << this->get_ident() << ")");
+			_closing = true;
+			return (FAILURE);
+		}
+		response.get_content().pop_front(ret);
+		if (response.get_content().empty()
+				&& ((response.get_chunked()
+						&& response.get_sending_indicator() == 0)
+					|| (!response.get_chunked()
+						&& response.get_sending_indicator() >= std::atol(response.get_headers().get_value(CONTENT_LENGTH).front().c_str())))) {
+			response.set_status(Response::SENT);
+			DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
+			_exchanges.pop_front();
+			if (_closing)
+				return (FAILURE);
+		}
+
+	}
+
+	return (SUCCESS);
 	/*
 	size_t		output_size = _output.size();
 	size_t		to_write = std::min(output_size, WebServer::write_buffer_size);
