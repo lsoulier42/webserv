@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/29 23:52:22 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 00:39:06 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -184,7 +184,7 @@ Client::write_socket(void) {
 				response.set_status(Response::HEAD_SENT);
 				return (SUCCESS);
 			} else {
-				response.set_status(Response::SENT);
+				response.set_status(Response::RESPONSE_SENT);
 				DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
 				_exchanges.pop_front();
 				if (_closing)
@@ -209,8 +209,8 @@ Client::write_socket(void) {
 				&& ((response.get_chunked()
 						&& response.get_sending_indicator() == 0)
 					|| (!response.get_chunked()
-						&& response.get_sending_indicator() >= std::atol(response.get_headers().get_value(CONTENT_LENGTH).front().c_str())))) {
-			response.set_status(Response::SENT);
+						&& response.get_sending_indicator() >= static_cast<size_t>(std::atol(response.get_headers().get_value(CONTENT_LENGTH).front().c_str()))))) {
+			response.set_status(Response::RESPONSE_SENT);
 			DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
 			_exchanges.pop_front();
 			if (_closing)
@@ -499,7 +499,11 @@ Client::_open_file_to_read(const std::string &path) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(_exchanges.front()));
 	}
-	return (SUCCESS);
+	//TODO:: trouver un meilleur endroit
+	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
+		return (_process_error(exchange));
+	response.set_chunked(true);
+	return (_build_output(exchange));
 }
 
 int
@@ -517,15 +521,11 @@ Client::read_target_resource(void) {
 		_closing = true;
 		return (FAILURE);
 	}
+	response.append_content_chunk(buffer, ret);
 	if (ret == 0) {
 		close(_fd);
 		_fd = 0;
-		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
-			return (_process_error(exchange));
-		return (_build_output(exchange));
 	}
-	if (request.get_request_line().get_method() == GET)
-		response.set_body(response.get_body() + ByteArray(buffer, ret));
 	return (SUCCESS);
 }
 
@@ -559,25 +559,28 @@ Client::write_target_resource(void) {
 
 int
 Client::_build_output(exchange_t &exchange) {
-	Request		&request(exchange.first);
-	Response	&response(exchange.second);
-	std::string	new_header;
-	Response::StatusLine status_line = response.get_status_line();
-	AHTTPMessage::HTTPHeaders& headers = response.get_headers();
+	Request						&request(exchange.first);
+	Response					&response(exchange.second);
+	std::string					new_header;
+	Response::StatusLine		status_line(response.get_status_line());
+	AHTTPMessage::HTTPHeaders	&headers(response.get_headers());
+	ByteArray					&head(response.get_head());
 
-	_output = ByteArray(Syntax::format_status_line(status_line.get_http_version(), status_line.get_status_code()));
-	DEBUG_COUT("Generating response with status: \"" << _output.substr(0, _output.size() - 2) << "\" (" << request.get_ident() << ")");
+	head = ByteArray(Syntax::format_status_line(status_line.get_http_version(), status_line.get_status_code()));
+	DEBUG_COUT("Generating response with status: \"" << head.substr(0, head.size() - 2) << "\" (" << request.get_ident() << ")");
 	for(size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (headers.key_exists(Syntax::response_headers_tab[i].header_index)) {
 			new_header = Syntax::format_header_field(Syntax::response_headers_tab[i].header_index,
 				headers.get_unparsed_value(Syntax::response_headers_tab[i].header_index));
-			_output += new_header;
+			head += new_header;
 			DEBUG_COUT("Response header created \"" << new_header.substr(0, new_header.size() - 2) << "\" (" << request.get_ident() << ")");
 		}
 	}
-	_output += "\r\n";
+	head += "\r\n";
+	/*
 	if (request.get_request_line().get_method() != HEAD)
 		_output += response.get_body();
+		*/
 	return (SUCCESS);
 }
 

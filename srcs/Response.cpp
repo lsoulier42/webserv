@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 20:00:24 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/29 23:23:48 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 00:41:41 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -130,6 +130,20 @@ Response::set_target_path(const std::string& target_path) {
 void
 Response::set_content_type(const std::string& content_type) {
 	_content_type = content_type;
+}
+
+void
+Response::append_content_chunk(const char *buffer, ssize_t size) {
+	std::stringstream	size_ss;
+	std::string			size_str;
+
+	size_ss << std::hex << size;
+	size_str = size_ss.str();
+	_content.append(size_str.c_str(), size_str.size());
+	_content.append("\r\n", 2);
+	_content.append(buffer, size);
+	_content.append("\r\n", 2);
+	_sending_indicator = size;
 }
 
 void

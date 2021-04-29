@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 19:21:17 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/29 23:21:26 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 00:34:43 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,13 +70,15 @@ class Response : public AHTTPMessage {
 		void set_target_path(const std::string& target_path);
 		void set_content_type(const std::string& content_type);
 
+		void append_content_chunk(const char *buffer, ssize_t size);
+
 		void reset(void);
 
 	private:
 
 		response_status_t _status;
 		size_t _sending_indicator;
-		bool chunked;
+		bool _chunked;
 		StatusLine _status_line;
 		ByteArray _head;
 		ByteArray _content;

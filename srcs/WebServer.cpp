@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/22 20:10:02 by chris            ###   ########.fr       */
+/*   Updated: 2021/04/30 00:15:05 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,8 +166,11 @@ WebServer::_read_socks() {
 			it = _clients.erase(it);
 			continue;
 		}
-		if (FD_ISSET(it->get_fd(), &_sockets_list[READ]))
-			it->read_target_resource();
+		if (FD_ISSET(it->get_fd(), &_sockets_list[READ]) && it->read_target_resource() == FAILURE) {
+			close(it->get_sd());
+			it = _clients.erase(it);
+			continue;
+		}
 		if (FD_ISSET(it->get_cgi_output_fd(), &_sockets_list[READ]))
 			it->read_cgi_output();
 		it++;
