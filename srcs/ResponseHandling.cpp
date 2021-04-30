@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/24 06:37:09 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 11:55:01 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,16 +63,14 @@ ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 int ResponseHandling::process_cgi_response_headers(Client::exchange_t &exchange) {
 	Response& response = exchange.second;
 	size_t response_header_size = 0;
-	std::stringstream ss;
-	header_name_t cgi_headers[] = {CONTENT_LANGUAGE, DATE, SERVER,
+	header_name_t cgi_headers[] = {DATE, SERVER,
 		TRANSFER_ENCODING, WWW_AUTHENTICATE, TOTAL_HEADER_NAMES};
-	int (*response_handlers[])(Client::exchange_t&) = { &ResponseHandling::_response_content_language_handler,
-		&ResponseHandling::_response_date_handler, &ResponseHandling::_response_server_handler,
-		&ResponseHandling::_response_transfer_encoding_handler,	&ResponseHandling::_response_www_authenticate_handler };
+	int (*response_handlers[])(Client::exchange_t&) = { &ResponseHandling::_response_date_handler,
+		&ResponseHandling::_response_server_handler,
+		&ResponseHandling::_response_transfer_encoding_handler,
+		&ResponseHandling::_response_www_authenticate_handler };
 
 	response.set_content_type(response.get_headers().get_unparsed_value(CONTENT_TYPE));
-	ss << response.get_body().size();
-	response.get_headers().insert(CONTENT_LENGTH, ss.str());
 	while (cgi_headers[response_header_size] != TOTAL_HEADER_NAMES)
 		response_header_size++;
 	for (size_t i = 0; i < response_header_size; i++) {
@@ -112,9 +110,9 @@ ResponseHandling::_response_content_language_handler(Client::exchange_t &exchang
 
 int
 ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange) {
-	Request				&request = exchange.first;
 	Response			&response = exchange.second;
 	std::stringstream	ss;
+	/*
 	struct stat			buf;
 
 	if (request.get_request_line().get_method() == PUT)
@@ -124,6 +122,11 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 	else
 		return (SUCCESS);
 	response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	*/
+	if (!response.get_chunked()) {
+		ss << response.get_length();
+		response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	}
 	return (SUCCESS);
 }
 
@@ -222,7 +225,10 @@ int
 ResponseHandling::_response_transfer_encoding_handler(Client::exchange_t &exchange) {
 	Response &response = exchange.second;
 
-	response.get_headers().insert(TRANSFER_ENCODING, Syntax::encoding_types_tab[IDENTITY].name);
+	if (response.get_chunked())
+		response.get_headers().insert(TRANSFER_ENCODING, Syntax::encoding_types_tab[CHUNKED].name);
+	else
+		response.get_headers().insert(TRANSFER_ENCODING, Syntax::encoding_types_tab[IDENTITY].name);
 	return (SUCCESS);
 }
 
@@ -243,9 +249,9 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	Request&	request = exchange.first;
 	status_code_t error_code = response.get_status_line().get_status_code();
 	method_t method = request.get_request_line().get_method();
-	std::stringstream ss;
+	std::stringstream	ss;
 
-	ss << response.get_body().size();
+	ss << response.get_length();
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
 	if (method != DELETE)

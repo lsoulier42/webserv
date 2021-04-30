@@ -19,7 +19,7 @@ SRCS = $(addprefix $(SRCS_DIR), $(SRCS_FILES))
 OBJS = $(addprefix $(OBJS_DIR), $(SRCS_FILES:.cpp=.o))
 
 CC = clang++
-CFLAGS = -Wall -Wextra -Werror -std=c++98 -g3 -fsanitize=address
+CFLAGS = -Wall -Wextra -Werror -std=c++98
 INCLUDE = -I $(HEADER_DIR)
 
 $(OBJS_DIR)%.o: $(SRCS_DIR)%.cpp $(HEADERS)

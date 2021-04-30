@@ -6,38 +6,30 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:39:01 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 12:10:45 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 06:20:59 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CGIResponse.hpp"
 
 CGIResponse::CGIResponse(void) :
-	_status(START),
 	_type(NO_TYPE),
 	_headers(),
-	_body() {}
+	_content_reception(false) {}
 
 CGIResponse::CGIResponse(const CGIResponse &x) :
-	_status(x._status),
 	_type(x._type),
 	_headers(x._headers),
-	_body(x._body) {}
+	_content_reception(x._content_reception) {}
 
 CGIResponse::~CGIResponse(void) {}
 
 CGIResponse
 &CGIResponse::operator=(const CGIResponse &x) {
-	_status = x._status;
 	_type = x._type;
 	_headers = x._headers;
-	_body = x._body;
+	_content_reception = x._content_reception;
 	return (*this);
-}
-
-CGIResponse::status_t
-CGIResponse::get_status(void) const {
-	return (_status);
 }
 
 CGIResponse::type_t
@@ -55,14 +47,9 @@ const CGIResponse::CGIHeaders
 	return (_headers);
 }
 
-const ByteArray
-&CGIResponse::get_body(void) const {
-	return (_body);
-}
-
-void
-CGIResponse::set_status(status_t status) {
-	_status = status;
+bool
+CGIResponse::get_content_reception(void) const {
+	return (_content_reception);
 }
 
 void
@@ -71,16 +58,15 @@ CGIResponse::set_type(type_t type) {
 }
 
 void
-CGIResponse::set_body(const ByteArray &body) {
-	_body = body;
+CGIResponse::set_content_reception(bool content_reception) {
+	_content_reception = content_reception;
 }
 
 void
 CGIResponse::reset(void) {
-	_status = START;
 	_type = NO_TYPE;
 	_headers.clear();
-	_body.clear();
+	_content_reception = false;
 }
 
 CGIResponse::CGIHeaders::CGIHeaders(void) :

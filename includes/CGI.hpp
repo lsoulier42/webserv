@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 11:59:14 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 20:56:37 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 11:14:56 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ class CGI {
 
 		enum cgi_output_ret_t {
 			AGAIN,
-			COMPLETE,
+			HEAD_COMPLETE,
 			REDIRECT,
 			SERVER_ERROR,
 			SCRIPT_ERROR
@@ -55,8 +55,7 @@ class CGI {
 
 		static int _launch_script(Client &client);
 		static void _collect_header(CGIResponse &cgi_response, ByteArray &output);
-		static int _check_headers(CGIResponse &cgi_response, ByteArray &output);
-		static void _collect_body(CGIResponse &cgi_response, ByteArray &output);
+		static int _pick_response_type(CGIResponse &cgi_response);
 
 		static cgi_output_ret_t _handle_cgi_response(Client &client);
 		static cgi_output_ret_t _handle_local_redirect_response(Client &client);
@@ -66,9 +65,8 @@ class CGI {
 
 		/* Status predicates
 		 */
-		static bool _header_received(const CGIResponse &cgi_response, const ByteArray &output);
-		static bool _headers_received(const CGIResponse &cgi_response, const ByteArray &output);
-		static bool _body_received(const CGIResponse &cgi_response, const ByteArray &output);
+		static bool _header_received(const ByteArray &output);
+		static bool _headers_received(const ByteArray &output);
 		static bool _body_expected(const CGIResponse &cgi_response);
 
 		/* Type predicates
