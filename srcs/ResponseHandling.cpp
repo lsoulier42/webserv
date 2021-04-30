@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/30 05:47:39 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 06:32:15 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -181,12 +181,11 @@ ResponseHandling::_response_content_language_handler(Client::exchange_t &exchang
 }
 */
 
-/*
 int
 ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange) {
-	Request				&request = exchange.first;
 	Response			&response = exchange.second;
 	std::stringstream	ss;
+	/*
 	struct stat			buf;
 
 	if (request.get_request_line().get_method() == PUT)
@@ -196,9 +195,13 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 	else
 		return (SUCCESS);
 	response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	*/
+	if (!response.get_chunked()) {
+		ss << response.get_length();
+		response.get_headers().insert(CONTENT_LENGTH, ss.str());
+	}
 	return (SUCCESS);
 }
-*/
 
 int
 ResponseHandling::_response_content_location_handler(Client::exchange_t &exchange) {
@@ -286,10 +289,6 @@ ResponseHandling::_response_content_type_handler(Client::exchange_t &exchange) {
 	std::string charset, content_type;
 
 	content_type = response.get_content_type();
-	if (content_type == Syntax::mime_types_tab[TEXT_HTML].name)
-		charset = _html_charset_parser(response);
-	else if (content_type == Syntax::mime_types_tab[APPLICATION_XML].name)
-		charset = _xml_charset_parser(response);
 	if (!charset.empty()) {
 		if (request.get_headers().key_exists(ACCEPT_CHARSET) &&
 			!_is_accepted_charset(charset, request.get_headers().get_value(ACCEPT_CHARSET))) {
@@ -400,9 +399,9 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	Request&	request = exchange.first;
 	status_code_t error_code = response.get_status_line().get_status_code();
 	method_t method = request.get_request_line().get_method();
-	std::stringstream ss;
+	std::stringstream	ss;
 
-	ss << response.get_content().size();
+	ss << response.get_length();
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
 	if (method != DELETE)

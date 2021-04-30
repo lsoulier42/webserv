@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 05:31:12 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 06:40:55 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -165,8 +165,7 @@ Client::write_socket(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Response	&response(exchange.second);
 
-	if (response.get_status() == Response::START
-			&& !response.get_head().empty()) {
+	if (response.get_status() == Response::START && !response.get_head().empty()) {
 
 		size_t		buffer_size(std::min(response.get_head().size(), WebServer::write_buffer_size));
 		ssize_t		ret;
@@ -179,10 +178,8 @@ Client::write_socket(void) {
 		}
 		response.get_head().pop_front(ret);
 		if (response.get_head().empty()) {
-			if (response.get_headers().key_exists(CONTENT_LENGTH)
-					|| response.get_chunked()) {
+			if (response.get_length() > 0 || response.get_chunked()) {
 				response.set_status(Response::HEAD_SENT);
-				return (SUCCESS);
 			} else {
 				response.set_status(Response::RESPONSE_SENT);
 				DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
@@ -192,8 +189,7 @@ Client::write_socket(void) {
 			}
 		}
 
-	} else if (response.get_status() == Response::HEAD_SENT
-			&& !response.get_content().empty()) {
+	} else if (response.get_status() == Response::HEAD_SENT && !response.get_content().empty()) {
 
 		size_t		buffer_size(std::min(response.get_content().size(), WebServer::write_buffer_size));
 		ssize_t		ret;
@@ -206,10 +202,8 @@ Client::write_socket(void) {
 		}
 		response.get_content().pop_front(ret);
 		if (response.get_content().empty()
-				&& ((response.get_chunked()
-						&& response.get_sending_indicator() == 0)
-					|| (!response.get_chunked()
-						&& response.get_sending_indicator() >= static_cast<size_t>(std::atol(response.get_headers().get_value(CONTENT_LENGTH).front().c_str()))))) {
+				&& ((response.get_chunked() && response.get_sending_indicator() == 0)
+					|| (!response.get_chunked() && response.get_sending_indicator() >= response.get_length()))) {
 			response.set_status(Response::RESPONSE_SENT);
 			DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
 			_exchanges.pop_front();
@@ -376,7 +370,8 @@ Client::_generate_autoindex(exchange_t &exchange) {
 		else if (file_listing->d_type == DT_REG)
 			file_names.insert(file_listing->d_name);
 	}
-	response.set_content()(ByteArray(_format_autoindex_page(exchange, directory_names, file_names)));
+	response.set_content(ByteArray(_format_autoindex_page(exchange, directory_names, file_names)));
+	response.set_length(response.get_content().size());
 	ResponseHandling::generate_basic_headers(exchange);
 	_build_head_response(exchange);
 	closedir(directory);
@@ -440,6 +435,7 @@ Client::_process_error(exchange_t &exchange) {
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 	std::stringstream 			ss;
 
+	std::cout << "TRUC" << std::endl;
 	ss << "Request failed with error: " << Syntax::status_codes_tab[error_code].code_str;
 	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase << "(";
 	ss << request.get_ident() << ")";
@@ -453,6 +449,7 @@ Client::_process_error(exchange_t &exchange) {
 		}
 	}
 	response.set_content(ByteArray(Syntax::body_error_code(error_code)));
+	response.set_length(response.get_content().size());
 	ResponseHandling::generate_basic_headers(exchange);
 	_build_head_response(exchange);
 	return (SUCCESS);
@@ -480,10 +477,9 @@ Client::_open_file_to_read(const std::string &path) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(_exchanges.front()));
 	}
-	//TODO:: header transfer-encoding
+	response.set_chunked(true);
 	ResponseHandling::process_response_headers(exchange);
 	_build_head_response(exchange);
-	response.set_chunked(true);
 	return (SUCCESS);
 }
 
@@ -613,6 +609,7 @@ Client::_process_TRACE(exchange_t &exchange) {
 	response.get_status_line().set_status_code(OK);
 	response.set_content_type("message/http");
 	response.set_content(request.get_raw());
+	response.set_length(response.get_content().size());
 	ResponseHandling::generate_basic_headers(exchange);
 	_build_head_response(exchange);
 	return (SUCCESS);

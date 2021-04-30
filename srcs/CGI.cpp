@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 04:58:58 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 06:27:42 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,6 +73,7 @@ CGI::cgi_output_ret_t
 CGI::read_output(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request				&request(exchange.first);
+	Response			&response(exchange.second);
 	char				buffer[Client::read_buffer_size];
 	ssize_t				ret;
 
@@ -90,10 +91,10 @@ CGI::read_output(Client &client) {
 	if (!client._cgi_response.get_content_reception()) {
 
 		client._cgi_output.append(buffer, ret);
-		while (_header_received(client._cgi_response, client._cgi_output))
+		while (_header_received(client._cgi_output))
 			_collect_header(client._cgi_response, client._cgi_output);
-		if (_headers_received(client._cgi_response, client._cgi_output)) {
-			client._cgi_output.pop_front(output.find("\n") + 1);
+		if (_headers_received(client._cgi_output)) {
+			client._cgi_output.pop_front(client._cgi_output.find("\n") + 1);
 			if (SUCCESS != _pick_response_type(client._cgi_response)) {
 				DEBUG_COUT("Error during parsing of cgi output (" << request.get_ident() << ")");
 				close(client._cgi_output_fd);
@@ -127,8 +128,8 @@ CGI::read_output(Client &client) {
 			}
 		} else {
 			response.get_content().append(buffer, ret);
-			response.get_sending_indicator() += ret;
-			if (response.get_sending_indicator() >= static_cast<size_t>(std::atol(response.get_headers().get_value(CONTENT_LENGTH).front().c_str()))) {
+			response.set_sending_indicator(response.get_sending_indicator() + ret);
+			if (response.get_sending_indicator() >= response.get_length()) {
 				close(client._cgi_output_fd);
 				client._cgi_output_fd = 0;
 				unlink(_build_output_file_name(request).c_str());
@@ -234,13 +235,13 @@ CGI::_pick_response_type(CGIResponse &cgi_response) {
 }
 
 bool
-CGI::_header_received(const CGIResponse &cgi_response, const ByteArray &output) {
-	return (!_headers_received(cgi_response, output)
+CGI::_header_received(const ByteArray &output) {
+	return (!_headers_received(output)
 			&& ByteArray::npos != output.find("\n"));
 }
 
 bool
-CGI::_headers_received(const CGIResponse &cgi_response, const ByteArray &output) {
+CGI::_headers_received(const ByteArray &output) {
 	return ((!output.empty() && output[0] == '\n')
 				|| (output.size() >= 2 && output[0] == '\r' && output[1] == '\n'));
 }
@@ -359,7 +360,9 @@ CGI::_handle_client_redirect_doc_response(Client &client) {
 	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
 
-	if (!cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH))
+	if (cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH))
+		response.set_length(static_cast<size_t>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
+	else
 		response.set_chunked(true);
 
 	ResponseHandling::process_cgi_response_headers(exchange);
@@ -392,7 +395,9 @@ CGI::_handle_document_response(Client &client) {
 	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
 
-	if (!cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH))
+	if (cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH))
+		response.set_length(static_cast<size_t>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
+	else
 		response.set_chunked(true);
 
 	ResponseHandling::process_cgi_response_headers(exchange);

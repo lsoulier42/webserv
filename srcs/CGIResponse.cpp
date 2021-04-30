@@ -6,20 +6,18 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:39:01 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 01:58:47 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 06:20:59 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CGIResponse.hpp"
 
 CGIResponse::CGIResponse(void) :
-	_status(START),
 	_type(NO_TYPE),
 	_headers(),
 	_content_reception(false) {}
 
 CGIResponse::CGIResponse(const CGIResponse &x) :
-	_status(x._status),
 	_type(x._type),
 	_headers(x._headers),
 	_content_reception(x._content_reception) {}
@@ -28,16 +26,10 @@ CGIResponse::~CGIResponse(void) {}
 
 CGIResponse
 &CGIResponse::operator=(const CGIResponse &x) {
-	_status = x._status;
 	_type = x._type;
 	_headers = x._headers;
 	_content_reception = x._content_reception;
 	return (*this);
-}
-
-CGIResponse::status_t
-CGIResponse::get_status(void) const {
-	return (_status);
 }
 
 CGIResponse::type_t
@@ -61,11 +53,6 @@ CGIResponse::get_content_reception(void) const {
 }
 
 void
-CGIResponse::set_status(status_t status) {
-	_status = status;
-}
-
-void
 CGIResponse::set_type(type_t type) {
 	_type = type;
 }
@@ -77,10 +64,9 @@ CGIResponse::set_content_reception(bool content_reception) {
 
 void
 CGIResponse::reset(void) {
-	_status = START;
 	_type = NO_TYPE;
 	_headers.clear();
-	_content_reception(false);
+	_content_reception = false;
 }
 
 CGIResponse::CGIHeaders::CGIHeaders(void) :

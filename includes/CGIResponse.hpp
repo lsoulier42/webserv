@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:33:46 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 01:45:04 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 06:01:07 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,12 +40,6 @@ class CGIResponse {
 
 		};
 
-		enum status_t {
-			START,
-			HEADERS_RECEIVED,
-			RESPONSE_RECEIVED
-		};
-
 		enum type_t {
 			DOCUMENT,
 			LOCAL_REDIRECT,
@@ -59,23 +53,18 @@ class CGIResponse {
 		~CGIResponse(void);
 		CGIResponse &operator=(const CGIResponse &x);
 
-		status_t get_status(void) const;
 		type_t get_type(void) const;
 		CGIHeaders &get_headers(void);
 		const CGIHeaders &get_headers(void) const;
 		bool get_content_reception(void) const;
-//		const ByteArray &get_body(void) const;
 
-		void set_status(status_t status);
 		void set_type(type_t type);
 		void set_content_reception(bool content_reception);
-//		void set_body(const ByteArray &body);
 
 		void reset(void);
 
 	private:
 
-		status_t _status;
 		type_t _type;
 		CGIHeaders _headers;
 		bool _content_reception;
