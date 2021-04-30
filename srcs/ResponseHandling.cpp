@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/30 06:32:15 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 08:18:03 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -157,6 +157,7 @@ ResponseHandling::_is_accepted_language(const std::string& language_found, const
 	}
 	return false;
 }
+*/
 
 int
 ResponseHandling::_response_content_language_handler(Client::exchange_t &exchange) {
@@ -179,7 +180,6 @@ ResponseHandling::_response_content_language_handler(Client::exchange_t &exchang
 	}
 	return (SUCCESS);
 }
-*/
 
 int
 ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange) {
@@ -216,6 +216,7 @@ ResponseHandling::_response_content_location_handler(Client::exchange_t &exchang
 	return (SUCCESS);
 }
 
+/*
 bool
 ResponseHandling::_is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets) {
 	if (allowed_charsets.empty())
@@ -230,7 +231,6 @@ ResponseHandling::_is_accepted_charset(const std::string& charset_found, const s
 	return false;
 }
 
-/*
 std::string
 ResponseHandling::_html_charset_parser(const Response& response) {
 	std::string body(response.get_body().c_str(), response.get_body().size());
@@ -286,7 +286,6 @@ int
 ResponseHandling::_response_content_type_handler(Client::exchange_t &exchange) {
 	Request& request = exchange.first;
 	Response& response = exchange.second;
-	std::string charset, content_type;
 
 	content_type = response.get_content_type();
 	if (!charset.empty()) {
