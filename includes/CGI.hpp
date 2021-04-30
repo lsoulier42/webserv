@@ -41,20 +41,19 @@ class CGI {
 		};
 
 		static bool is_cgi_related(const Request &request);
-		static int init(Client &client);
-		static int write_input(Client &client);
+		static int init_CGI(Client &client);
+
 		static cgi_output_ret_t read_output(Client &client);
 
 	private:
 
 		CGI(void);
 
-		static std::string _build_input_file_name(const Request &request);
 		static std::string _build_output_file_name(const Request &request);
 
 		static int _create_child_process(void);
-		static int _launch_script(Client &client);
 
+		static int _launch_script(Client &client);
 		static void _collect_header(CGIResponse &cgi_response, ByteArray &output);
 		static int _check_headers(CGIResponse &cgi_response, ByteArray &output);
 		static void _collect_body(CGIResponse &cgi_response, ByteArray &output);

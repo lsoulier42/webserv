@@ -27,46 +27,8 @@ CGI::is_cgi_related(const Request &request) {
 }
 
 std::string
-CGI::_build_input_file_name(const Request &request) {
-	return ("/tmp/cgi_input_" + request.get_ident());
-}
-
-std::string
 CGI::_build_output_file_name(const Request &request) {
 	return ("/tmp/cgi_output_" + request.get_ident());
-}
-
-int
-CGI::init(Client &client) {
-	Request		&request(client._exchanges.front().first);
-		
-	if (0 > (client._cgi_input_fd = open(_build_input_file_name(request).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK, S_IRUSR | S_IWUSR))) {
-    DEBUG_COUT("Opening CGI input temp file went wrong (" << client.get_ident() << ")");
-		return (FAILURE);
-	}
-	client._cgi_input = request.get_body();
-	return (SUCCESS);
-}
-
-int
-CGI::write_input(Client &client) {
-	size_t		buffer_size(std::min(WebServer::write_buffer_size, client._cgi_input.size()));
-	ssize_t		ret;
-
-	ret = write(client._cgi_input_fd, client._cgi_input.c_str(), buffer_size);
-	if (ret < 0) {
-		close(client._cgi_input_fd);
-		client._cgi_input_fd = 0;
-		client._cgi_input.clear();
-		return (FAILURE);
-	}
-	client._cgi_input.pop_front(ret);
-	if (client._cgi_input.empty()) {
-		close(client._cgi_input_fd);
-		client._cgi_input_fd = 0;
-		return (_launch_script(client));
-	}
-	return (SUCCESS);
 }
 
 CGI::cgi_output_ret_t
@@ -117,6 +79,30 @@ CGI::read_output(Client &client) {
 }
 
 int
+CGI::init_CGI(Client &client) {
+	Client::exchange_t	&exchange(client._exchanges.front());
+	Response			&response(exchange.second);
+	Request				&request(exchange.first);
+	std::stringstream	ss;
+	int 				fd;
+
+	DEBUG_COUT("CGI request processing (" << request.get_ident() << ")");
+	if (request.get_tmp_filename().empty()) {
+		ss << "./tmp/i" << request.get_id();
+		fd = open(ss.str().c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+		if (fd < 0) {
+			response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
+			DEBUG_COUT("Error during opening of empty tmp file (" <<
+				ss.str() << ") for CGI (" << request.get_id() << ")");
+			return (FAILURE);
+		}
+		request.set_tmp_filename(ss.str());
+		close(fd);
+	}
+	return (_launch_script(client));
+}
+
+int
 CGI::_create_child_process(void) {
 	pid_t	pid;
 
@@ -130,27 +116,29 @@ int
 CGI::_launch_script(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request				&request(exchange.first);
+	std::string			tmp_filename = request.get_tmp_filename();
 	pid_t				pid;
 	int					input_fd;
 	int					output_fd;
 	CGIMetaVariables	mv(request);
 	CGIScriptArgs		args(request);
 
-	if (0 > (input_fd = open(_build_input_file_name(request).c_str(), O_RDONLY, S_IRUSR | S_IWUSR))) {
+	if (0 > (input_fd = open(tmp_filename.c_str(), O_RDONLY, S_IRUSR | S_IWUSR))) {
 		DEBUG_COUT("Error during opening of tmp cgi input file :" << strerror(errno) << "(" << request.get_ident() << ")");
 		return (FAILURE);
 	}
+
 	if (0 > (output_fd = open(_build_output_file_name(request).c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))) {
 		DEBUG_COUT("Error during opening of tmp cgi output file (for writing) :" << strerror(errno) << "(" << request.get_ident() << ")");
 		close(input_fd);
-		unlink(_build_input_file_name(request).c_str());
+		unlink(tmp_filename.c_str());
 		return (FAILURE);
 	}
 	if (-1 == (pid = _create_child_process())) {
 		DEBUG_COUT("Error creating child process: " << strerror(errno) << "(" << request.get_ident() << ")");
 		close(input_fd);
 		close(output_fd);
-		unlink(_build_input_file_name(request).c_str());
+		unlink(tmp_filename.c_str());
 		unlink(_build_output_file_name(request).c_str());
 		return (FAILURE);
 	}
@@ -167,7 +155,7 @@ CGI::_launch_script(Client &client) {
 	close(input_fd);
 	close(output_fd);
 	waitpid(-1, NULL, 0);
-	unlink(_build_input_file_name(request).c_str());
+	unlink(tmp_filename.c_str());
 	if (0 > (client._cgi_output_fd = open(_build_output_file_name(request).c_str(), O_RDONLY | O_NONBLOCK, S_IRUSR | S_IWUSR))) {
 		DEBUG_COUT("Error during opening of tmp cgi output file (for reading) :" << strerror(errno) << "(" << request.get_ident() << ")");
 		unlink(_build_output_file_name(request).c_str());

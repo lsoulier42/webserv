@@ -43,6 +43,8 @@
 #  define st_mtim st_mtimespec
 # endif
 
+# define TMP_FILE_NOT_DONE_WRITING SUCCESS
+
 class RequestParsing;
 class ResponseHandling;
 class CGI;
@@ -66,22 +68,18 @@ class Client {
 
 		int get_sd(void) const;
 		int get_fd(void) const;
-		int get_cgi_input_fd(void) const;
 		int get_cgi_output_fd(void) const;
-		int get_file_write_fd(void) const;
-		std::string get_PUT_file(void);
-		
+
 		int read_socket(void);
 		int write_socket(void);
 		int read_target_resource(void);
-		int	write_target_resource(void);
 		int read_cgi_output(void);
-		int write_cgi_input(void);
-
-		int open_file_to_write(void);
 
 		char *get_ip_addr() const;
 		std::string get_ident() const;
+
+		std::list<exchange_t>& get_exchanges(void);
+		int process(exchange_t &exchange);
 
 		static const size_t read_buffer_size;
 
@@ -89,18 +87,14 @@ class Client {
 
 		const int _sd;
 		int _fd;
-		int _cgi_input_fd;
 		int _cgi_output_fd;
-		int	_file_write_fd;
 		const struct sockaddr _addr;
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
 		ByteArray _input;
 		ByteArray _output;
-		ByteArray _cgi_input;
 		ByteArray _cgi_output;
 		CGIResponse _cgi_response;
-		ByteArray _file_write_str;
 		std::list<exchange_t> _exchanges;
 		bool _closing;
 		bool _connection_refused;
@@ -110,7 +104,7 @@ class Client {
 		 *
 		 */
 		int _process_connection_refused();
-		int _process(exchange_t &exchange);
+		static int _check_tmp_file(exchange_t &exchange);
 
 		int _process_error(exchange_t &exchange);
 		int _process_GET(exchange_t &exchange);
@@ -137,14 +131,6 @@ class Client {
 		void _format_autoindex_entry(std::stringstream& ss, const std::string& filename, exchange_t& exchange, bool is_dir);
 		std::string _format_autoindex_page(exchange_t& exchange, const std::set<std::string>& directory_names,
 			const std::set<std::string>& file_names);
-
-    
-		/* CGI
-		 *
-		 */
-
-		int _cgi_init(exchange_t &exchange);
-
 };
 
 #endif
