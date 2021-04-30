@@ -81,8 +81,6 @@ class Client {
 		std::list<exchange_t>& get_exchanges(void);
 		int process(exchange_t &exchange);
 
-		static const size_t read_buffer_size;
-
 	private:
 
 		const int _sd;

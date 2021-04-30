@@ -36,10 +36,10 @@ CGI::read_output(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request				&request(exchange.first);
 	Response			&response(exchange.second);
-	char				buffer[Client::read_buffer_size];
+	char				buffer[WebServer::buffer_size];
 	ssize_t				ret;
 
-	ret = read(client._cgi_output_fd, buffer, Client::read_buffer_size);
+	ret = read(client._cgi_output_fd, buffer, WebServer::buffer_size);
 	if (ret < 0) {
 		DEBUG_COUT("Error during reading of CGI output: " << strerror(errno) << "(" << request.get_ident() << ")");
 		close(client._cgi_output_fd);
