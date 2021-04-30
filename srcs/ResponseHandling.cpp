@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/30 08:26:20 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 11:55:01 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ ResponseHandling::_pick_content_type(Client::exchange_t &exchange) {
 int
 ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 	int (*response_handlers[])(Client::exchange_t&) = {&ResponseHandling::_response_allow_handler,
-		&ResponseHandling::_response_content_length_handler,
+		&ResponseHandling::_response_content_language_handler, &ResponseHandling::_response_content_length_handler,
 		&ResponseHandling::_response_content_location_handler, &ResponseHandling::_response_content_type_handler,
 		&ResponseHandling::_response_date_handler, &ResponseHandling::_response_last_modified_handler,
 		&ResponseHandling::_response_location_handler, &ResponseHandling::_response_retry_after_handler,
@@ -53,7 +53,7 @@ ResponseHandling::process_response_headers(Client::exchange_t &exchange) {
 		&ResponseHandling::_response_www_authenticate_handler};
 
 	_pick_content_type(exchange);
-	for (size_t i = 0; i < 11; i++) {
+	for (size_t i = 0; i < TOTAL_RESPONSE_HEADERS; i++) {
 		if (!(response_handlers[i])(exchange))
 				return FAILURE;
 		}
