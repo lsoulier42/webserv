@@ -53,7 +53,6 @@ CGI::read_output(Client &client) {
 		client._cgi_response.reset();
 		return (SERVER_ERROR);
 	}
-
 	/* No content expected for now :
 	 * Headers are stocked in a CGIResponse.
 	 * When all headers are received, we :
@@ -67,7 +66,6 @@ CGI::read_output(Client &client) {
 
 		while (_header_received(client._cgi_output))
 			_collect_header(client._cgi_response, client._cgi_output);
-
 		if (_headers_received(client._cgi_output)) {
 			client._cgi_output.pop_front(client._cgi_output.find("\n") + 1);
 			if (SUCCESS != _pick_response_type(client._cgi_response)) {
@@ -217,7 +215,7 @@ CGI::_collect_header(CGIResponse &cgi_response, ByteArray &output) {
 	size_t		end_header(output.find("\n"));
 	header_t	current_header;
 
-	if (ByteArray::npos != (col = output.find_first_of(':'))) {
+	if (ByteArray::npos != (col = output.find_first_of(':')) && col < end_header) {
 		current_header.name = output.substr(0, col);
 		current_header.unparsed_value = Syntax::trim_whitespaces(output.substr(col + 1, (end_header - col - 1)));
 		cgi_response.get_headers().insert(current_header);

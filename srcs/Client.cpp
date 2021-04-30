@@ -376,6 +376,8 @@ Client::_process_PUT(exchange_t &exchange) {
 	Response			&response(exchange.second);
 	std::string 		target_path = response.get_target_path();
 	std::string			tmp_filename = request.get_tmp_filename();
+	std::string			filename = target_path.substr(target_path.rfind('/') + 1);
+	std::string			upload_dir = request.get_location()->get_upload_dir();
 	path_type_t 		path_type = Syntax::get_path_type(target_path);
 	status_code_t		status_created;
 
@@ -384,6 +386,10 @@ Client::_process_PUT(exchange_t &exchange) {
 		unlink(tmp_filename.c_str());
 		return (_process_error(exchange));
 	}
+	if (upload_dir.empty())
+		upload_dir = target_path.substr(0, target_path.rfind('/'));
+	Syntax::format_directory_name(upload_dir);
+	target_path = upload_dir + filename;
 	if (rename(tmp_filename.c_str(), target_path.c_str()) == -1) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		DEBUG_COUT("Error during renaming of tmp file : " << strerror(errno) << " (" << request.get_ident() << ")");
