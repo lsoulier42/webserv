@@ -26,6 +26,7 @@ class RequestParsing {
 
 	public:
 		static void parsing(Client &client);
+		static bool body_expected(const Request &request);
 		static bool is_valid_language_tag(const std::string& language_tag);
 		static bool is_valid_http_date(const std::string& date_str);
 
@@ -36,7 +37,6 @@ class RequestParsing {
 		static bool _headers_received(const Request &request, const ByteArray &input_str);
 		static bool _trailer_received(const Request &request, const ByteArray &input_str);
 		static bool _trailers_received(const Request &request, const ByteArray &input_str);
-		static bool _body_expected(const Request &request);
 		static bool _trailer_expected(const Request &request);
 		static int _collect_request_line_elements(Request &request, ByteArray &input_str);
 		static void _collect_header(Request &request, ByteArray &input_str);

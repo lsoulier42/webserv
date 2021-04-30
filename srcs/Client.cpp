@@ -240,7 +240,8 @@ Client::process(exchange_t &exchange) {
 	if (path_type == DIRECTORY && (method == GET || method == HEAD)
 		&& !request.get_location()->get_index().empty())
 		_rebuild_request_target(exchange, path);
-	if ((method == PUT || method == POST) && _check_tmp_file(exchange) == FAILURE)
+	if ((method == PUT || method == POST) && RequestParsing::body_expected(request)
+		&& _check_tmp_file(exchange) == FAILURE)
 		return (_process_error(exchange));
 	if (CGI::is_cgi_related(request))
 		return (CGI::init_CGI(*this));

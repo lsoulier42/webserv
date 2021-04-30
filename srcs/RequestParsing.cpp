@@ -145,7 +145,7 @@ RequestParsing::_collect_unchunked(Request &request, ByteArray &input) {
 			body_expected = request.get_body_size_expected(),
 			end_of_body = input_size;
 
-	if (input_size + body_received > body_expected) {
+	if (input_size + body_received >= body_expected) {
 		end_of_body = body_expected - body_received;
 		request.get_body().append(input.sub_byte_array(0, end_of_body));
 		request.set_body_received();
@@ -197,7 +197,7 @@ RequestParsing::_trailers_received(const Request &request, const ByteArray &inpu
 }
 
 bool
-RequestParsing::_body_expected(const Request &request) {
+RequestParsing::body_expected(const Request &request) {
 	return (request.get_headers().key_exists(TRANSFER_ENCODING)
 			|| (request.get_headers().key_exists(CONTENT_LENGTH)
 				&& static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())) > 0));
@@ -304,7 +304,7 @@ RequestParsing::_check_headers(Client &client, Request &request) {
 	if (ret == 0)
 		ret = _process_request_headers(client, request);
 	client._input.pop_front(client._input.find("\r\n") + 2);
-	if (_body_expected(request))
+	if (body_expected(request))
 		request.set_status(Request::HEADERS_RECEIVED);
 	else
 		request.set_status(Request::REQUEST_RECEIVED);

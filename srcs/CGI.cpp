@@ -28,7 +28,10 @@ CGI::is_cgi_related(const Request &request) {
 
 std::string
 CGI::_build_output_file_name(const Request &request) {
-	return ("/tmp/cgi_output_" + request.get_ident());
+	std::stringstream ss;
+
+	ss << "./tmp/o" << request.get_id();
+	return (ss.str());
 }
 
 CGI::cgi_output_ret_t
@@ -38,6 +41,7 @@ CGI::read_output(Client &client) {
 	Response			&response(exchange.second);
 	char				buffer[WebServer::buffer_size];
 	ssize_t				ret;
+
 
 	ret = read(client._cgi_output_fd, buffer, WebServer::buffer_size);
 	if (ret < 0) {
@@ -94,7 +98,6 @@ CGI::read_output(Client &client) {
 		 */
 
 	} else {
-
 		if (response.get_chunked()) {
 			response.append_content_chunk(buffer, ret);
 			if (response.get_sending_indicator() == 0) {
@@ -251,8 +254,11 @@ CGI::_headers_received(const ByteArray &output) {
 
 bool
 CGI::_body_expected(const CGIResponse &cgi_response) {
-	return (cgi_response.get_type() == CGIResponse::DOCUMENT
-			|| cgi_response.get_type() == CGIResponse::CLIENT_REDIRECT_DOC);
+	return ((cgi_response.get_type() == CGIResponse::DOCUMENT
+			|| cgi_response.get_type() == CGIResponse::CLIENT_REDIRECT_DOC)
+				&& (!cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)
+					|| (cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)
+						&& strtol(cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str(), NULL, 10) > 0)));
 }
 
 bool
