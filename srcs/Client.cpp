@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 06:40:55 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 08:03:10 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,7 +162,11 @@ Client::read_socket(void) {
 
 int
 Client::write_socket(void) {
+	if (_exchanges.empty())
+		return (SUCCESS);
+
 	exchange_t	&exchange(_exchanges.front());
+	Request		&request(exchange.first);
 	Response	&response(exchange.second);
 
 	if (response.get_status() == Response::START && !response.get_head().empty()) {
@@ -178,7 +182,7 @@ Client::write_socket(void) {
 		}
 		response.get_head().pop_front(ret);
 		if (response.get_head().empty()) {
-			if (response.get_length() > 0 || response.get_chunked()) {
+			if (request.get_request_line().get_method() != HEAD && (response.get_length() > 0 || response.get_chunked())) {
 				response.set_status(Response::HEAD_SENT);
 			} else {
 				response.set_status(Response::RESPONSE_SENT);
@@ -372,6 +376,7 @@ Client::_generate_autoindex(exchange_t &exchange) {
 	}
 	response.set_content(ByteArray(_format_autoindex_page(exchange, directory_names, file_names)));
 	response.set_length(response.get_content().size());
+	response.set_sending_indicator(response.get_length());
 	ResponseHandling::generate_basic_headers(exchange);
 	_build_head_response(exchange);
 	closedir(directory);
@@ -435,7 +440,6 @@ Client::_process_error(exchange_t &exchange) {
 	std::list<status_code_t>	error_codes(request.get_virtual_server()->get_error_page_codes());
 	std::stringstream 			ss;
 
-	std::cout << "TRUC" << std::endl;
 	ss << "Request failed with error: " << Syntax::status_codes_tab[error_code].code_str;
 	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase << "(";
 	ss << request.get_ident() << ")";
@@ -450,6 +454,7 @@ Client::_process_error(exchange_t &exchange) {
 	}
 	response.set_content(ByteArray(Syntax::body_error_code(error_code)));
 	response.set_length(response.get_content().size());
+	response.set_sending_indicator(response.get_length());
 	ResponseHandling::generate_basic_headers(exchange);
 	_build_head_response(exchange);
 	return (SUCCESS);
@@ -610,6 +615,7 @@ Client::_process_TRACE(exchange_t &exchange) {
 	response.set_content_type("message/http");
 	response.set_content(request.get_raw());
 	response.set_length(response.get_content().size());
+	response.set_sending_indicator(response.get_length());
 	ResponseHandling::generate_basic_headers(exchange);
 	_build_head_response(exchange);
 	return (SUCCESS);
