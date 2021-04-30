@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 02:30:49 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 09:39:47 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,7 +92,6 @@ class Client {
 		const socklen_t _socket_len;
 		const std::list<const VirtualServer*> _virtual_servers;
 		ByteArray _input;
-		ByteArray _output;
 		ByteArray _cgi_output;
 		CGIResponse _cgi_response;
 		std::list<exchange_t> _exchanges;
@@ -117,10 +116,10 @@ class Client {
 		int	_process_TRACE(exchange_t &exchange);
 
 		std::string _build_resource_path(Request &request);
-		int _open_file_to_read(const std::string &path);
+		void _rebuild_request_target(exchange_t &exchange, const std::string& path);
 		void _build_head_response(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
-		void _rebuild_request_target(exchange_t &exchange, const std::string& path);
+		int _open_file_to_read(const std::string &path);
 
 		/* Autoindex
 		 *

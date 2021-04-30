@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 06:27:42 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 11:31:11 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,11 +50,20 @@ CGI::read_output(Client &client) {
 		return (SERVER_ERROR);
 	}
 
+	/* No content expected for now :
+	 * Headers are stocked in a CGIResponse.
+	 * When all headers are received, we :
+	 * + set the response type
+	 * + figure out if a content is expected or not
+	 */
+
 	if (!client._cgi_response.get_content_reception()) {
 
 		client._cgi_output.append(buffer, ret);
+
 		while (_header_received(client._cgi_output))
 			_collect_header(client._cgi_response, client._cgi_output);
+
 		if (_headers_received(client._cgi_output)) {
 			client._cgi_output.pop_front(client._cgi_output.find("\n") + 1);
 			if (SUCCESS != _pick_response_type(client._cgi_response)) {
@@ -66,7 +75,7 @@ CGI::read_output(Client &client) {
 				client._cgi_response.reset();
 				return (SCRIPT_ERROR);
 			}
-			if (_body_expected(client._cgi_response)) {
+			if (request.get_request_line().get_method() != HEAD && _body_expected(client._cgi_response)) {
 				client._cgi_response.set_content_reception(true);
 				lseek(client._cgi_output_fd, (-1) * client._cgi_output.size(), SEEK_CUR);
 			} else {
@@ -77,6 +86,12 @@ CGI::read_output(Client &client) {
 			client._cgi_output.clear();
 			return (_handle_cgi_response(client));
 		}
+
+		/* Content is being received.
+		 * It is appended to response's content,
+		 * and and sending_indicator (a variable indicating the progression of the content collecting process) is updated.
+		 * If sending_indicator indicates that the process is over, the tmp file is closed.
+		 */
 
 	} else {
 
@@ -173,7 +188,7 @@ CGI::_launch_script(Client &client) {
 		dup2(output_fd, STDOUT_FILENO);
 		dup2(output_fd, STDERR_FILENO);
 		execve(request.get_location()->get_cgi_path().c_str(), args.tab, mv.get_tab());
-		write(STDOUT_FILENO, "Status: 500 Internal Server Error\n\n", 34);
+		write(STDOUT_FILENO, "Status: 500 Internal Server Error\n\n", 35);
 		close(input_fd);
 		close(output_fd);
 		exit(EXIT_FAILURE);
@@ -325,7 +340,7 @@ CGI::_handle_client_redirect_response(Client &client) {
 		response.get_headers().insert(*it);
 	response.get_status_line().set_status_code(FOUND);
 	cgi_response.reset();
-	return (COMPLETE);
+	return (HEAD_COMPLETE);
 }
 
 CGI::cgi_output_ret_t
@@ -356,7 +371,7 @@ CGI::_handle_client_redirect_doc_response(Client &client) {
 	ResponseHandling::process_cgi_response_headers(exchange);
 
 	DEBUG_COUT("CGI client redirect response with document handling went well (" << request.get_ident() << ")");
-	return (COMPLETE);
+	return (HEAD_COMPLETE);
 }
 
 CGI::cgi_output_ret_t
@@ -391,5 +406,5 @@ CGI::_handle_document_response(Client &client) {
 	ResponseHandling::process_cgi_response_headers(exchange);
 
 	DEBUG_COUT("CGI document response handling went well (" << request.get_ident() << ")");
-	return (COMPLETE);
+	return (HEAD_COMPLETE);
 }

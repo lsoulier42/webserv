@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 11:59:14 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 06:27:59 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 11:14:56 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ class CGI {
 
 		enum cgi_output_ret_t {
 			AGAIN,
-			COMPLETE,
+			HEAD_COMPLETE,
 			REDIRECT,
 			SERVER_ERROR,
 			SCRIPT_ERROR
