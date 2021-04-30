@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 18:57:59 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 10:01:06 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 02:30:49 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,7 +124,7 @@ class Client {
 
 		std::string _build_resource_path(Request &request);
 		int _open_file_to_read(const std::string &path);
-		int _build_output(exchange_t &exchange);
+		void _build_head_response(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 		void _rebuild_request_target(exchange_t &exchange, const std::string& path);
 

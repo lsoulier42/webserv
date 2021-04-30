@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 02:15:11 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 03:02:44 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -104,22 +104,22 @@ CGI::read_output(Client &client) {
 				return (SCRIPT_ERROR);
 			}
 			if (_body_expected(client._cgi_response)) {
-				client._cgi_response.set_status(CGIResponse::HEADERS_RECEIVED);
 				client._cgi_response.set_content_reception(true);
+				lseek(client._cgi_output_fd, (-1) * client._cgi_output.size(), SEEK_CUR);
 			} else {
-				output.clear();
-				client._cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
 				close(client._cgi_output_fd);
 				client._cgi_output_fd = 0;
 				unlink(_build_output_file_name(request).c_str());
-				DEBUG_COUT("CGI output parsing went well (" << request.get_ident() << ")");
-				return (_handle_cgi_response(client));
+				client._cgi_output.clear();
 			}
+			return (_handle_cgi_response(client));
 		}
 		return (AGAIN);
 
-	}
+	} else {
 
+
+	}
 
 	while (_header_received(client._cgi_response, client._cgi_output))
 		_collect_header(client._cgi_response, client._cgi_output);
@@ -264,6 +264,7 @@ CGI::_check_headers(CGIResponse &cgi_response, ByteArray &output) {
 	return (SUCCESS);
 }
 
+/*
 void
 CGI::_collect_body(CGIResponse &cgi_response, ByteArray &output) {
 	cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
@@ -274,27 +275,28 @@ CGI::_collect_body(CGIResponse &cgi_response, ByteArray &output) {
 		cgi_response.set_body(output);
 	output.clear();
 }
+*/
 
 bool
 CGI::_header_received(const CGIResponse &cgi_response, const ByteArray &output) {
-	return (cgi_response.get_status() == CGIResponse::START
-			&& !_headers_received(cgi_response, output)
+	return (!_headers_received(cgi_response, output)
 			&& ByteArray::npos != output.find("\n"));
 }
 
 bool
 CGI::_headers_received(const CGIResponse &cgi_response, const ByteArray &output) {
-	return (cgi_response.get_status() == CGIResponse::START
-			&& ((!output.empty() && output[0] == '\n')
-				|| (output.size() >= 2 && output[0] == '\r' && output[1] == '\n')));
+	return ((!output.empty() && output[0] == '\n')
+				|| (output.size() >= 2 && output[0] == '\r' && output[1] == '\n'));
 }
 
+/*
 bool
 CGI::_body_received(const CGIResponse &cgi_response, const ByteArray &output) {
 	return (cgi_response.get_status() == CGIResponse::HEADERS_RECEIVED
 			&& cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)
 			&& output.size() >= static_cast<unsigned long>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
 }
+*/
 
 bool
 CGI::_body_expected(const CGIResponse &cgi_response) {
@@ -368,8 +370,8 @@ CGI::_handle_cgi_response(Client &client) {
 CGI::cgi_output_ret_t
 CGI::_handle_local_redirect_response(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
-	Request		&request(exchange.first);
-	CGIResponse	&cgi_response(client._cgi_response);
+	Request				&request(exchange.first);
+	CGIResponse			&cgi_response(client._cgi_response);
 
 	request.get_request_line().set_request_target(cgi_response.get_headers().get_unparsed_value(CGI_LOCATION));
 	request.set_status(Request::REQUEST_RECEIVED);
@@ -380,8 +382,8 @@ CGI::_handle_local_redirect_response(Client &client) {
 CGI::cgi_output_ret_t
 CGI::_handle_client_redirect_response(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
-	Response	&response(exchange.second);
-	CGIResponse	&cgi_response(client._cgi_response);
+	Response			&response(exchange.second);
+	CGIResponse			&cgi_response(client._cgi_response);
 
 	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
@@ -394,26 +396,28 @@ CGI::cgi_output_ret_t
 CGI::_handle_client_redirect_doc_response(Client &client) {
 	Client::exchange_t	&exchange(client._exchanges.front());
 	Request				&request(exchange.first);
-	Response	&response(exchange.second);
-	CGIResponse	&cgi_response(client._cgi_response);
-	std::string	status_line(cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
-	std::string status_code(status_line.substr(0, status_line.find(" ")));
-	int			status_code_int(std::atol(status_code.c_str()));
-	size_t		i(0);
+	Response			&response(exchange.second);
+	CGIResponse			&cgi_response(client._cgi_response);
+	std::string			status_line(cgi_response.get_headers().get_unparsed_value(CGI_STATUS));
+	std::string 		status_code(status_line.substr(0, status_line.find(" ")));
+	int					status_code_int(std::atol(status_code.c_str()));
+	size_t				i(0);
 
 	while (Syntax::status_codes_tab[i].code_index != TOTAL_STATUS_CODE
 		&& Syntax::status_codes_tab[i].code_int != status_code_int)
 		i++;
 	response.get_status_line().set_status_code(Syntax::status_codes_tab[i].code_index);
 	cgi_response.get_headers().erase(CGI_STATUS);
+
 	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
-	response.set_body(cgi_response.get_body());
-	cgi_response.reset();
-	if (ResponseHandling::process_cgi_response_headers(exchange) == FAILURE) {
-		DEBUG_COUT("Error during CGI response headers handling (" << std::string(request.get_ident()) << ")");
-		return (SERVER_ERROR);
-	}
+
+	if (!cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH))
+		response.set_chunked(true);
+
+	ResponseHandling::process_cgi_response_headers(exchange);
+
+	DEBUG_COUT("CGI client redirect response with document handling went well (" << request.get_ident() << ")");
 	return (COMPLETE);
 }
 
@@ -441,13 +445,10 @@ CGI::_handle_document_response(Client &client) {
 	for (Headers::const_iterator it(cgi_response.get_headers().begin()); it != cgi_response.get_headers().end() ; it++)
 		response.get_headers().insert(*it);
 
-	response.set_body(cgi_response.get_body());
+	if (!cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH))
+		response.set_chunked(true);
 
-	cgi_response.reset();
-	if (ResponseHandling::process_cgi_response_headers(exchange) == FAILURE) {
-		DEBUG_COUT("Error during CGI response headers handling (" << std::string(request.get_ident()) << ")");
-		return (SERVER_ERROR);
-	}
+	ResponseHandling::process_cgi_response_headers(exchange);
 
 	DEBUG_COUT("CGI document response handling went well (" << request.get_ident() << ")");
 	return (COMPLETE);

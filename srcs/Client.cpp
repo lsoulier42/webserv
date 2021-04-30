@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 01:38:24 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 02:41:32 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -473,8 +473,8 @@ Client::_process_error(exchange_t &exchange) {
 		}
 	}
 	ResponseHandling::generate_basic_headers(exchange);
+	_build_head_response(exchange);
 	response.get_content() = (ByteArray(Syntax::body_error_code(error_code)));
-	return(_build_output(exchange));
 }
 
 std::string
@@ -500,10 +500,10 @@ Client::_open_file_to_read(const std::string &path) {
 		return (_process_error(_exchanges.front()));
 	}
 	//TODO:: header transfer-encoding
-	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
-		return (_process_error(exchange));
+	ResponseHandling::process_response_headers(exchange);
+	_build_head_response(exchange);
 	response.set_chunked(true);
-	return (_build_output(exchange));
+	return (SUCCESS);
 }
 
 int
@@ -557,8 +557,8 @@ Client::write_target_resource(void) {
 	return (SUCCESS);
 }
 
-int
-Client::_build_output(exchange_t &exchange) {
+void
+Client::_build_head_response(exchange_t &exchange) {
 	Request						&request(exchange.first);
 	Response					&response(exchange.second);
 	std::string					new_header;
@@ -577,7 +577,6 @@ Client::_build_output(exchange_t &exchange) {
 		}
 	}
 	head += "\r\n";
-	return (SUCCESS);
 }
 
 int
@@ -673,11 +672,10 @@ Client::read_cgi_output(void) {
 		return (_process_error(exchange));
 	}
    	else if (CGI::COMPLETE == ret)
-		return (_build_output(exchange));
+		_build_head_response(exchange);
 	else if (CGI::REDIRECT == ret)
 		return (_process(exchange));
-	else
-		return (SUCCESS);
+	return (SUCCESS);
 }
 
 std::string
