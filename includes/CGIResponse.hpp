@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:33:46 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 12:06:28 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 01:45:04 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,11 +63,13 @@ class CGIResponse {
 		type_t get_type(void) const;
 		CGIHeaders &get_headers(void);
 		const CGIHeaders &get_headers(void) const;
-		const ByteArray &get_body(void) const;
+		bool get_content_reception(void) const;
+//		const ByteArray &get_body(void) const;
 
 		void set_status(status_t status);
 		void set_type(type_t type);
-		void set_body(const ByteArray &body);
+		void set_content_reception(bool content_reception);
+//		void set_body(const ByteArray &body);
 
 		void reset(void);
 
@@ -76,7 +78,7 @@ class CGIResponse {
 		status_t _status;
 		type_t _type;
 		CGIHeaders _headers;
-		ByteArray _body;
+		bool _content_reception;
 
 };
 

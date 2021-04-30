@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/28 21:40:40 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 02:15:11 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,7 +87,39 @@ CGI::read_output(Client &client) {
 		return (SERVER_ERROR);
 	}
 
-	client._cgi_output.append(buffer, ret);
+	if (!client._cgi_response.get_content_reception()) {
+
+		client._cgi_output.append(buffer, ret);
+		while (_header_received(client._cgi_response, client._cgi_output))
+			_collect_header(client._cgi_response, client._cgi_output);
+		if (_headers_received(client._cgi_response, client._cgi_output)) {
+			client._cgi_output.pop_front(output.find("\n") + 1);
+			if (SUCCESS != _pick_response_type(client._cgi_response)) {
+				DEBUG_COUT("Error during parsing of cgi output (" << request.get_ident() << ")");
+				close(client._cgi_output_fd);
+				client._cgi_output_fd = 0;
+				unlink(_build_output_file_name(request).c_str());
+				client._cgi_output.clear();
+				client._cgi_response.reset();
+				return (SCRIPT_ERROR);
+			}
+			if (_body_expected(client._cgi_response)) {
+				client._cgi_response.set_status(CGIResponse::HEADERS_RECEIVED);
+				client._cgi_response.set_content_reception(true);
+			} else {
+				output.clear();
+				client._cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
+				close(client._cgi_output_fd);
+				client._cgi_output_fd = 0;
+				unlink(_build_output_file_name(request).c_str());
+				DEBUG_COUT("CGI output parsing went well (" << request.get_ident() << ")");
+				return (_handle_cgi_response(client));
+			}
+		}
+		return (AGAIN);
+
+	}
+
 
 	while (_header_received(client._cgi_response, client._cgi_output))
 		_collect_header(client._cgi_response, client._cgi_output);
@@ -194,6 +226,21 @@ CGI::_collect_header(CGIResponse &cgi_response, ByteArray &output) {
 }
 
 int
+CGI::_pick_response_type(CGIResponse &cgi_response) {
+	if (_is_local_redirect_response(cgi_response))
+		cgi_response.set_type(CGIResponse::LOCAL_REDIRECT);
+	else if (_is_client_redirect_response(cgi_response))
+		cgi_response.set_type(CGIResponse::CLIENT_REDIRECT);
+	else if (_is_client_redirect_response_with_document(cgi_response))
+		cgi_response.set_type(CGIResponse::CLIENT_REDIRECT_DOC);
+	else if (_is_document_response(cgi_response))
+		cgi_response.set_type(CGIResponse::DOCUMENT);
+	else
+		return (FAILURE);
+	return (SUCCESS);
+}
+
+int
 CGI::_check_headers(CGIResponse &cgi_response, ByteArray &output) {
 	output.pop_front(output.find("\n") + 1);
 	if (_is_local_redirect_response(cgi_response))
@@ -206,8 +253,10 @@ CGI::_check_headers(CGIResponse &cgi_response, ByteArray &output) {
 		cgi_response.set_type(CGIResponse::DOCUMENT);
 	else
 		return (FAILURE);
-	if (_body_expected(cgi_response))
+	if (_body_expected(cgi_response)) {
 		cgi_response.set_status(CGIResponse::HEADERS_RECEIVED);
+		cgi_response.set_content_reception(true);
+	}
 	else {
 		output.clear();
 		cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);

@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 00:39:06 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 01:38:24 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -472,8 +472,8 @@ Client::_process_error(exchange_t &exchange) {
 			return(_open_file_to_read(error_page_path));
 		}
 	}
-	response.set_body(ByteArray(Syntax::body_error_code(error_code)));
 	ResponseHandling::generate_basic_headers(exchange);
+	response.get_content() = (ByteArray(Syntax::body_error_code(error_code)));
 	return(_build_output(exchange));
 }
 
@@ -499,7 +499,7 @@ Client::_open_file_to_read(const std::string &path) {
 		response.get_status_line().set_status_code(INTERNAL_SERVER_ERROR);
 		return (_process_error(_exchanges.front()));
 	}
-	//TODO:: trouver un meilleur endroit
+	//TODO:: header transfer-encoding
 	if (ResponseHandling::process_response_headers(exchange) == FAILURE)
 		return (_process_error(exchange));
 	response.set_chunked(true);
@@ -577,10 +577,6 @@ Client::_build_output(exchange_t &exchange) {
 		}
 	}
 	head += "\r\n";
-	/*
-	if (request.get_request_line().get_method() != HEAD)
-		_output += response.get_body();
-		*/
 	return (SUCCESS);
 }
 
