@@ -12,9 +12,7 @@
 
 #include "Request.hpp"
 #include "Client.hpp"
-
-#include "Request.hpp"
-#include "Client.hpp"
+#include "WebServer.hpp"
 
 int Request::_indexes = 0;
 
@@ -26,7 +24,14 @@ Request::Request(void) :
 	_virtual_server(),
 	_location(),
 	_client_addr(),
-	_chunked_body(false) {}
+	_chunked_body(false),
+	_tmp_fd(0),
+	_tmp_filename(),
+	_body_size_expected(0),
+	_body_size_received(0),
+	_body_received(false),
+	_tmp_file_size(0),
+	_body_written(false) {}
 
 Request::Request(const Client &client) :
 	AHTTPMessage(),
@@ -36,7 +41,14 @@ Request::Request(const Client &client) :
 	_virtual_server(client._virtual_servers.front()),
 	_location(&(client._virtual_servers.front()->get_locations().back())),
 	_client_addr(client._addr),
-	_chunked_body(false) {}
+	_chunked_body(false),
+	_tmp_fd(0),
+	_tmp_filename(),
+	_body_size_expected(0),
+	_body_size_received(0),
+	_body_received(false),
+	_tmp_file_size(0),
+	_body_written(false) {}
 
 Request::Request(const Request &x) :
 	AHTTPMessage(x),
@@ -46,7 +58,14 @@ Request::Request(const Request &x) :
 	_virtual_server(x._virtual_server),
 	_location(x._location),
 	_client_addr(x._client_addr),
-	_chunked_body(x._chunked_body) {}
+	_chunked_body(x._chunked_body),
+	_tmp_fd(x._tmp_fd),
+	_tmp_filename(x._tmp_filename),
+	_body_size_expected(x._body_size_expected),
+	_body_size_received(x._body_size_received),
+	_body_received(x._body_received),
+	_tmp_file_size(x._tmp_file_size),
+	_body_written(x._body_written) {}
 
 Request::~Request(void) {}
 
@@ -60,6 +79,13 @@ Request
 		_virtual_server = x._virtual_server;
 		_location = x._location;
 		_chunked_body = x._chunked_body;
+		_tmp_fd = x._tmp_fd;
+		_tmp_filename = x._tmp_filename;
+		_body_size_expected = x._body_size_expected;
+		_body_size_received = x._body_size_received;
+		_body_received = x._body_received;
+		_tmp_file_size = x._tmp_file_size;
+		_body_written = x._body_written;
 	}
 	return (*this);
 }
@@ -216,3 +242,98 @@ Request::get_id() const {
 	return (_id);
 }
 
+size_t&
+Request::get_body_size_received(void) {
+	return (_body_size_received);
+}
+
+size_t
+Request::get_body_size_received(void) const {
+	return (_body_size_received);
+}
+
+bool
+Request::body_is_received() const {
+	return (_body_received);
+}
+
+void
+Request::set_body_received() {
+	_body_received = true;
+}
+
+size_t
+Request::get_body_size_expected(void) const {
+	return (_body_size_expected);
+}
+
+void
+Request::set_body_size_expected(size_t body_size) {
+	_body_size_expected = body_size;
+}
+
+std::string
+Request::get_tmp_filename(void) const {
+	return (_tmp_filename);
+}
+
+void
+Request::set_tmp_filename(const std::string& tmp_filename) {
+	_tmp_filename = tmp_filename;
+}
+
+int
+Request::get_tmp_fd(void) const {
+	return (_tmp_fd);
+}
+
+void
+Request::set_tmp_fd(int fd) {
+	_tmp_fd = fd;
+}
+
+size_t&
+Request::get_tmp_file_size() {
+	return (_tmp_file_size);
+}
+
+size_t
+Request::get_tmp_file_size() const {
+	return (_tmp_file_size);
+}
+
+bool
+Request::body_is_writen() const {
+	return (_body_written);
+}
+
+void
+Request::set_body_written() {
+	_body_written = true;
+}
+
+int
+Request::write_tmp_file(void) {
+	ByteArray	&body = get_body();
+	size_t		body_size = body.size();
+	size_t		to_write = std::min(body_size, WebServer::write_buffer_size);
+	ssize_t 	write_return;
+
+	if (_tmp_fd == 0)
+		return (SUCCESS);
+	write_return = write(_tmp_fd, body.c_str(), to_write);
+	if (write_return < 0) {
+		DEBUG_COUT("Error during writing target resource: " << std::strerror(errno) << "(" << get_ident() << ")");
+		close(_tmp_fd);
+		_tmp_fd = 0;
+		return (FAILURE);
+	}
+	body.pop_front(write_return);
+	_tmp_file_size += write_return;
+	if (body_is_received() && _tmp_file_size == _body_size_received) {
+		_body_written = true;
+		close(_tmp_fd);
+		_tmp_fd = 0;
+	}
+	return (SUCCESS);
+}

@@ -90,17 +90,47 @@ class Request : public AHTTPMessage {
 
 		int get_id() const;
 
+		size_t get_body_size_expected(void) const;
+		void set_body_size_expected(size_t body_size);
+
+		size_t& get_body_size_received(void);
+		size_t get_body_size_received(void) const;
+
+		bool body_is_received(void) const;
+		void set_body_received(void);
+
+		int get_tmp_fd(void) const;
+		void set_tmp_fd(int fd);
+
+		int write_tmp_file(void);
+
+		std::string get_tmp_filename(void) const;
+		void set_tmp_filename(const std::string& tmp_filename);
+
+		size_t& get_tmp_file_size();
+		size_t get_tmp_file_size() const;
+
+		bool body_is_writen() const;
+		void set_body_written();
+
 		void reset(void);
 
 	private:
-		int _id;
-		ByteArray _raw;
-		request_status_t _status;
-		RequestLine _request_line;
-		const VirtualServer* _virtual_server;
-		const Location*	_location;
-		const struct sockaddr _client_addr;
-		bool _chunked_body;
+		int						_id;
+		ByteArray				_raw;
+		request_status_t		_status;
+		RequestLine				_request_line;
+		const VirtualServer*	_virtual_server;
+		const Location*			_location;
+		const struct sockaddr	_client_addr;
+		bool					_chunked_body;
+		int						_tmp_fd;
+		std::string				_tmp_filename;
+		size_t					_body_size_expected;
+		size_t					_body_size_received;
+		bool 					_body_received;
+		size_t					_tmp_file_size;
+		bool					_body_written;
 
 		static int _indexes;
 };

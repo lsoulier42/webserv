@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 01:38:16 by lsoulier          #+#    #+#             */
-/*   Updated: 2021/04/30 00:15:05 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 08:21:59 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,8 +22,7 @@ WebServer::WebServer() :
 	_max_connection(DEFAULT_MAX_CONNECTION),
 	_clients(),
 	_sockets_list(),
-	_highest_socket(0),
-	_path_occupied() {
+	_highest_socket(0) {
 
 }
 
@@ -139,15 +138,16 @@ WebServer::_build_select_list() {
 			if (it->get_cgi_output_fd() > _highest_socket)
 				_highest_socket = it->get_cgi_output_fd();
 		}
-		if (it->get_cgi_input_fd() != 0) {
-			FD_SET(it->get_cgi_input_fd(), &_sockets_list[WRITE]);
-			if (it->get_cgi_input_fd() > _highest_socket)
-				_highest_socket = it->get_cgi_input_fd();
-		}
-		if (it->get_file_write_fd() > 0) {
-			FD_SET(it->get_file_write_fd(), &_sockets_list[WRITE]);
-			if (it->get_file_write_fd() > _highest_socket)
-				_highest_socket = it->get_file_write_fd();
+		std::list<Client::exchange_t>& exchanges = it->get_exchanges();
+
+		for (std::list<Client::exchange_t>::iterator exchanges_it = exchanges.begin();
+			exchanges_it != exchanges.end(); exchanges_it++) {
+			int tmp_fd = exchanges_it->first.get_tmp_fd();
+			if (tmp_fd != 0) {
+				FD_SET(tmp_fd, &_sockets_list[WRITE]);
+				if (tmp_fd > _highest_socket)
+					_highest_socket = tmp_fd;
+			}
 		}
   }
 }
@@ -166,6 +166,9 @@ WebServer::_read_socks() {
 			it = _clients.erase(it);
 			continue;
 		}
+		std::list<Client::exchange_t> &exchanges = it->get_exchanges();
+		if (!exchanges.empty() && exchanges.front().first.get_status() == Request::REQUEST_RECEIVED)
+			it->process(exchanges.front());
 		if (FD_ISSET(it->get_fd(), &_sockets_list[READ]) && it->read_target_resource() == FAILURE) {
 			close(it->get_sd());
 			it = _clients.erase(it);
@@ -180,20 +183,14 @@ WebServer::_read_socks() {
 void
 WebServer::_write_socks() {
 	for (std::list<Client>::iterator it(_clients.begin()) ; it != _clients.end() ; ) {
-		std::string put_file = it->get_PUT_file();
-		if (it->get_file_write_fd() == 0 && !put_file.empty()) {
-			if (_path_occupied.find(put_file) == _path_occupied.end()) {
-				_path_occupied.insert(put_file);
-				it->open_file_to_write();
-			}
+		std::list<Client::exchange_t>& exchanges = it->get_exchanges();
+
+		for (std::list<Client::exchange_t>::iterator exchanges_it = exchanges.begin();
+			 exchanges_it != exchanges.end(); exchanges_it++) {
+			int tmp_fd = exchanges_it->first.get_tmp_fd();
+			if (FD_ISSET(tmp_fd, &_sockets_list[WRITE]))
+				exchanges_it->first.write_tmp_file();
 		}
-		if (FD_ISSET(it->get_file_write_fd(), &_sockets_list[WRITE])) {
-			it->write_target_resource();
-			if (it->get_file_write_fd() == 0)
-				_path_occupied.erase(it->get_PUT_file());
-		}
-		if (FD_ISSET(it->get_cgi_input_fd(), &_sockets_list[WRITE]))
-			it->write_cgi_input();
 		if (FD_ISSET(it->get_sd(), &_sockets_list[WRITE]) && it->write_socket() == FAILURE) {
 			close(it->get_sd());
 			it = _clients.erase(it);
@@ -274,6 +271,8 @@ int main(int argc, char **argv) {
 		return (EXIT_FAILURE);
 	if (check_args(argc, argv, filepath) == FAILURE)
 		return (EXIT_FAILURE);
+	if (mkdir("./tmp", 0777) == 0)
+		DEBUG_COUT("tmp directory has been created successfully");
 	if (filepath.empty())
 		filepath = "conf/default.conf";
 	if (!webserv.parsing(filepath))

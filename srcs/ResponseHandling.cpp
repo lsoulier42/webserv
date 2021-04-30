@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 17:53:15 by louise            #+#    #+#             */
-/*   Updated: 2021/04/30 08:18:03 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 08:26:20 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,87 +97,14 @@ ResponseHandling::_response_allow_handler(Client::exchange_t &exchange) {
 	return (SUCCESS);
 }
 
-
-/*
-std::string
-ResponseHandling::_html_content_language_parser(const Response& response) {
-	std::string content_language_str, line_tag;
-	std::string body(response.get_body().c_str(), response.get_body().size());
-	size_t html_tag_pos, end_html_tag_pos, lang_pos, end_lang_pos;
-
-	html_tag_pos = body.find("<html");
-	if (html_tag_pos != std::string::npos) {
-		line_tag = body.substr(html_tag_pos);
-		end_html_tag_pos = line_tag.find_first_of('>');
-		if (end_html_tag_pos != std::string::npos) {
-			line_tag = line_tag.substr(0, end_html_tag_pos);
-			lang_pos = line_tag.find("lang=\"");
-			if (lang_pos != std::string::npos) {
-				line_tag = line_tag.substr(lang_pos + 6);
-				end_lang_pos = line_tag.find_first_of('"');
-				if (end_lang_pos != std::string::npos) {
-					content_language_str = line_tag.substr(0, end_lang_pos);
-					if (!RequestParsing::is_valid_language_tag(content_language_str))
-						content_language_str.clear();
-				}
-			}
-		}
-	}
-	return content_language_str;
-}
-
-std::string
-ResponseHandling::_xml_content_language_parser(const Response& response) {
-	std::string content_language_str, line_tag;
-	std::string body(response.get_body().c_str(), response.get_body().size());
-	size_t lang_pos, end_lang_pos;
-
-	lang_pos = body.find("xml:lang=\"");
-	if (lang_pos != std::string::npos) {
-		line_tag = body.substr(lang_pos + 10);
-		end_lang_pos = line_tag.find_first_of('"');
-		if (end_lang_pos != std::string::npos) {
-			content_language_str = line_tag.substr(0, end_lang_pos);
-			if (!RequestParsing::is_valid_language_tag(content_language_str))
-				content_language_str.clear();
-		}
-	}
-	return content_language_str;
-}
-
-bool
-ResponseHandling::_is_accepted_language(const std::string& language_found, const std::list<std::string>& allowed_languages) {
-	if (allowed_languages.empty())
-		return true;
-	for(std::list<std::string>::const_iterator it = allowed_languages.begin(); it != allowed_languages.end(); it++) {
-		if (*it == "*")
-			return true;
-		if (language_found.find(*it) != std::string::npos)
-			return true;
-	}
-	return false;
-}
-*/
-
 int
 ResponseHandling::_response_content_language_handler(Client::exchange_t &exchange) {
-	Request& request = exchange.first;
-	Response& response = exchange.second;
-	std::string language;
-	const std::string& content_type = response.get_content_type();
+	Request &request = exchange.first;
+	Response &response = exchange.second;
 
-	if (content_type == Syntax::mime_types_tab[TEXT_HTML].name)
-		language = _html_content_language_parser(response);
-	else if (content_type == Syntax::mime_types_tab[APPLICATION_XML].name)
-		language = _xml_content_language_parser(response);
-	if (!language.empty()) {
-		if(request.get_headers().key_exists(ACCEPT_LANGUAGE) &&
-		   !_is_accepted_language(language, request.get_headers().get_value(ACCEPT_LANGUAGE))) {
-			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
-			return FAILURE;
-		}
-		response.get_headers().insert(CONTENT_LANGUAGE, language);
-	}
+	if (request.get_headers().key_exists(CONTENT_LANGUAGE))
+		response.get_headers().insert(CONTENT_LANGUAGE,
+		request.get_headers().get_value(CONTENT_LANGUAGE).front());
 	return (SUCCESS);
 }
 
@@ -189,7 +116,7 @@ ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange)
 	struct stat			buf;
 
 	if (request.get_request_line().get_method() == PUT)
-		ss << response.get_body().size();
+		ss << 0;
 	else if (stat(response.get_target_path().c_str(), &buf) != -1)
 		ss << buf.st_size;
 	else
@@ -216,87 +143,11 @@ ResponseHandling::_response_content_location_handler(Client::exchange_t &exchang
 	return (SUCCESS);
 }
 
-/*
-bool
-ResponseHandling::_is_accepted_charset(const std::string& charset_found, const std::list<std::string>& allowed_charsets) {
-	if (allowed_charsets.empty())
-		return true;
-	for (std::list<std::string>::const_iterator it = allowed_charsets.begin();
-		it != allowed_charsets.end(); it++) {
-		if (*it == "*")
-			return true;
-		if (charset_found.find(Syntax::str_to_lower(*it)) != std::string::npos)
-			return true;
-	}
-	return false;
-}
-
-std::string
-ResponseHandling::_html_charset_parser(const Response& response) {
-	std::string body(response.get_body().c_str(), response.get_body().size());
-	std::string header_bloc, charset, meta_tag("<meta charset=\"") ;
-	size_t header_bloc_begin, header_bloc_end, meta_bloc_begin, meta_bloc_end;
-
-	header_bloc_begin = body.find("<head");
-	if (header_bloc_begin != std::string::npos) {
-		header_bloc = body.substr(header_bloc_begin);
-		header_bloc_end = header_bloc.find("</head>");
-		if (header_bloc_end != std::string::npos) {
-			header_bloc = header_bloc.substr(0, header_bloc_end);
-			meta_bloc_begin = header_bloc.find(meta_tag);
-			if (meta_bloc_begin != std::string::npos) {
-				charset = header_bloc.substr(meta_bloc_begin + meta_tag.size());
-				meta_bloc_end = charset.find_first_of('"');
-				if (meta_bloc_end != std::string::npos) {
-					charset = Syntax::str_to_lower(charset.substr(0, meta_bloc_end));
-				}
-			}
-		}
-	}
-	return charset;
-}
-
-std::string
-ResponseHandling::_xml_charset_parser(const Response& response) {
-	std::string body(response.get_body().c_str(), response.get_body().size());
-	std::string xml_tag, encoding, charset;
-	size_t xml_tag_begin, xml_tag_end, encoding_begin, encoding_end;
-
-	xml_tag_begin = body.find("<?xml");
-	if (xml_tag_begin != std::string::npos) {
-		xml_tag = body.substr(xml_tag_begin);
-		xml_tag_end = xml_tag.find("?>");
-		if (xml_tag_end != std::string::npos) {
-			xml_tag = xml_tag.substr(0, xml_tag_end);
-			encoding_begin = xml_tag.find("encoding=\"");
-			if (encoding_begin != std::string::npos) {
-				encoding = xml_tag.substr(encoding_begin + 10);
-				encoding_end = encoding.find_first_of('"');
-				if (encoding_end != std::string::npos) {
-					charset = Syntax::str_to_lower(encoding.substr(0, encoding_end));
-				}
-			}
-		}
-	}
-	return charset;
-}
-*/
-
 int
 ResponseHandling::_response_content_type_handler(Client::exchange_t &exchange) {
-	Request& request = exchange.first;
 	Response& response = exchange.second;
 
-	content_type = response.get_content_type();
-	if (!charset.empty()) {
-		if (request.get_headers().key_exists(ACCEPT_CHARSET) &&
-			!_is_accepted_charset(charset, request.get_headers().get_value(ACCEPT_CHARSET))) {
-			response.get_status_line().set_status_code(NOT_ACCEPTABLE);
-			return FAILURE;
-		}
-		content_type += "; charset=" + charset;
-	}
-	response.get_headers().insert(CONTENT_TYPE, content_type);
+	response.get_headers().insert(CONTENT_TYPE, response.get_content_type());
 	return (SUCCESS);
 }
 
