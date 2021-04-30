@@ -54,7 +54,7 @@ class WebServer {
 		static int sig_value;
 		static void sigint_handler(int signum);
 
-		static size_t write_buffer_size;
+		static size_t buffer_size;
 
 	private:
 		WebServer(const WebServer& src);

@@ -316,7 +316,7 @@ int
 Request::write_tmp_file(void) {
 	ByteArray	&body = get_body();
 	size_t		body_size = body.size();
-	size_t		to_write = std::min(body_size, WebServer::write_buffer_size);
+	size_t		to_write = std::min(body_size, WebServer::buffer_size);
 	ssize_t 	write_return;
 
 	if (_tmp_fd == 0)

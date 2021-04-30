@@ -16,8 +16,6 @@
 #include "CGI.hpp"
 #include "WebServer.hpp"
 
-const size_t	Client::read_buffer_size(MAX_BUFFER_SIZE);
-
 Client::Client(void) :
 	_sd(),
 	_fd(),
@@ -99,12 +97,12 @@ Client::get_cgi_output_fd(void) const {
 
 int
 Client::read_socket(void) {
-	char	buffer[read_buffer_size];
+	char	buffer[WebServer::buffer_size];
 	int		ret;
 
 	if (_connection_refused)
 		return(_process_connection_refused());
-	if (0 >= (ret = read(_sd, buffer, read_buffer_size))) {
+	if (0 >= (ret = read(_sd, buffer, WebServer::buffer_size))) {
 		if (0 == ret) {
 			DEBUG_COUT("Client closed the connection" << "(" << this->get_ident() << ")");
 		}
@@ -132,7 +130,7 @@ Client::write_socket(void) {
 
 	if (response.get_status() == Response::START && !response.get_head().empty()) {
 
-		size_t		buffer_size(std::min(response.get_head().size(), WebServer::write_buffer_size));
+		size_t		buffer_size(std::min(response.get_head().size(), WebServer::buffer_size));
 		ssize_t		ret;
 
 		ret = write(_sd, response.get_head().c_str(), buffer_size);
@@ -162,7 +160,7 @@ Client::write_socket(void) {
 
 	} else if (response.get_status() == Response::HEAD_SENT && !response.get_content().empty()) {
 
-		size_t		buffer_size(std::min(response.get_content().size(), WebServer::write_buffer_size));
+		size_t		buffer_size(std::min(response.get_content().size(), WebServer::buffer_size));
 		ssize_t		ret;
 
 		ret = write(_sd, response.get_content().c_str(), buffer_size);
@@ -242,7 +240,8 @@ Client::process(exchange_t &exchange) {
 	if (path_type == DIRECTORY && (method == GET || method == HEAD)
 		&& !request.get_location()->get_index().empty())
 		_rebuild_request_target(exchange, path);
-	if ((method == PUT || method == POST) && _check_tmp_file(exchange) == FAILURE)
+	if ((method == PUT || method == POST) && RequestParsing::body_expected(request)
+		&& _check_tmp_file(exchange) == FAILURE)
 		return (_process_error(exchange));
 	if (CGI::is_cgi_related(request))
 		return (CGI::init_CGI(*this));
@@ -425,7 +424,8 @@ Client::_process_error(exchange_t &exchange) {
 	ss << " - " << Syntax::status_codes_tab[error_code].reason_phrase << "(";
 	ss << request.get_ident() << ")";
 	DEBUG_COUT(ss.str());
-
+	if (!request.get_tmp_filename().empty())
+		unlink(request.get_tmp_filename().c_str());
 	response.get_headers().clear();
 	for (std::list<status_code_t>::iterator it(error_codes.begin()) ; it != error_codes.end() ; it++) {
 		if (error_code == *it) {
@@ -490,10 +490,10 @@ Client::read_target_resource(void) {
 	exchange_t	&exchange(_exchanges.front());
 	Request		&request(exchange.first);
 	Response	&response(exchange.second);
-	char		buffer[read_buffer_size];
+	char		buffer[WebServer::buffer_size];
 	ssize_t 	ret;
 
-	ret = read(_fd, buffer, read_buffer_size);
+	ret = read(_fd, buffer, WebServer::buffer_size);
 	if (ret < 0) {
 		DEBUG_COUT("Error during reading target resource: " << std::strerror(errno) << "(" << request.get_ident() << ")");
 		close(_fd);

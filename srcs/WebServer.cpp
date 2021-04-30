@@ -13,7 +13,7 @@
 #include "WebServer.hpp"
 #include "ResponseHandling.hpp"
 
-size_t WebServer::write_buffer_size = 65000;
+size_t WebServer::buffer_size = 65000;
 
 WebServer::WebServer() :
 	_config_file(),
@@ -241,7 +241,7 @@ int handle_buffer_size(char **argv, int& i) {
 		std::cout << "Error : -bf argument can't be more than 1Mo" << std::endl;
 		return (FAILURE);
 	}
-	WebServer::write_buffer_size = arg_buffer_size;
+	WebServer::buffer_size = arg_buffer_size;
 	return (SUCCESS);
 }
 
@@ -278,7 +278,7 @@ int main(int argc, char **argv) {
 	if (!webserv.parsing(filepath))
 		return EXIT_FAILURE;
 	DEBUG_COUT("Config file parsing went well");
-	DEBUG_COUT("Write buffer size has been set to : " << WebServer::write_buffer_size);
+	DEBUG_COUT("Write buffer size has been set to : " << WebServer::buffer_size);
 	DEBUG_COUT(PROGRAM_VERSION << " has started.");
 	webserv.setup_servers();
 	webserv.routine();
