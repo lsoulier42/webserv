@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 08:24:18 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 08:34:42 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -244,6 +244,7 @@ Client::process(exchange_t &exchange) {
 	return ((this->*process_functions[request.get_request_line().get_method()])(exchange));
 }
 
+/*
 std::string
 Client::_build_resource_path(Request &request) {
 	std::string	request_target(request.get_request_line().get_request_target());
@@ -256,6 +257,7 @@ Client::_build_resource_path(Request &request) {
 	Syntax::trail_begining_backslash(request_target);
 	return (location_root + request_target);
 }
+*/
 
 std::string
 Client::_format_index_path(const std::string& dir_path, const std::string& index_file) {
@@ -398,11 +400,9 @@ Client::_process_PUT(exchange_t &exchange) {
 	}
 	status_created = path_type == INVALID_PATH ? CREATED : NO_CONTENT;
 	response.get_status_line().set_status_code(status_created);
-	if (ResponseHandling::process_response_headers(exchange) == FAILURE) {
-		unlink(target_path.c_str());
-		return (_process_error(exchange));
-	}
-	return (_build_output(exchange));
+	ResponseHandling::process_response_headers(exchange);
+	_build_head_response(exchange);
+	return (SUCCESS);
 }
 
 int
@@ -499,6 +499,7 @@ Client::read_target_resource(void) {
 	return (SUCCESS);
 }
 
+/*
 int
 Client::write_target_resource(void) {
 	exchange_t	&exchange(_exchanges.front());
@@ -526,6 +527,7 @@ Client::write_target_resource(void) {
 	}
 	return (SUCCESS);
 }
+*/
 
 void
 Client::_build_head_response(exchange_t &exchange) {
@@ -609,6 +611,7 @@ Client::_process_TRACE(exchange_t &exchange) {
 	return (SUCCESS);
 }
 
+/*
 int
 Client::_build_output(exchange_t &exchange) {
 	Request		&request(exchange.first);
@@ -634,7 +637,9 @@ Client::_build_output(exchange_t &exchange) {
 		_output += response.get_body();
 	return (SUCCESS);
 }
+*/
 
+/*
 int
 Client::_process_error(exchange_t &exchange) {
 	Request						&request(exchange.first);
@@ -662,6 +667,7 @@ Client::_process_error(exchange_t &exchange) {
 	ResponseHandling::generate_basic_headers(exchange);
 	return(_build_output(exchange));
 }
+*/
 
 int
 Client::_process_connection_refused() {
@@ -675,6 +681,7 @@ Client::_process_connection_refused() {
 
 
 
+/*
 int
 Client::_open_file_to_read(const std::string &path) {
 	exchange_t &exchange = _exchanges.front();
@@ -713,6 +720,7 @@ Client::read_target_resource(void) {
 		response.set_body(response.get_body() + ByteArray(buffer, ret));
 	return (SUCCESS);
 }
+*/
 
 
 
@@ -734,7 +742,7 @@ Client::read_cgi_output(void) {
    	else if (CGI::COMPLETE == ret)
 		_build_head_response(exchange);
 	else if (CGI::REDIRECT == ret)
-		return (_process(exchange));
+		return (process(exchange));
 	return (SUCCESS);
 }
 
