@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 19:21:17 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 00:34:43 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 05:51:33 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,6 +54,7 @@ class Response : public AHTTPMessage {
 
 		response_status_t get_status(void) const;
 		size_t get_sending_indicator(void) const;
+		size_t get_length(void) const;
 		bool get_chunked(void) const;
 		StatusLine &get_status_line(void);
 		const StatusLine &get_status_line(void) const;
@@ -66,7 +67,9 @@ class Response : public AHTTPMessage {
 
 		void set_status(response_status_t status);
 		void set_sending_indicator(size_t sending_indicator);
+		void set_length(size_t length);
 		void set_chunked(bool chunked);
+		void set_content(const ByteArray &content);
 		void set_target_path(const std::string& target_path);
 		void set_content_type(const std::string& content_type);
 
@@ -78,6 +81,7 @@ class Response : public AHTTPMessage {
 
 		response_status_t _status;
 		size_t _sending_indicator;
+		size_t _length;
 		bool _chunked;
 		StatusLine _status_line;
 		ByteArray _head;

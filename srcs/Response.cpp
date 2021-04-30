@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/09 20:00:24 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 00:41:41 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 05:54:19 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@ Response::Response(void) :
 	AHTTPMessage(),
 	_status(START),
 	_sending_indicator(),
+	_length(),
 	_chunked(false),
 	_status_line(),
 	_head(),
@@ -27,6 +28,7 @@ Response::Response(const Response &x) :
 	AHTTPMessage(x),
 	_status(x._status),
 	_sending_indicator(x._sending_indicator),
+	_length(x._length),
 	_chunked(x._chunked),
 	_status_line(x._status_line),
 	_head(x._head),
@@ -42,6 +44,7 @@ Response
 		AHTTPMessage::operator=(x);
 		_status = x._status;
 		_sending_indicator = x._sending_indicator;
+		_length = x._length;
 		_chunked = x._chunked;
 		_status_line = x._status_line;
 		_head = x._head;
@@ -60,6 +63,11 @@ Response::get_status(void) const {
 size_t
 Response::get_sending_indicator(void) const {
 	return (_sending_indicator);
+}
+
+size_t
+Response::get_length(void) const {
+	return (_length);
 }
 
 bool
@@ -118,8 +126,18 @@ Response::set_sending_indicator(size_t sending_indicator) {
 }
 
 void
+Response::set_length(size_t length) {
+	_length = length;
+}
+
+void
 Response::set_chunked(bool chunked) {
 	_chunked = chunked;
+}
+
+void
+Response::set_content(const ByteArray &content) {
+	_content = content;
 }
 
 void
@@ -151,6 +169,8 @@ Response::reset(void) {
 	AHTTPMessage::reset();
 	_status = START;
 	_sending_indicator = 0;
+	_length = 0;
+	_chunked = false;
 	_status_line.reset();
 	_head.clear();
 	_content.clear();

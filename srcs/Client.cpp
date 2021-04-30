@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 02:41:32 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 05:31:12 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -220,28 +220,6 @@ Client::write_socket(void) {
 	}
 
 	return (SUCCESS);
-	/*
-	size_t		output_size = _output.size();
-	size_t		to_write = std::min(output_size, WebServer::write_buffer_size);
-	ssize_t 	write_return;
-
-	if (output_size == 0)
-		return (SUCCESS);
-	write_return = write(_sd, _output.c_str(), to_write);
-	if (write_return < 0) {
-		DEBUG_COUT("Error during writing on the socket: " << std::strerror(errno) << "(" << this->get_ident() << ")");
-		_closing = true;
-		return (FAILURE);
-	}
-	_output.pop_front(write_return);
-	if (_output.empty()) {
-		DEBUG_COUT("Response sent successfully (" << this->get_ident() << ")");
-		_exchanges.pop_front();
-		if (_closing)
-			return (FAILURE);
-	}
-	return (SUCCESS);
-	*/
 }
 
 void
@@ -398,10 +376,11 @@ Client::_generate_autoindex(exchange_t &exchange) {
 		else if (file_listing->d_type == DT_REG)
 			file_names.insert(file_listing->d_name);
 	}
-	response.set_body(ByteArray(_format_autoindex_page(exchange, directory_names, file_names)));
+	response.set_content()(ByteArray(_format_autoindex_page(exchange, directory_names, file_names)));
 	ResponseHandling::generate_basic_headers(exchange);
+	_build_head_response(exchange);
 	closedir(directory);
-	return (_build_output(exchange));
+	return (SUCCESS);
 }
 
 int
@@ -448,7 +427,8 @@ Client::_process_POST(exchange_t &exchange) {
 
 	response.get_status_line().set_status_code(NO_CONTENT);
 	ResponseHandling::generate_basic_headers(exchange);
-	return (_build_output(exchange));
+	_build_head_response(exchange);
+	return (SUCCESS);
 }
 
 int
@@ -472,9 +452,10 @@ Client::_process_error(exchange_t &exchange) {
 			return(_open_file_to_read(error_page_path));
 		}
 	}
+	response.set_content(ByteArray(Syntax::body_error_code(error_code)));
 	ResponseHandling::generate_basic_headers(exchange);
 	_build_head_response(exchange);
-	response.get_content() = (ByteArray(Syntax::body_error_code(error_code)));
+	return (SUCCESS);
 }
 
 std::string
@@ -550,9 +531,9 @@ Client::write_target_resource(void) {
 	if (_file_write_str.empty()) {
 		close(_file_write_fd);
 		_file_write_fd = 0;
-		if (ResponseHandling::process_response_headers(exchange) == FAILURE)
-			return (_process_error(exchange));
-		return (_build_output(exchange));
+		ResponseHandling::process_response_headers(exchange);
+		_build_head_response(exchange);
+		return (SUCCESS);
 	}
 	return (SUCCESS);
 }
@@ -601,7 +582,8 @@ Client::_process_DELETE(exchange_t &exchange) {
 	}
 	response.get_status_line().set_status_code(NO_CONTENT);
 	ResponseHandling::generate_basic_headers(exchange);
-	return (_build_output(exchange));
+	_build_head_response(exchange);
+	return (SUCCESS);
 }
 
 int
@@ -619,7 +601,8 @@ Client::_process_OPTIONS(exchange_t &exchange) {
 	response.get_status_line().set_status_code(OK);
 	response.set_content_type(Syntax::mime_types_tab[TEXT_HTML].name);
 	ResponseHandling::generate_basic_headers(exchange);
-	return (_build_output(exchange));
+	_build_head_response(exchange);
+	return (SUCCESS);
 }
 
 int
@@ -629,9 +612,10 @@ Client::_process_TRACE(exchange_t &exchange) {
 
 	response.get_status_line().set_status_code(OK);
 	response.set_content_type("message/http");
-	response.set_body(request.get_raw());
+	response.set_content(request.get_raw());
 	ResponseHandling::generate_basic_headers(exchange);
-	return (_build_output(exchange));
+	_build_head_response(exchange);
+	return (SUCCESS);
 }
 
 int

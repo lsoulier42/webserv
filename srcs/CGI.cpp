@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/27 15:15:10 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 03:02:44 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/04/30 04:58:58 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,39 +110,32 @@ CGI::read_output(Client &client) {
 				close(client._cgi_output_fd);
 				client._cgi_output_fd = 0;
 				unlink(_build_output_file_name(request).c_str());
-				client._cgi_output.clear();
 			}
+			client._cgi_output.clear();
 			return (_handle_cgi_response(client));
 		}
-		return (AGAIN);
 
 	} else {
 
+		if (response.get_chunked()) {
+			response.append_content_chunk(buffer, ret);
+			if (response.get_sending_indicator() == 0) {
+				close(client._cgi_output_fd);
+				client._cgi_output_fd = 0;
+				unlink(_build_output_file_name(request).c_str());
+				client._cgi_response.reset();
+			}
+		} else {
+			response.get_content().append(buffer, ret);
+			response.get_sending_indicator() += ret;
+			if (response.get_sending_indicator() >= static_cast<size_t>(std::atol(response.get_headers().get_value(CONTENT_LENGTH).front().c_str()))) {
+				close(client._cgi_output_fd);
+				client._cgi_output_fd = 0;
+				unlink(_build_output_file_name(request).c_str());
+				client._cgi_response.reset();
+			}
+		}
 
-	}
-
-	while (_header_received(client._cgi_response, client._cgi_output))
-		_collect_header(client._cgi_response, client._cgi_output);
-	if (_headers_received(client._cgi_response, client._cgi_output)
-			&& SUCCESS != _check_headers(client._cgi_response, client._cgi_output)) {
-		DEBUG_COUT("Error during parsing of cgi output (" << request.get_ident() << ")");
-		close(client._cgi_output_fd);
-		client._cgi_output_fd = 0;
-		unlink(_build_output_file_name(request).c_str());
-		client._cgi_output.clear();
-		client._cgi_response.reset();
-		return (SCRIPT_ERROR);
-	}
-	if (_body_received(client._cgi_response, client._cgi_output)
-			|| ret == 0)
-		_collect_body(client._cgi_response, client._cgi_output);
-
-	if (client._cgi_response.get_status() == CGIResponse::RESPONSE_RECEIVED) {
-		close(client._cgi_output_fd);
-		client._cgi_output_fd = 0;
-		unlink(_build_output_file_name(request).c_str());
-		DEBUG_COUT("CGI output parsing went well (" << request.get_ident() << ")");
-		return (_handle_cgi_response(client));
 	}
 
 	return (AGAIN);
@@ -240,43 +233,6 @@ CGI::_pick_response_type(CGIResponse &cgi_response) {
 	return (SUCCESS);
 }
 
-int
-CGI::_check_headers(CGIResponse &cgi_response, ByteArray &output) {
-	output.pop_front(output.find("\n") + 1);
-	if (_is_local_redirect_response(cgi_response))
-		cgi_response.set_type(CGIResponse::LOCAL_REDIRECT);
-	else if (_is_client_redirect_response(cgi_response))
-		cgi_response.set_type(CGIResponse::CLIENT_REDIRECT);
-	else if (_is_client_redirect_response_with_document(cgi_response))
-		cgi_response.set_type(CGIResponse::CLIENT_REDIRECT_DOC);
-	else if (_is_document_response(cgi_response))
-		cgi_response.set_type(CGIResponse::DOCUMENT);
-	else
-		return (FAILURE);
-	if (_body_expected(cgi_response)) {
-		cgi_response.set_status(CGIResponse::HEADERS_RECEIVED);
-		cgi_response.set_content_reception(true);
-	}
-	else {
-		output.clear();
-		cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
-	}
-	return (SUCCESS);
-}
-
-/*
-void
-CGI::_collect_body(CGIResponse &cgi_response, ByteArray &output) {
-	cgi_response.set_status(CGIResponse::RESPONSE_RECEIVED);
-	if (cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)) {
-		size_t	body_size(static_cast<unsigned long>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
-		cgi_response.set_body(ByteArray(output.c_str(), body_size));
-	} else
-		cgi_response.set_body(output);
-	output.clear();
-}
-*/
-
 bool
 CGI::_header_received(const CGIResponse &cgi_response, const ByteArray &output) {
 	return (!_headers_received(cgi_response, output)
@@ -288,15 +244,6 @@ CGI::_headers_received(const CGIResponse &cgi_response, const ByteArray &output)
 	return ((!output.empty() && output[0] == '\n')
 				|| (output.size() >= 2 && output[0] == '\r' && output[1] == '\n'));
 }
-
-/*
-bool
-CGI::_body_received(const CGIResponse &cgi_response, const ByteArray &output) {
-	return (cgi_response.get_status() == CGIResponse::HEADERS_RECEIVED
-			&& cgi_response.get_headers().key_exists(CGI_CONTENT_LENGTH)
-			&& output.size() >= static_cast<unsigned long>(std::atol(cgi_response.get_headers().get_unparsed_value(CGI_CONTENT_LENGTH).c_str())));
-}
-*/
 
 bool
 CGI::_body_expected(const CGIResponse &cgi_response) {
