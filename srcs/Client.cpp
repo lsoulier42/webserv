@@ -134,7 +134,6 @@ Client::write_socket(void) {
 		ssize_t		ret;
 
 		ret = write(_sd, response.get_head().c_str(), buffer_size);
-		//TODO:: close every fd open
 		if (ret < 0) {
 			DEBUG_COUT("Error during writing on the socket: " << std::strerror(errno) << "(" << this->get_ident() << ")");
 			return (FAILURE);
@@ -229,8 +228,7 @@ Client::process(exchange_t &exchange) {
 		&Client::_process_DELETE, &Client::_process_CONNECT,
 		&Client::_process_OPTIONS, &Client::_process_TRACE};
 
-	if ((method == PUT || method == POST)
-		&& request.get_body_size_received() != request.get_tmp_file_size())
+	if (request.body_is_expected() && request.get_body_size_received() != request.get_tmp_file_size())
 		return (TMP_FILE_NOT_DONE_WRITING);
 	request.set_status(Request::REQUEST_PROCESSED);
 	response.get_status_line().set_http_version(OUR_HTTP_VERSION);
@@ -240,8 +238,7 @@ Client::process(exchange_t &exchange) {
 	if (path_type == DIRECTORY && (method == GET || method == HEAD)
 		&& !request.get_location()->get_index().empty())
 		_rebuild_request_target(exchange, path);
-	if ((method == PUT || method == POST) && RequestParsing::body_expected(request)
-		&& _check_tmp_file(exchange) == FAILURE)
+	if (request.body_is_expected() && _check_tmp_file(exchange) == FAILURE)
 		return (_process_error(exchange));
 	if (CGI::is_cgi_related(request))
 		return (CGI::init_CGI(*this));

@@ -24,6 +24,7 @@ Request::Request(void) :
 	_virtual_server(),
 	_location(),
 	_client_addr(),
+	_body_expected(false),
 	_chunked_body(false),
 	_tmp_fd(0),
 	_tmp_filename(),
@@ -41,6 +42,7 @@ Request::Request(const Client &client) :
 	_virtual_server(client._virtual_servers.front()),
 	_location(&(client._virtual_servers.front()->get_locations().back())),
 	_client_addr(client._addr),
+	_body_expected(false),
 	_chunked_body(false),
 	_tmp_fd(0),
 	_tmp_filename(),
@@ -58,6 +60,7 @@ Request::Request(const Request &x) :
 	_virtual_server(x._virtual_server),
 	_location(x._location),
 	_client_addr(x._client_addr),
+	_body_expected(x._body_expected),
 	_chunked_body(x._chunked_body),
 	_tmp_fd(x._tmp_fd),
 	_tmp_filename(x._tmp_filename),
@@ -78,6 +81,7 @@ Request
 		_request_line = x._request_line;
 		_virtual_server = x._virtual_server;
 		_location = x._location;
+		_body_expected = x._body_expected;
 		_chunked_body = x._chunked_body;
 		_tmp_fd = x._tmp_fd;
 		_tmp_filename = x._tmp_filename;
@@ -336,4 +340,13 @@ Request::write_tmp_file(void) {
 		_tmp_fd = 0;
 	}
 	return (SUCCESS);
+}
+
+bool
+Request::body_is_expected() const {
+	return (_body_expected);
+}
+void
+Request::set_body_expected() {
+	_body_expected = true;
 }
