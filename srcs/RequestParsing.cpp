@@ -29,8 +29,10 @@ RequestParsing::parsing(Client &client) {
 
 		_handle_request_line(current_exchange, input);
 		_handle_headers(client, current_exchange, input);
-		_handle_body(current_exchange, input);
-		_handle_trailers(current_exchange, input);
+		if (request.body_is_expected()) {
+			_handle_body(current_exchange, input);
+			_handle_trailers(current_exchange, input);
+		}
 		if (request.get_status() != Request::REQUEST_RECEIVED)
 			return ;
 	}
@@ -101,13 +103,10 @@ RequestParsing::_handle_body(Client::exchange_t &exchange, ByteArray& input) {
 void
 RequestParsing::_handle_trailers(Client::exchange_t &exchange, ByteArray &input) {
 	Request				&request(exchange.first);
-	Response			&response(exchange.second);
-	int					ret(0);
 
 	while (_trailer_received(request, input))
 		_collect_header(request, input);
-	if (_trailers_received(request, input) && SUCCESS != (ret = _check_trailer(request, input)))
-		_failure(response, (status_code_t)ret);
+	request.set_status(Request::REQUEST_RECEIVED);
 }
 
 void
@@ -197,13 +196,6 @@ RequestParsing::_trailers_received(const Request &request, const ByteArray &inpu
 }
 
 bool
-RequestParsing::body_expected(const Request &request) {
-	return (request.get_headers().key_exists(TRANSFER_ENCODING)
-			|| (request.get_headers().key_exists(CONTENT_LENGTH)
-				&& static_cast<unsigned long>(std::atol(request.get_headers().get_value(CONTENT_LENGTH).front().c_str())) > 0));
-}
-
-bool
 RequestParsing::_trailer_expected(const Request &request) {
 	return ((request.get_headers().key_exists(TRAILER)));
 }
@@ -218,39 +210,44 @@ RequestParsing::_is_allowed_method(const std::list<std::string>& allowed_methods
 }
 
 int
+RequestParsing::_check_request_line(const std::vector<std::string>& rl_elements) {
+	std::vector<std::string> http_elements;
+	double http_version;
+
+	if (rl_elements.size() != 3)
+		return (BAD_REQUEST);
+	if (!Syntax::is_accepted_value(rl_elements[0], Syntax::method_tab, DEFAULT_METHOD))
+		return (NOT_IMPLEMENTED);
+	if (rl_elements[1].size() > _uri_max_size || (rl_elements[1][0] != '/' && rl_elements[1][0] != '*'))
+		return (BAD_REQUEST);
+	if (rl_elements[1].find("../") != std::string::npos) {
+		DEBUG_COUT("Directory traversal attack detected");
+		return (FORBIDDEN);
+	}
+	if (rl_elements[2].find('/') == std::string::npos || rl_elements[2].find('.') == std::string::npos)
+		return (BAD_REQUEST);
+	http_elements = Syntax::split(rl_elements[2], "/");
+	if (http_elements.size() != 2 || http_elements[0] != "HTTP")
+		return (BAD_REQUEST);
+	http_version = strtod(http_elements[1].c_str(), NULL);
+	if (http_version > 1.1 || http_version < 1.0)
+		return (HTTP_VERSION_NOT_SUPPORTED);
+	return (OK);
+}
+
+int
 RequestParsing::_collect_request_line_elements(Request &request, ByteArray &input) {
 	size_t						end_rl(input.find("\r\n"));
 	std::string					request_line = input.substr(0, end_rl);
 	std::vector<std::string> 	rl_elements = Syntax::split(request_line, " ");
 	std::list<std::string>		allowed_methods;
+	int							check_ret;
 
 	request.set_status(Request::REQUEST_LINE_RECEIVED);
 	DEBUG_COUT("Request line received: \"" << request_line << "\" (" << request.get_ident() << ")");
-	if (rl_elements.size() != 3) {
+	if ((check_ret = _check_request_line(rl_elements)) != OK) {
 		input.pop_front(end_rl + 2);
-		return (BAD_REQUEST);
-	}
-	if (!Syntax::is_accepted_value(rl_elements[0], Syntax::method_tab, DEFAULT_METHOD)) {
-		input.pop_front(end_rl + 2);
-		return (NOT_IMPLEMENTED);
-	}
-	if (rl_elements[1].size() > _uri_max_size || (rl_elements[1][0] != '/' && rl_elements[1][0] != '*')) {
-		input.pop_front(end_rl + 2);
-		return (BAD_REQUEST);
-	}
-	if (rl_elements[2].find('/') == std::string::npos || rl_elements[2].find('.') == std::string::npos) {
-		input.pop_front(end_rl + 2);
-		return (BAD_REQUEST);
-	}
-	std::vector<std::string> http_elements = Syntax::split(rl_elements[2], "/");
-	if (http_elements.size() != 2 || http_elements[0] != "HTTP") {
-		input.pop_front(end_rl + 2);
-		return (BAD_REQUEST);
-	}
-	double http_version = strtod(http_elements[1].c_str(), NULL);
-	if (http_version > 1.1 || http_version < 1.0) {
-		input.pop_front(end_rl + 2);
-		return (HTTP_VERSION_NOT_SUPPORTED);
+		return (check_ret);
 	}
 	request.get_request_line().set_method(rl_elements[0]);
 	request.get_request_line().set_request_target(rl_elements[1]);
@@ -304,18 +301,11 @@ RequestParsing::_check_headers(Client &client, Request &request) {
 	if (ret == 0)
 		ret = _process_request_headers(client, request);
 	client._input.pop_front(client._input.find("\r\n") + 2);
-	if (body_expected(request))
+	if (request.body_is_expected())
 		request.set_status(Request::HEADERS_RECEIVED);
 	else
 		request.set_status(Request::REQUEST_RECEIVED);
 	return (ret);
-}
-
-int
-RequestParsing::_check_trailer(Request &request, ByteArray &input) {
-	(void)input;
-	request.set_status(Request::REQUEST_RECEIVED);
-	return (SUCCESS);
 }
 
 void
@@ -463,6 +453,7 @@ RequestParsing::_request_content_length_parser(Request &request) {
 		return (FAILURE);
 	value = std::strtol(content_length_str.c_str(), NULL, 10);
 	definitive_value.push_back(content_length_str);
+	request.set_body_expected();
 	request.set_body_size_expected(value);
 	request.get_headers().set_value(CONTENT_LENGTH, definitive_value);
 	return (SUCCESS);
@@ -527,8 +518,13 @@ RequestParsing::_request_host_parser(Request &request) {
 	if (compounds.size() > 2)
 		return (FAILURE);
 	definitive_value.push_back(compounds[0]);// host name
-	if (compounds.size() == 2)
+	if (compounds.size() == 2) {
 		definitive_value.push_back(Syntax::trim_whitespaces(compounds[1])); //port
+		if (request.get_virtual_server()->get_port() != strtol(definitive_value.back().c_str(), NULL, 10)) {
+			DEBUG_COUT("Host poisoning attack detected (" << request.get_ident() << ")");
+			return (FAILURE);
+		}
+	}
 	request.get_headers().set_value(HOST, definitive_value);
 	return (SUCCESS);
 }
@@ -554,6 +550,7 @@ RequestParsing::_request_transfer_encoding_parser(Request &request) {
 		it != encoding_types_list.end(); it++)
 		if (!Syntax::is_accepted_value(*it, Syntax::encoding_types_tab, TOTAL_ENCODING_TYPES))
 			return (FAILURE);
+	request.set_body_expected();
 	if (encoding_types_list.back() == Syntax::encoding_types_tab[CHUNKED].name)
 		request.set_chunked();
 	request.get_headers().set_value(TRANSFER_ENCODING, encoding_types_list);

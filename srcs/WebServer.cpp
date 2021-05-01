@@ -60,10 +60,12 @@ WebServer::_accept_connection(const Server& server) {
 	connection = accept(server.get_server_sd(),
 		&client_addr, &client_socket_len);
 	if (connection < 0 && !sig_value) {
-		std::cerr << "Failed to grab connection : ";
-		std::cerr << std::strerror(errno) << std::endl;
-		this->_close_sockets();
-		exit(EXIT_FAILURE);
+		DEBUG_COUT("Failed to grab connection : " << std::strerror(errno));
+		if (errno == EMFILE) {
+			DEBUG_COUT("DDOS attack detected - webserv will shutdown");
+			sig_value = SIGINT;
+			return ;
+		}
 	}
 	if (fcntl(connection, F_SETFL, O_NONBLOCK) < 0) {
 		DEBUG_COUT("Fcntl error with F_SETFL : " << std::strerror(errno));

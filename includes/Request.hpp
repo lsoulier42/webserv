@@ -113,6 +113,9 @@ class Request : public AHTTPMessage {
 		bool body_is_writen() const;
 		void set_body_written();
 
+		bool body_is_expected() const;
+		void set_body_expected();
+
 		void reset(void);
 
 	private:
@@ -123,6 +126,7 @@ class Request : public AHTTPMessage {
 		const VirtualServer*	_virtual_server;
 		const Location*			_location;
 		const struct sockaddr	_client_addr;
+		bool					_body_expected;
 		bool					_chunked_body;
 		int						_tmp_fd;
 		std::string				_tmp_filename;

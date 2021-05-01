@@ -26,7 +26,6 @@ class RequestParsing {
 
 	public:
 		static void parsing(Client &client);
-		static bool body_expected(const Request &request);
 		static bool is_valid_language_tag(const std::string& language_tag);
 		static bool is_valid_http_date(const std::string& date_str);
 
@@ -41,7 +40,6 @@ class RequestParsing {
 		static int _collect_request_line_elements(Request &request, ByteArray &input_str);
 		static void _collect_header(Request &request, ByteArray &input_str);
 		static int _check_headers(Client &client, Request &request);
-		static int _check_trailer(Request &request, ByteArray &input_str);
 		static void _collect_chunked(Request &request, ByteArray &input);
 		static void _collect_unchunked(Request &request, ByteArray &input);
 		static void _pick_virtual_server(Client &client, Request &request);
@@ -64,6 +62,7 @@ class RequestParsing {
 		static void _handle_request_line(Client::exchange_t &exchange, ByteArray &input);
 		static void _handle_headers(Client &client, Client::exchange_t &exchange, ByteArray &input);
 		static void _handle_trailers(Client::exchange_t &exchange, ByteArray &input);
+		static int _check_request_line(const std::vector<std::string>& rl_elements);
 
 		static size_t _uri_max_size;
 		static size_t _header_max_size;

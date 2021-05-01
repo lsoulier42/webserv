@@ -112,17 +112,7 @@ int
 ResponseHandling::_response_content_length_handler(Client::exchange_t &exchange) {
 	Response			&response = exchange.second;
 	std::stringstream	ss;
-	/*
-	struct stat			buf;
 
-	if (request.get_request_line().get_method() == PUT)
-		ss << 0;
-	else if (stat(response.get_target_path().c_str(), &buf) != -1)
-		ss << buf.st_size;
-	else
-		return (SUCCESS);
-	response.get_headers().insert(CONTENT_LENGTH, ss.str());
-	*/
 	if (!response.get_chunked()) {
 		ss << response.get_length();
 		response.get_headers().insert(CONTENT_LENGTH, ss.str());
@@ -254,6 +244,7 @@ ResponseHandling::generate_basic_headers(Client::exchange_t &exchange) {
 	ss << response.get_length();
 	_response_server_handler(exchange);
 	_response_date_handler(exchange);
+	response.set_content_type(Syntax::mime_types_tab[TEXT_HTML].name);
 	if (method != DELETE)
 		_response_content_type_handler(exchange);
 	if ((method == HEAD	&& error_code == METHOD_NOT_ALLOWED)

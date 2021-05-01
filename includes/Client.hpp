@@ -14,23 +14,25 @@
 # define CLIENT_HPP
 
 # include <iostream>
-# include <unistd.h>
+# include <algorithm>
 # include <string>
-# include <cstring>
 # include <list>
 # include <set>
+# include <sstream>
+# include <cstring>
 # include <cstdlib>
 # include <ctime>
+# include <cstdio>
+# include <cerrno>
+
 # include <sys/time.h>
+# include <unistd.h>
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <sys/types.h>
 # include <dirent.h>
-# include <algorithm>
 # include <fcntl.h>
-# include <cstdio>
-# include <cerrno>
-# include <sstream>
+
 # include "Request.hpp"
 # include "Response.hpp"
 # include "Syntax.hpp"
@@ -118,6 +120,7 @@ class Client {
 		void _build_head_response(exchange_t &exchange);
 		std::string _format_index_path(const std::string& dir_path, const std::string& index_file);
 		int _open_file_to_read(const std::string &path);
+		int _directory_traversal_protection(const std::string& location_root, const std::string& request_target);
 
 		/* Autoindex
 		 *
