@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/16 20:24:45 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/29 13:22:25 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/05/01 11:01:52 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -203,7 +203,6 @@ char
 	return (mv);
 }
 
-//TODO:: URL-decode
 char
 *CGIMetaVariables::_build_path_info(const Request &request) throw(std::bad_alloc) {
 	char		*mv;
@@ -216,7 +215,6 @@ char
 	return (mv);
 }
 
-//TODO:: URL-decode
 char
 *CGIMetaVariables::_build_path_translated(const Request &request) throw(std::bad_alloc) {
 	char		*mv;

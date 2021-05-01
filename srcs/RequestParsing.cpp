@@ -6,7 +6,7 @@
 /*   By: mdereuse <mdereuse@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/19 09:30:19 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 09:02:16 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/05/01 11:00:59 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,9 @@ RequestParsing::parsing(Client &client) {
 	
 	while (!client._closing && !input.empty()) {
 
-		if (client._exchanges.empty() || client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED)
+		if (client._exchanges.empty()
+				|| client._exchanges.back().first.get_status() == Request::REQUEST_RECEIVED
+				|| client._exchanges.back().first.get_status() == Request::REQUEST_PROCESSED)
 			client._exchanges.push_back(std::make_pair(Request(client), Response()));
 
 		Client::exchange_t	&current_exchange(client._exchanges.back());

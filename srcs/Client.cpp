@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/04/06 22:16:28 by mdereuse          #+#    #+#             */
-/*   Updated: 2021/04/30 11:34:11 by mdereuse         ###   ########.fr       */
+/*   Updated: 2021/05/01 11:01:29 by mdereuse         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -163,7 +163,6 @@ Client::write_socket(void) {
 		ssize_t		ret;
 
 		ret = write(_sd, response.get_content().c_str(), buffer_size);
-		//TODO:: close very fd open
 		if (ret < 0) {
 			DEBUG_COUT("Error during writing on the socket: " << std::strerror(errno) << "(" << this->get_ident() << ")");
 			return (FAILURE);
