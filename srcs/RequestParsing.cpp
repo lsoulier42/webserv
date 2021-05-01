@@ -31,10 +31,8 @@ RequestParsing::parsing(Client &client) {
 
 		_handle_request_line(current_exchange, input);
 		_handle_headers(client, current_exchange, input);
-		if (request.body_is_expected()) {
-			_handle_body(current_exchange, input);
-			_handle_trailers(current_exchange, input);
-		}
+		_handle_body(current_exchange, input);
+		_handle_trailers(current_exchange, input);
 		if (request.get_status() != Request::REQUEST_RECEIVED)
 			return ;
 	}
@@ -89,8 +87,9 @@ RequestParsing::_handle_body(Client::exchange_t &exchange, ByteArray& input) {
 		request.set_tmp_fd(fd);
 	}
 	if (request.get_status() == Request::HEADERS_RECEIVED && !request.body_is_received()) {
-		if (request.is_chunked())
+		if (request.is_chunked()) {
 			_collect_chunked(request, input);
+		}
 		else
 			_collect_unchunked(request, input);
 	}
@@ -105,10 +104,12 @@ RequestParsing::_handle_body(Client::exchange_t &exchange, ByteArray& input) {
 void
 RequestParsing::_handle_trailers(Client::exchange_t &exchange, ByteArray &input) {
 	Request				&request(exchange.first);
+	std::string input_str(input.c_str(), input.size());
 
 	while (_trailer_received(request, input))
 		_collect_header(request, input);
-	request.set_status(Request::REQUEST_RECEIVED);
+	if (request.body_is_received() && !input_str.compare(0, 2, "\r\n"))
+		request.set_status(Request::REQUEST_RECEIVED);
 }
 
 void
